@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #0b0b1e;
+  --panel: #101028;
+  --line: #2b2b4d;
+  --cyan: #49f2d6;
+  --pink: #ff4d6d;
+  --amber: #ffb02e;
+  --violet: #c9a6ff;
+  --paper: #e8e8f2;
+  --muted: #a8a8c8;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-cyan: var(--cyan);
+  --color-pink: var(--pink);
+  --color-amber: var(--amber);
+  --color-violet: var(--violet);
+  --color-paper: var(--paper);
+  --color-muted: var(--muted);
+  --font-pixel: var(--font-pixel);
+  --font-body: var(--font-body);
+}
+
+html,
+body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-body), sans-serif;
+}
+
+.sign {
+  font-family: var(--font-pixel), monospace;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.hotspot {
+  cursor: pointer;
+  outline: none;
+}
+.hotspot:hover .sign,
+.hotspot:focus-visible .sign {
+  fill: #ffffff;
+}
+.hotspot:focus-visible rect {
+  stroke-width: 6;
+}
+
+.bld {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transition:
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.35s;
+}
+.hotspot:hover .bld,
+.hotspot:focus-visible .bld {
+  transform: scale(1.03);
+  filter: brightness(1.18) drop-shadow(0 0 14px rgba(73, 242, 214, 0.35));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .blink {
+    animation: blink 1.6s steps(2, start) infinite;
+  }
+  .blink2 {
+    animation: blink 2.4s steps(2, start) infinite;
+    animation-delay: 0.8s;
+  }
+  .blimp-drift {
+    animation: drift 46s linear infinite;
+  }
+  .win {
+    animation: flicker 7s infinite;
+  }
+  .win:nth-child(2n) {
+    animation-delay: 2.1s;
+  }
+  .win:nth-child(3n) {
+    animation-delay: 4.4s;
+  }
+  .bob {
+    animation: bob 5s ease-in-out infinite;
+  }
+  .sway {
+    animation: sway 6s ease-in-out infinite;
+  }
+  .spin {
+    animation: spin 9s linear infinite;
+  }
+  .cloud-a {
+    animation: cloud 90s linear infinite;
+  }
+  .cloud-b {
+    animation: cloud 140s linear infinite;
+    animation-delay: -60s;
+  }
+}
+
+@keyframes cloud {
+  from {
+    transform: translateX(-260px);
+  }
+  to {
+    transform: translateX(1860px);
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(-6deg);
+  }
+  50% {
+    transform: rotate(6deg);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.15;
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate(1750px, 150px);
+  }
+  to {
+    transform: translate(-250px, 110px);
+  }
+}
+
+@keyframes flicker {
+  0%,
+  92%,
+  100% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blimp-drift {
+    transform: translate(1150px, 140px);
+  }
+}
