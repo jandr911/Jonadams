@@ -53,7 +53,7 @@ function Pylons({ curve }: { curve: CatmullRomCurve3 }) {
     m.instanceMatrix.needsUpdate = true;
   }, [curve, dummy]);
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, count]} castShadow>
+    <instancedMesh ref={ref} args={[undefined, undefined, count]} castShadow frustumCulled={false}>
       <cylinderGeometry args={[0.55, 0.8, TRACK_Y - 0.6, 10]} />
       <meshStandardMaterial color="#4a4a68" roughness={0.8} />
     </instancedMesh>

@@ -223,15 +223,15 @@ function Gulls() {
   });
   return (
     <group>
-      <instancedMesh ref={body} args={[undefined, undefined, flock.length]}>
+      <instancedMesh ref={body} args={[undefined, undefined, flock.length]} frustumCulled={false}>
         <capsuleGeometry args={[0.14, 0.7, 3, 6]} onUpdate={(g) => g.rotateX(Math.PI / 2)} />
         <meshStandardMaterial color="#f4f1ea" />
       </instancedMesh>
-      <instancedMesh ref={wingL} args={[undefined, undefined, flock.length]}>
+      <instancedMesh ref={wingL} args={[undefined, undefined, flock.length]} frustumCulled={false}>
         <boxGeometry args={[1.2, 0.04, 0.42]} onUpdate={(g) => g.translate(-0.65, 0, 0)} />
         <meshStandardMaterial color="#e8e2d2" side={2} />
       </instancedMesh>
-      <instancedMesh ref={wingR} args={[undefined, undefined, flock.length]}>
+      <instancedMesh ref={wingR} args={[undefined, undefined, flock.length]} frustumCulled={false}>
         <boxGeometry args={[1.2, 0.04, 0.42]} onUpdate={(g) => g.translate(0.65, 0, 0)} />
         <meshStandardMaterial color="#e8e2d2" side={2} />
       </instancedMesh>

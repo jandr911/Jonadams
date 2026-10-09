@@ -3,7 +3,7 @@
 import { Preload } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef } from "react";
-import { Color, PMREMGenerator, Scene as ThreeScene, Texture } from "three";
+import { Color, InstancedMesh, PMREMGenerator, Scene as ThreeScene, Texture } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import Aircraft from "./Aircraft";
 import Buildings from "./Buildings";
@@ -61,9 +61,14 @@ function ShadowThrottle() {
 
 function FirstFrames({ onReady }: { onReady: () => void }) {
   const frames = useRef(0);
+  const scene = useThree((s) => s.scene);
   useFrame(() => {
     frames.current += 1;
-    if (frames.current === 3) onReady();
+    if (frames.current !== 3) return;
+    scene.traverse((o) => {
+      if (o instanceof InstancedMesh && o.frustumCulled) o.computeBoundingSphere();
+    });
+    onReady();
   });
   return null;
 }
