@@ -64,14 +64,16 @@ function poolTexture() {
   c.width = 64;
   c.height = 128;
   const ctx = c.getContext("2d")!;
-  ctx.translate(32, 10);
-  ctx.scale(0.5, 1.15);
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.translate(32, 12);
+  ctx.scale(0.3, 1);
   const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 100);
-  g.addColorStop(0, "rgba(255,255,255,0.95)");
-  g.addColorStop(0.35, "rgba(255,255,255,0.45)");
-  g.addColorStop(1, "rgba(255,255,255,0)");
+  g.addColorStop(0, "#e6e6e6");
+  g.addColorStop(0.3, "#666666");
+  g.addColorStop(1, "#000000");
   ctx.fillStyle = g;
-  ctx.fillRect(-100, -20, 200, 140);
+  ctx.fillRect(-120, -20, 240, 140);
   return new CanvasTexture(c);
 }
 
@@ -106,7 +108,7 @@ function buildLocals(kind: VehicleKind): Locals {
       })
     : [];
   const driver = new Matrix4().makeTranslation(...s.driver);
-  const pool = new Matrix4().makeTranslation(0, 0.035, s.length / 2 + 4.6).multiply(sc.makeScale(s.width + 2.4, 1, 9.2));
+  const pool = new Matrix4().makeTranslation(0, 0.035, s.length / 2 + 3.4).multiply(sc.makeScale(s.width + 1.4, 1, 7.2));
   return { wheels, head: lampAt(s.lamp.z), tail: lampAt(-s.lamp.z - 0.02), mirrors, driver, pool };
 }
 const LOCALS = new Map<VehicleKind, Locals>();
@@ -194,7 +196,7 @@ function applyNight(mats: Map<string, MeshStandardMaterial | MeshBasicMaterial>,
   for (const [key, m] of mats) {
     const part = key.includes(":") ? key.split(":")[1] : key;
     if (!(m instanceof MeshStandardMaterial)) {
-      m.opacity = Math.max(0, night - 0.2) * 0.75;
+      m.opacity = Math.max(0, night - 0.2) * 0.55;
       continue;
     }
     if (part === "head") m.emissiveIntensity = 0.4 + night * 3.2;
@@ -369,7 +371,7 @@ export default function VehicleFleet({
       </instancedMesh>
       {pools && (
         <instancedMesh ref={bind("pool")} args={[geo.pool, undefined, n]} frustumCulled={false} renderOrder={2}>
-          <meshBasicMaterial ref={bindMat("pool")} color="#ffe6a8" alphaMap={geo.poolTex} transparent opacity={0} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+          <meshBasicMaterial ref={bindMat("pool")} color="#fff1d2" alphaMap={geo.poolTex} transparent opacity={0} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
         </instancedMesh>
       )}
     </group>
