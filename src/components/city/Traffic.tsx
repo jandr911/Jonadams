@@ -4,27 +4,26 @@ import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Color, Group, MeshStandardMaterial } from "three";
 import { useDayNight } from "./DayNightContext";
-import { CITY_HALF_Z, OUTER_COLS, OUTER_HALF_X, OUTER_MIN_Z, PITCH, WOODWARD_INDEX, lightIsGreen, outerRoadLinesX, outerRoadLinesZ } from "./layout";
+import { CITY_HALF_Z, LANE_OFFSET, OUTER_COLS, OUTER_HALF_X, OUTER_MIN_Z, PITCH, ROAD_HALF, WOODWARD_INDEX, lightIsGreen, outerRoadLinesX, outerRoadLinesZ } from "./layout";
 import { mulberry32, pick, range } from "./rng";
 import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
 import { VEHICLE_SPECS, type VehicleKind } from "./vehicles";
 
 const CAR_COLORS = ["#f4f1ea", "#1d1d3f", "#c8102e", "#2a3a7a", "#9a95a8", "#d6b56e", "#3f3f4f", "#ffb02e", "#49d2f2", "#ff4d6d", "#2f6ea8", "#e8e8f2", "#4a2c3a", "#7a8c3a"];
-const LANE_OFFSET = 1.75;
 const FOLLOW_GAP = 3.5;
 const ROAD_OVERRUN = 16;
 const Z_ROAD_MIN = OUTER_MIN_Z - ROAD_OVERRUN;
 const Z_ROAD_MAX = CITY_HALF_Z + 3;
 const X_ROAD_MIN = -OUTER_HALF_X - ROAD_OVERRUN;
 const X_ROAD_MAX = OUTER_HALF_X + ROAD_OVERRUN;
-const BOX_HALF = 3.5;
+const BOX_HALF = ROAD_HALF;
 const AXIS_Z = 1;
 const AXIS_X = 2;
 
 const WOODWARD_OUTER = WOODWARD_INDEX + OUTER_COLS;
 const TRAM_SPEED = 4.5;
 const TRAM_LEN = 11;
-const TRAM_LANE = 1.6;
+const TRAM_LANE = LANE_OFFSET;
 const TRAM_DWELL = 4;
 const TRAM_CROSSOVER = 10;
 const TRAM_HOLD = 12;
@@ -141,7 +140,7 @@ function buildWorld(): World {
 function approachingCross(along: number, dir: 1 | -1, len: number, cross: number[]) {
   for (let k = 0; k < cross.length; k++) {
     const gap = (cross[k] - along) * dir;
-    if (gap > 3.2 + len / 2 && gap < 9 + len / 2) return k;
+    if (gap > ROAD_HALF - 0.3 + len / 2 && gap < ROAD_HALF + 5.5 + len / 2) return k;
   }
   return -1;
 }
