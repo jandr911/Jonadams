@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { IcosahedronGeometry, type BufferGeometry } from "three";
+import { IcosahedronGeometry, MeshStandardMaterial, type BufferGeometry } from "three";
 import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { mulberry32, range } from "./rng";
 
@@ -51,4 +51,29 @@ export function useCrownGeometry(radius: number, seed: number, quality: CrownQua
   const geo = useMemo(() => makeCrownGeometry(radius, seed, quality), [radius, seed, quality]);
   useEffect(() => () => geo.dispose(), [geo]);
   return geo;
+}
+
+const NEAR_FADE_START = 2.2;
+const NEAR_FADE_LENGTH = 1.8;
+
+export function createCrownMaterial(color: string) {
+  const mat = new MeshStandardMaterial({ color, roughness: 1 });
+  mat.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <clipping_planes_fragment>",
+      `#include <clipping_planes_fragment>
+      {
+        float nearHash = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+        if (length(vViewPosition) < ${NEAR_FADE_START.toFixed(2)} + nearHash * ${NEAR_FADE_LENGTH.toFixed(2)}) discard;
+      }`,
+    );
+  };
+  mat.customProgramCacheKey = () => "crown-near-fade";
+  return mat;
+}
+
+export function useCrownMaterial(color: string) {
+  const mat = useMemo(() => createCrownMaterial(color), [color]);
+  useEffect(() => () => mat.dispose(), [mat]);
+  return mat;
 }

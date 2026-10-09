@@ -16,7 +16,7 @@ import {
 } from "./layout";
 import { mulberry32, range } from "./rng";
 import { makeAsphaltTexture, makeConcreteTexture } from "./textures";
-import { CROWN_MOSS, CROWN_OLIVE, TRUNK_COLOR, useCrownGeometry } from "./trees";
+import { CROWN_MOSS, CROWN_OLIVE, TRUNK_COLOR, useCrownGeometry, useCrownMaterial } from "./trees";
 import BelleIsle from "./BelleIsle";
 import RiverMirror from "./RiverMirror";
 import { enableReflection } from "./layers";
@@ -113,6 +113,8 @@ function Trees() {
   const dummy = useMemo(() => new Object3D(), []);
   const crownGeo = useCrownGeometry(1.7, 7, "mid");
   const crownGeo2 = useCrownGeometry(1.5, 11, "mid");
+  const crownMat = useCrownMaterial(CROWN_OLIVE);
+  const crownMat2 = useCrownMaterial(CROWN_MOSS);
   const specs = useMemo(() => {
     const rand = mulberry32(99);
     const out: { x: number; z: number; s: number }[] = [];
@@ -171,12 +173,8 @@ function Trees() {
         <cylinderGeometry args={[0.18, 0.28, 2.2, 6]} />
         <meshStandardMaterial color={TRUNK_COLOR} roughness={1} />
       </instancedMesh>
-      <instancedMesh ref={crowns} args={[crownGeo, undefined, specs.length]} castShadow>
-        <meshStandardMaterial color={CROWN_OLIVE} roughness={1} />
-      </instancedMesh>
-      <instancedMesh ref={crowns2} args={[crownGeo2, undefined, specs.length]}>
-        <meshStandardMaterial color={CROWN_MOSS} roughness={1} />
-      </instancedMesh>
+      <instancedMesh ref={crowns} args={[crownGeo, crownMat, specs.length]} castShadow />
+      <instancedMesh ref={crowns2} args={[crownGeo2, crownMat2, specs.length]} />
     </group>
   );
 }

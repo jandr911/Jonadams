@@ -7,7 +7,7 @@ import { useWindowMaterial } from "./useWindowMaterial";
 import { useDayNight } from "./DayNightContext";
 import { AMBASSADOR_CLEAR_HALF, AMBASSADOR_RAMP_Z, AMBASSADOR_X, CITY_HALF_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR, ROAD } from "./layout";
 import { mulberry32, pick, range } from "./rng";
-import { CROWN_PINE, TRUNK_COLOR, useCrownGeometry } from "./trees";
+import { CROWN_PINE, TRUNK_COLOR, useCrownGeometry, useCrownMaterial } from "./trees";
 import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
 import { FLEET_COLORS, type VehicleKind } from "./vehicles";
 
@@ -337,6 +337,7 @@ function SuburbTrees({ trees }: { trees: { x: number; z: number; s: number }[] }
   const trunks = useRef<InstancedMesh>(null);
   const crowns = useRef<InstancedMesh>(null);
   const crownGeo = useCrownGeometry(2.1, 23, "far");
+  const crownMat = useCrownMaterial(CROWN_PINE);
   useEffect(() => {
     const dummy = new Object3D();
     const t = trunks.current;
@@ -362,9 +363,7 @@ function SuburbTrees({ trees }: { trees: { x: number; z: number; s: number }[] }
         <cylinderGeometry args={[0.2, 0.3, 2.4, 5]} />
         <meshStandardMaterial color={TRUNK_COLOR} roughness={1} />
       </instancedMesh>
-      <instancedMesh ref={crowns} args={[crownGeo, undefined, trees.length]}>
-        <meshStandardMaterial color={CROWN_PINE} roughness={1} />
-      </instancedMesh>
+      <instancedMesh ref={crowns} args={[crownGeo, crownMat, trees.length]} />
     </group>
   );
 }
