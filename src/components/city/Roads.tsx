@@ -88,7 +88,7 @@ function EdgeLines() {
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <boxGeometry args={[0.18, 0.03, 1]} />
-      <meshStandardMaterial color="#d8d8e8" roughness={0.8} />
+      <meshStandardMaterial color="#d9d6cc" roughness={0.8} />
     </instancedMesh>
   );
 }
@@ -124,7 +124,7 @@ function Crosswalks() {
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <boxGeometry args={[0.5, 0.03, 1.6]} />
-      <meshStandardMaterial color="#d8d8e8" roughness={0.8} />
+      <meshStandardMaterial color="#d9d6cc" roughness={0.8} />
     </instancedMesh>
   );
 }
@@ -213,7 +213,7 @@ function Streetlights() {
     <group>
       <instancedMesh ref={poles} args={[undefined, undefined, items.length]}>
         <cylinderGeometry args={[0.12, 0.16, 6.4, 6]} />
-        <meshStandardMaterial color="#5a5a78" roughness={0.6} metalness={0.5} />
+        <meshStandardMaterial color="#4d4f4f" roughness={0.6} metalness={0.5} />
       </instancedMesh>
       <instancedMesh ref={heads} args={[undefined, undefined, items.length]}>
         <sphereGeometry args={[0.36, 6, 4]} />
@@ -254,7 +254,7 @@ function WoodwardMedian() {
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, segments.length]}>
       <boxGeometry args={[1.2, 0.24, 1]} />
-      <meshStandardMaterial color="#6a6488" roughness={0.9} />
+      <meshStandardMaterial color="#77746c" roughness={0.9} />
     </instancedMesh>
   );
 }
@@ -300,7 +300,7 @@ function StreetSigns() {
         <group key={i}>
           <mesh position={[s.position[0], 2.4, s.position[2]]}>
             <cylinderGeometry args={[0.08, 0.08, 4.8, 5]} />
-            <meshStandardMaterial color="#5a5a78" />
+            <meshStandardMaterial color="#4d4f4f" />
           </mesh>
           <StreetSign {...s} />
         </group>

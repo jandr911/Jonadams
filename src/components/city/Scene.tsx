@@ -19,6 +19,7 @@ import { requestShadowUpdate, setShadowManual } from "./mirrorRender";
 import PeopleMover from "./PeopleMover";
 import Roads from "./Roads";
 import Sky from "./Sky";
+import Steam from "./Steam";
 import Traffic from "./Traffic";
 import { TreeWind } from "./TreeStand";
 import Watercraft from "./Watercraft";
@@ -110,6 +111,7 @@ export default function Scene({ onReady }: { onReady: () => void }) {
         <Aircraft />
         <Watercraft />
         <Details />
+        <Steam />
         <Suburbs />
         <TreeWind />
         <Preload all />

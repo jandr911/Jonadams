@@ -46,7 +46,7 @@ function BlockPads() {
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, count]} receiveShadow>
       <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color="#8a84a0" map={concrete} roughness={0.95} />
+      <meshStandardMaterial color="#8f8c86" map={concrete} roughness={0.95} />
     </instancedMesh>
   );
 }
@@ -84,23 +84,23 @@ function Riverwalk() {
     <group ref={root}>
       <mesh position={[0, 0.25, z0 + depth / 2]} receiveShadow>
         <boxGeometry args={[CITY_HALF_X * 2 + 80, 0.5, depth]} />
-        <meshStandardMaterial color="#5d5680" roughness={0.9} />
+        <meshStandardMaterial color="#77736b" roughness={0.9} />
       </mesh>
       <mesh position={[0, 0.55, z1 - 2.6]}>
         <boxGeometry args={[CITY_HALF_X * 2 + 80, 0.12, 0.8]} />
-        <meshStandardMaterial color="#8e86b8" roughness={0.6} />
+        <meshStandardMaterial color="#9a958c" roughness={0.6} />
       </mesh>
       <mesh position={[0, 1.6, z1 - 1.2]}>
         <boxGeometry args={[CITY_HALF_X * 2 + 80, 0.14, 0.14]} />
-        <meshStandardMaterial color="#c9c3e8" roughness={0.4} metalness={0.4} />
+        <meshStandardMaterial color="#b8b6b0" roughness={0.4} metalness={0.4} />
       </mesh>
       <instancedMesh ref={postsRef} args={[undefined, undefined, postCount]}>
         <boxGeometry args={[0.2, 1.4, 0.2]} />
-        <meshStandardMaterial color="#c9c3e8" roughness={0.4} metalness={0.4} />
+        <meshStandardMaterial color="#b8b6b0" roughness={0.4} metalness={0.4} />
       </instancedMesh>
       <mesh position={[0, -0.3, z1 + 0.5]}>
         <boxGeometry args={[CITY_HALF_X * 2 + 80, 1.3, 1.2]} />
-        <meshStandardMaterial color="#2f2a4a" roughness={1} />
+        <meshStandardMaterial color="#3a3833" roughness={1} />
       </mesh>
     </group>
   );
@@ -146,8 +146,8 @@ function Asphalt() {
     return t;
   }, []);
   useEffect(() => {
-    mat.current?.color.set(new Color("#8a8894").lerp(new Color("#2a2846"), dn.night));
-    base.current?.color.set(new Color("#6a6e78").lerp(new Color("#171b30"), dn.night));
+    mat.current?.color.set(new Color("#7d7b77").lerp(new Color("#2b2a28"), dn.night));
+    base.current?.color.set(new Color("#6c6b67").lerp(new Color("#1a1a19"), dn.night));
   }, [dn]);
   return (
     <group>
@@ -157,7 +157,7 @@ function Asphalt() {
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0, (OUTER_MIN_Z - 30 + CITY_HALF_Z) / 2]} receiveShadow>
         <planeGeometry args={[OUTER_HALF_X * 2 + 60, CITY_HALF_Z - OUTER_MIN_Z + 30]} />
-        <meshStandardMaterial ref={mat} color="#1b182e" map={asphalt} roughness={1} />
+        <meshStandardMaterial ref={mat} color="#2b2a28" map={asphalt} roughness={1} />
       </mesh>
     </group>
   );

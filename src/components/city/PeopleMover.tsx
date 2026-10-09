@@ -4,6 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import {
   CatmullRomCurve3,
+  type CanvasTexture,
   DoubleSide,
   Group,
   InstancedMesh,
@@ -16,6 +17,7 @@ import { fillInstances } from "./instancing";
 import { labelTexture } from "./labels";
 import { roadLinesX, roadLinesZ } from "./layout";
 import { enableReflection } from "./layers";
+import { makeStainedConcreteTexture } from "./textures";
 
 const TRACK_Y = 9;
 
@@ -40,7 +42,7 @@ function buildLoop() {
   return new CatmullRomCurve3(pts, true, "catmullrom", 0.15);
 }
 
-function Pylons({ curve }: { curve: CatmullRomCurve3 }) {
+function Pylons({ curve, concrete }: { curve: CatmullRomCurve3; concrete: CanvasTexture }) {
   const ref = useRef<InstancedMesh>(null);
   const caps = useRef<InstancedMesh>(null);
   const feet = useRef<InstancedMesh>(null);
@@ -67,15 +69,15 @@ function Pylons({ curve }: { curve: CatmullRomCurve3 }) {
     <group>
       <instancedMesh ref={ref} args={[undefined, undefined, count]} castShadow frustumCulled={false}>
         <cylinderGeometry args={[0.55, 0.8, TRACK_Y - 0.6, 10]} />
-        <meshStandardMaterial color="#4a4a68" roughness={0.8} />
+        <meshStandardMaterial color="#b5b0a6" map={concrete} roughness={0.9} />
       </instancedMesh>
       <instancedMesh ref={caps} args={[undefined, undefined, count]} frustumCulled={false}>
         <boxGeometry args={[2.6, 0.5, 1.6]} />
-        <meshStandardMaterial color="#5a5a7c" roughness={0.9} />
+        <meshStandardMaterial color="#a9a59c" map={concrete} roughness={0.9} />
       </instancedMesh>
       <instancedMesh ref={feet} args={[undefined, undefined, count]} frustumCulled={false}>
         <cylinderGeometry args={[1.1, 1.3, 0.3, 10]} />
-        <meshStandardMaterial color="#6a6a78" roughness={1} />
+        <meshStandardMaterial color="#9c988f" map={concrete} roughness={1} />
       </instancedMesh>
     </group>
   );
@@ -83,7 +85,7 @@ function Pylons({ curve }: { curve: CatmullRomCurve3 }) {
 
 const GUIDEWAY_SEGMENTS = 160;
 
-function Guideway({ curve }: { curve: CatmullRomCurve3 }) {
+function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: CanvasTexture }) {
   const joints = useRef<InstancedMesh>(null);
   const walkway = useRef<InstancedMesh>(null);
   const beam = useRef<InstancedMesh>(null);
@@ -121,7 +123,7 @@ function Guideway({ curve }: { curve: CatmullRomCurve3 }) {
     <group>
       <instancedMesh ref={beam} args={[undefined, undefined, GUIDEWAY_SEGMENTS]} castShadow>
         <boxGeometry args={[1.5, 1.3, 1]} />
-        <meshStandardMaterial color="#5a5a7c" roughness={0.8} metalness={0.1} />
+        <meshStandardMaterial color="#b0aca2" map={concrete} roughness={0.9} />
       </instancedMesh>
       <instancedMesh ref={railL} args={[undefined, undefined, GUIDEWAY_SEGMENTS]}>
         <boxGeometry args={[0.14, 0.14, 1]} />
@@ -133,21 +135,21 @@ function Guideway({ curve }: { curve: CatmullRomCurve3 }) {
       </instancedMesh>
       <instancedMesh ref={tray} args={[undefined, undefined, GUIDEWAY_SEGMENTS]}>
         <boxGeometry args={[0.36, 0.26, 1]} />
-        <meshStandardMaterial color="#3a3a48" roughness={0.9} />
+        <meshStandardMaterial color="#3a3833" roughness={0.9} />
       </instancedMesh>
       <instancedMesh ref={joints} args={[undefined, undefined, GUIDEWAY_SEGMENTS]}>
         <boxGeometry args={[2.3, 1.7, 0.5]} />
-        <meshStandardMaterial color="#6a6a72" roughness={1} />
+        <meshStandardMaterial color="#a39f96" map={concrete} roughness={1} />
       </instancedMesh>
       <instancedMesh ref={walkway} args={[undefined, undefined, GUIDEWAY_SEGMENTS]}>
         <boxGeometry args={[0.7, 0.1, 1]} />
-        <meshStandardMaterial color="#8a8a90" roughness={1} />
+        <meshStandardMaterial color="#8f8c86" roughness={1} />
       </instancedMesh>
     </group>
   );
 }
 
-function TrainCar({ index, winMat, stripeMat, headMat }: { index: number; winMat?: React.Ref<MeshStandardMaterial>; stripeMat?: React.Ref<MeshStandardMaterial>; headMat?: React.Ref<MeshStandardMaterial> }) {
+function TrainCar({ index, winMat, headMat }: { index: number; winMat?: React.Ref<MeshStandardMaterial>; headMat?: React.Ref<MeshStandardMaterial> }) {
   const windows = [-3.2, -1.9, -0.6, 0.7, 2.0, 3.3];
   const seats = [-2.9, -1.6, -0.3, 1.0, 2.3];
   return (
@@ -216,7 +218,7 @@ function TrainCar({ index, winMat, stripeMat, headMat }: { index: number; winMat
       )}
       <mesh position={[0, 0.9, 0]}>
         <boxGeometry args={[2.5, 0.28, 8.2]} />
-        <meshStandardMaterial ref={index === 0 ? stripeMat : undefined} color="#ff4fa3" emissive="#ff4fa3" emissiveIntensity={2.4} toneMapped={false} />
+        <meshStandardMaterial color="#8f2a22" roughness={0.5} />
       </mesh>
       <mesh position={[0, 0.2, 0]}>
         <boxGeometry args={[1.4, 0.5, 7.6]} />
@@ -271,14 +273,12 @@ function Train({ curve }: { curve: CatmullRomCurve3 }) {
   const dn = useDayNight();
   const cars = useRef<(Group | null)[]>([]);
   const winMat = useRef<MeshStandardMaterial>(null);
-  const stripeMat = useRef<MeshStandardMaterial>(null);
   const headMat = useRef<MeshStandardMaterial>(null);
   const len = useMemo(() => curve.getLength(), [curve]);
   const spacing = 9.2 / len;
   const tmp = useMemo(() => ({ p: new Vector3(), t: new Vector3(), look: new Vector3() }), []);
   useEffect(() => {
     if (winMat.current) winMat.current.emissiveIntensity = 0.3 + dn.night * 1.8;
-    if (stripeMat.current) stripeMat.current.emissiveIntensity = 1.2 + dn.night * 2.2;
     if (headMat.current) headMat.current.emissiveIntensity = 0.4 + dn.night * 3;
   }, [dn]);
   useFrame(({ clock }) => {
@@ -302,7 +302,7 @@ function Train({ curve }: { curve: CatmullRomCurve3 }) {
             cars.current[i] = el;
           }}
         >
-          <TrainCar index={i} winMat={winMat} stripeMat={stripeMat} headMat={headMat} />
+          <TrainCar index={i} winMat={winMat} headMat={headMat} />
         </group>
       ))}
     </group>
@@ -337,11 +337,11 @@ function Stations({ curve }: { curve: CatmullRomCurve3 }) {
         <group key={i} position={[s.p.x, s.p.y, s.p.z]} rotation={[0, Math.atan2(s.t.x, s.t.z), 0]}>
           <mesh position={[2.6, -0.4, 0]}>
             <boxGeometry args={[3.2, 0.4, 12]} />
-            <meshStandardMaterial color="#8a86a8" />
+            <meshStandardMaterial color="#8f8c86" />
           </mesh>
           <mesh position={[2.6, 2.6, 0]}>
             <boxGeometry args={[3.6, 0.3, 12.4]} />
-            <meshStandardMaterial color="#3a3a58" />
+            <meshStandardMaterial color="#3a3936" />
           </mesh>
           <mesh position={[2.6, 2.3, 0]}>
             <boxGeometry args={[3, 0.12, 11.6]} />
@@ -354,14 +354,14 @@ function Stations({ curve }: { curve: CatmullRomCurve3 }) {
           {[-5, 5].map((z) => (
             <mesh key={z} position={[4, 1.2, z]}>
               <boxGeometry args={[0.2, 3.2, 0.2]} />
-              <meshStandardMaterial color="#5a5a78" />
+              <meshStandardMaterial color="#4d4f4f" />
             </mesh>
           ))}
           <StationSign name={STATION_NAMES[i]} />
           <group position={[2.6, -0.6 - stairDrop / 2, 6.2 + stairRun / 2]} rotation={[Math.atan2(stairDrop, stairRun), 0, 0]}>
             <mesh>
               <boxGeometry args={[2.2, 0.5, stairLen]} />
-              <meshStandardMaterial color="#6a6a88" roughness={1} />
+              <meshStandardMaterial color="#7a776f" roughness={1} />
             </mesh>
             {[-1.15, 1.15].map((x) => (
               <mesh key={x} position={[x, 0.75, 0]}>
@@ -378,13 +378,15 @@ function Stations({ curve }: { curve: CatmullRomCurve3 }) {
 
 export default function PeopleMover() {
   const curve = useMemo(() => buildLoop(), []);
+  const concrete = useMemo(() => makeStainedConcreteTexture(), []);
+  useEffect(() => () => concrete.dispose(), [concrete]);
   const root = useRef<Group>(null);
   useEffect(() => enableReflection(root.current), []);
   return (
     <group ref={root}>
       <Stations curve={curve} />
-      <Guideway curve={curve} />
-      <Pylons curve={curve} />
+      <Guideway curve={curve} concrete={concrete} />
+      <Pylons curve={curve} concrete={concrete} />
       <Train curve={curve} />
     </group>
   );
