@@ -10,10 +10,10 @@ export const TRUNK_COLOR = "#4a3f38";
 export type TreeSpecies = "shade" | "elm" | "spruce" | "bare";
 export type CrownQuality = "near" | "mid" | "far";
 
-const GREENS = ["#3b5a3a", "#4a6b3f", "#52683a", "#5c7038", "#667234", "#44603c"];
-const TURNING = ["#8a7a2c", "#8f6a2a", "#8a4a26", "#9a6230", "#7a5a24", "#6e6a2c"];
+const GREENS = ["#3d5236", "#475c3a", "#4f5a36", "#566236", "#5c6236", "#41553a"];
+const TURNING = ["#7a6e34", "#7e6232", "#74472c", "#836034", "#6c5a2e", "#646234"];
 const SPRUCE = ["#2f4a30", "#2a4034", "#35503a", "#3a4a2e"];
-const AUTUMN_SHARE = 0.3;
+const AUTUMN_SHARE = 0.22;
 
 export function crownTint(species: TreeSpecies, rand: () => number): { tint: Color; autumn: boolean } {
   if (species === "spruce") return { tint: new Color(pick(rand, SPRUCE)), autumn: false };
@@ -46,14 +46,15 @@ function lobe(radius: number, detail: number, rand: () => number, dx: number, dy
   const px = rand() * Math.PI * 2;
   const py = rand() * Math.PI * 2;
   const pz = rand() * Math.PI * 2;
-  const amp = range(rand, 0.12, 0.2);
+  const amp = range(rand, 0.16, 0.26);
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
     const z = pos.getZ(i);
     const n = Math.sin(x * fx + px) * Math.sin(y * fy + py) + Math.sin(z * fz + pz) * Math.cos(x * fy + pz);
     const fine = Math.sin(x * fx * 2.7 + pz) * Math.sin(z * fz * 2.3 + px) * Math.cos(y * fy * 2.1 + py);
-    const k = 1 + amp * n + amp * 0.6 * fine;
+    const tuft = Math.sin(x * fx * 6.1 + py) * Math.sin(y * fy * 5.3 + pz) * Math.sin(z * fz * 5.7 + px);
+    const k = 1 + amp * n + amp * 0.8 * fine + amp * 0.55 * tuft;
     pos.setXYZ(i, x * k + dx, y * k * squash + dy, z * k + dz);
   }
   geo.computeVertexNormals();
@@ -132,7 +133,10 @@ function crownFor(species: TreeSpecies, quality: CrownQuality, rand: () => numbe
       lobe(r * 0.5, detail, rand, -r * 0.4, y - r * 0.2, -r * 0.6, 0.9),
       lobe(r * 0.45, detail, rand, r * 0.3, y + r * 0.7, r * 0.5, 0.95),
     ];
-    if (quality === "near") lobes.push(lobe(r * 0.55, detail, rand, r * 0.1, y - r * 0.3, r * 0.7, 0.9));
+    if (quality === "near") {
+      lobes.push(lobe(r * 0.55, detail, rand, r * 0.1, y - r * 0.3, r * 0.7, 0.9));
+      lobes.push(lobe(r * 0.38, detail, rand, -r * 0.85, y + r * 0.05, -r * 0.1, 0.9));
+    }
     return merge(lobes);
   }
   if (species === "elm") {

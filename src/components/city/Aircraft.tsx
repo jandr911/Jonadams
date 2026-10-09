@@ -1,13 +1,13 @@
 "use client";
 
-import { Float } from "@react-three/drei";
+import { Float, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { AdditiveBlending, CatmullRomCurve3, DoubleSide, Group, MathUtils, Mesh, MeshStandardMaterial, PlaneGeometry, Vector3 } from "three";
 import { useDayNight } from "./DayNightContext";
 import { labelTexture } from "./labels";
 import { enableReflection } from "./layers";
-import NeonSign from "./NeonSign";
+import { SCRIPT_FONT } from "./NeonSign";
 
 function Searchlight({ length, radius, color, intensity }: { length: number; radius: number; color: string; intensity: number }) {
   return (
@@ -64,19 +64,16 @@ function Pilot({ position, top = "#1d1d3f", rotation = 0 }: { position: [number,
   );
 }
 
-const BLIMP_MESSAGES = ["FLY AWAY WITH ADAMS", "J. ADAMS · NEW SINGLE OUT NOW", "CLUB ADAMS · TONIGHT · DETROIT"];
+const BLIMP_SKIN = "#c9cbc6";
+const BLIMP_TRIM = "#a8aaa5";
+const BLIMP_INK = "#1f2a3a";
+const BLIMP_METAL = "#4a4c50";
 
 function Blimp() {
   const dn = useDayNight();
   const rig = useRef<Group>(null);
   const props = useRef<(Group | null)[]>([]);
   const surfaces = useRef<(Mesh | null)[]>([]);
-  const beam = useRef<Group>(null);
-  const [msg, setMsg] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setMsg((m) => (m + 1) % BLIMP_MESSAGES.length), 8000);
-    return () => clearInterval(id);
-  }, []);
   const nav = 0.4 + dn.night * 3;
   useFrame(({ clock }) => {
     const g = rig.current;
@@ -94,38 +91,23 @@ function Blimp() {
     surfaces.current.forEach((s, i) => {
       if (s) s.rotation.y = Math.sin(clock.elapsedTime * 0.7 + i) * 0.18;
     });
-    if (beam.current) beam.current.rotation.set(Math.sin(clock.elapsedTime * 0.35) * 0.35, 0, Math.cos(clock.elapsedTime * 0.27) * 0.4);
   });
   return (
     <group ref={rig} name="blimp">
       <Float speed={1.2} rotationIntensity={0.08} floatIntensity={0.6}>
         <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
           <capsuleGeometry args={[5, 20, 12, 28]} />
-          <meshStandardMaterial color="#8fa3c8" roughness={0.32} metalness={0.25} />
+          <meshStandardMaterial color={BLIMP_SKIN} roughness={0.6} metalness={0.05} />
         </mesh>
-        {[-9, -6, -3, 0, 3, 6, 9].map((x) => (
-          <mesh key={x} position={[x, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
-            <torusGeometry args={[5.03, 0.07, 6, 36]} />
-            <meshStandardMaterial color="#6e82ab" roughness={0.6} />
-          </mesh>
-        ))}
         {[0, 1, 2, 3, 4, 5].map((k) => (
           <mesh key={`seam${k}`} rotation={[(k / 6) * Math.PI, 0, 0]} position={[0, 5.02, 0]}>
             <boxGeometry args={[19, 0.05, 0.05]} />
-            <meshStandardMaterial color="#6e82ab" />
+            <meshStandardMaterial color={BLIMP_TRIM} />
           </mesh>
         ))}
-        <mesh position={[4.5, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
-          <torusGeometry args={[5.05, 0.42, 8, 40]} />
-          <meshStandardMaterial color="#d6b56e" roughness={0.3} metalness={0.7} />
-        </mesh>
-        <mesh position={[-11.5, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
-          <torusGeometry args={[4.4, 0.3, 8, 36]} />
-          <meshStandardMaterial color="#ff4fa3" roughness={0.5} />
-        </mesh>
         <mesh position={[15.4, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
           <coneGeometry args={[1.4, 1.6, 12]} />
-          <meshStandardMaterial color="#1d1d3f" roughness={0.4} metalness={0.5} />
+          <meshStandardMaterial color={BLIMP_TRIM} roughness={0.5} metalness={0.3} />
         </mesh>
         <mesh position={[16.4, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[0.1, 0.1, 1.2, 6]} />
@@ -141,11 +123,11 @@ function Blimp() {
           <group key={i} position={[-13, 0, 0]} rotation={[(i * Math.PI) / 2, 0, 0]}>
             <mesh position={[0, 5.4, 0]}>
               <boxGeometry args={[6.4, 6.2, 0.35]} />
-              <meshStandardMaterial color="#6e82ab" roughness={0.6} />
+              <meshStandardMaterial color={BLIMP_SKIN} roughness={0.6} />
             </mesh>
             <mesh position={[-2.6, 6.2, 0]}>
               <boxGeometry args={[1.2, 4.4, 0.4]} />
-              <meshStandardMaterial color="#c8102e" roughness={0.6} />
+              <meshStandardMaterial color={BLIMP_INK} roughness={0.6} />
             </mesh>
             <mesh
               ref={(el) => {
@@ -154,7 +136,7 @@ function Blimp() {
               position={[-3.9, 6.0, 0]}
             >
               <boxGeometry args={[1.4, 4.0, 0.3]} />
-              <meshStandardMaterial color="#5e6f96" roughness={0.6} />
+              <meshStandardMaterial color={BLIMP_TRIM} roughness={0.6} />
             </mesh>
             <mesh position={[-0.5, 8.6, 0]}>
               <sphereGeometry args={[0.16, 6, 6]} />
@@ -165,11 +147,11 @@ function Blimp() {
         <group position={[0, -5.9, 0]}>
           <mesh>
             <boxGeometry args={[7.6, 2.2, 2.8]} />
-            <meshStandardMaterial color="#1d1d3f" roughness={0.4} metalness={0.4} />
+            <meshStandardMaterial color={BLIMP_METAL} roughness={0.5} metalness={0.3} />
           </mesh>
           <mesh position={[0, -0.6, 0]}>
             <boxGeometry args={[7.64, 0.18, 2.84]} />
-            <meshStandardMaterial color="#d6b56e" roughness={0.3} metalness={0.7} />
+            <meshStandardMaterial color={BLIMP_TRIM} roughness={0.4} metalness={0.5} />
           </mesh>
           {[-1, 1].map((s) =>
             [-2.6, -1.3, 0, 1.3, 2.6].map((x) => (
@@ -195,21 +177,21 @@ function Blimp() {
           </mesh>
           <mesh position={[0, -1.2, 0]}>
             <boxGeometry args={[0.5, 0.5, 0.2]} />
-            <meshStandardMaterial color="#3a3a58" />
+            <meshStandardMaterial color={BLIMP_METAL} />
           </mesh>
           {[-1, 1].map((side, k) => (
             <group key={side} position={[-1.2, 0.2, side * 2.6]}>
               <mesh position={[0, 0, -side * 0.8]} rotation={[Math.PI / 2, 0, 0]}>
                 <cylinderGeometry args={[0.12, 0.12, 1.6, 6]} />
-                <meshStandardMaterial color="#3a3a58" />
+                <meshStandardMaterial color={BLIMP_METAL} />
               </mesh>
               <mesh rotation={[0, 0, Math.PI / 2]}>
                 <cylinderGeometry args={[0.55, 0.6, 2, 12]} />
-                <meshStandardMaterial color="#3a3a58" metalness={0.6} roughness={0.35} />
+                <meshStandardMaterial color={BLIMP_METAL} metalness={0.6} roughness={0.35} />
               </mesh>
               <mesh position={[0.3, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
                 <torusGeometry args={[0.58, 0.05, 6, 16]} />
-                <meshStandardMaterial color="#d6b56e" metalness={0.7} roughness={0.3} />
+                <meshStandardMaterial color={BLIMP_TRIM} metalness={0.6} roughness={0.35} />
               </mesh>
               <group
                 ref={(el) => {
@@ -236,11 +218,13 @@ function Blimp() {
               </group>
             </group>
           ))}
-          <group ref={beam} position={[1.5, -1.2, 0]}>
-            <Searchlight length={48} radius={2.6} color="#ffe6a8" intensity={0.25 + dn.night} />
-          </group>
         </group>
-        <NeonSign text={BLIMP_MESSAGES[msg]} color={msg === 1 ? "#ff8ac2" : msg === 2 ? "#f3dfae" : "#49f2d6"} width={20} height={2.6} fontSize={1.7} position={[0, 0.4, 0]} depth={10.4} backing="#101028" blink="marquee" doubleSided />
+        {[1, -1].map((side) => (
+          <Text key={side} font={SCRIPT_FONT} fontSize={4.4} anchorX="center" anchorY="middle" position={[0.6, 0.2, side * 5.08]} rotation={[0, side > 0 ? 0 : Math.PI, 0]}>
+            Adams
+            <meshStandardMaterial attach="material" color={BLIMP_INK} roughness={0.6} />
+          </Text>
+        ))}
         <mesh position={[0, 0, 5.2]}>
           <sphereGeometry args={[0.22, 6, 6]} />
           <meshStandardMaterial color="#2aff7a" emissive="#2aff7a" emissiveIntensity={nav} toneMapped={false} />
@@ -318,7 +302,7 @@ function Helicopter() {
         <Pilot position={[0.45, -0.4, 0.9]} top="#d6b56e" />
         <mesh position={[0, 0.1, 1.9]}>
           <boxGeometry args={[1.2, 0.3, 0.3]} />
-          <meshStandardMaterial color="#15151c" emissive="#49f2d6" emissiveIntensity={dn.night * 1.2} toneMapped={false} />
+          <meshStandardMaterial color="#15151c" emissive="#ffb02e" emissiveIntensity={dn.night * 0.8} toneMapped={false} />
         </mesh>
         {[-1, 1].map((s) => (
           <group key={s}>
