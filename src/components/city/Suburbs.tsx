@@ -33,8 +33,8 @@ const WINDOW_SLOTS: [number, number, number, number][] = [
 ];
 const HOUSE_COLORS = ["#8a4a3a", "#b07a5a", "#c9b48c", "#9a95a8", "#5a6a7a", "#7c6a5c", "#a3563f", "#e8e2d2", "#6e5a4a", "#3f4e66"];
 const ROOF_COLORS = ["#3a3230", "#4a3a38", "#2c3038", "#5a4a3a"];
-const MID_COLORS = ["#8a4a3a", "#a3563f", "#b89a7a", "#9c8468", "#5a6a7a", "#3f4e66", "#7c6a5c", "#1a2238", "#c9b48c"];
-const LOFT_COLORS = ["#8a4a3a", "#a3563f", "#7c6a5c", "#6e5a4a", "#9c8468", "#5a6a7a", "#c9b48c"];
+const MID_COLORS = ["#8a4a3a", "#a3563f", "#b89a7a", "#9c8468", "#5e4a3e", "#c0603a", "#7c6a5c", "#bfa57c", "#c9b48c"];
+const LOFT_COLORS = ["#8a4a3a", "#a3563f", "#7c6a5c", "#6e5a4a", "#9c8468", "#4e4038", "#c9b48c"];
 const SHED_COLORS = ["#9a95a8", "#7c6a5c", "#5a6a7a"];
 const LAWN = new Color("#3f6a42");
 const PATH = new Color("#77736b");
