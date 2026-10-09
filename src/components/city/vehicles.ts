@@ -2,8 +2,10 @@ import { BoxGeometry, BufferGeometry, CylinderGeometry, ExtrudeGeometry, PlaneGe
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { LabelOptions } from "./labels";
 
-export type VehicleKind = "sedan" | "suv" | "van" | "pickup" | "taxi" | "police" | "bus";
-export const VEHICLE_KINDS: VehicleKind[] = ["sedan", "suv", "van", "pickup", "taxi", "police", "bus"];
+export const FLEET_COLORS = ["#f4f1ea", "#1d1d3f", "#c8102e", "#2a3a7a", "#9a95a8", "#d6b56e", "#3f3f4f", "#2f6ea8"];
+
+export type VehicleKind = "sedan" | "suv" | "van" | "pickup" | "taxi" | "police" | "bus" | "semi";
+export const VEHICLE_KINDS: VehicleKind[] = ["sedan", "suv", "van", "pickup", "taxi", "police", "bus", "semi"];
 
 type Pt = [number, number];
 export type PartKey = "dark" | "trim" | "chrome" | "glass" | "accent" | "amber" | "strobe" | "decal";
@@ -211,7 +213,35 @@ const BUS: VehicleSpec = {
   ],
 };
 
-export const VEHICLE_SPECS: Record<VehicleKind, VehicleSpec> = { sedan: SEDAN, suv: SUV, van: VAN, pickup: PICKUP, taxi: TAXI, police: POLICE, bus: BUS };
+const SEMI: VehicleSpec = {
+  length: 15,
+  width: 2.5,
+  body: [[7.5, 0.45], [7.5, 1.5], [7.3, 2.1], [6.3, 2.2], [6.1, 3.35], [3.2, 3.35], [3.0, 1.0], [-7.5, 1.0], [-7.5, 0.45]],
+  glass: [[6.25, 2.2], [6.05, 3.2], [5.2, 3.2], [5.2, 2.2]],
+  roof: null,
+  axles: [5.7, -5.6],
+  wheelR: 0.48,
+  lamp: { z: 7.51, y: 1.0, w: 0.5, inset: 0.4 },
+  mirror: { z: 6.2, y: 2.5 },
+  driver: [-0.55, 1.75, 5.5],
+  extras: [
+    box("trim", [2.5, 2.9, 10.4], [0, 2.45, -2.3]),
+    box("dark", [2.3, 0.5, 9.6], [0, 0.78, -2.3]),
+    box("dark", [2.4, 0.3, 0.25], [0, 0.7, -7.45]),
+    box("dark", [2.4, 0.35, 0.4], [0, 0.55, 7.3]),
+    box("chrome", [1.6, 0.9, 0.08], [0, 1.45, 7.52]),
+    box("dark", [2.4, 0.2, 0.35], [0, 3.3, 6.25]),
+    ...[-1, 1].flatMap((s) => [
+      box("chrome", [0.55, 0.55, 1.5], [s * 1.25, 0.72, 2.0]),
+      box("chrome", [0.16, 2.3, 0.16], [s * 1.2, 2.3, 3.1]),
+      box("amber", [0.18, 0.12, 0.08], [s * 1.15, 2.3, -7.52]),
+    ]),
+    ...[1.5, -4.4].flatMap((z) => [-1, 1].map((s) => box("dark", [0.6, 0.95, 0.95], [s * 0.95, 0.48, z]))),
+    ...[-0.7, 0, 0.7].map((x) => box("amber", [0.18, 0.1, 0.1], [x, 3.4, 6.1])),
+  ],
+};
+
+export const VEHICLE_SPECS: Record<VehicleKind, VehicleSpec> = { sedan: SEDAN, suv: SUV, van: VAN, pickup: PICKUP, taxi: TAXI, police: POLICE, bus: BUS, semi: SEMI };
 
 function extrudeProfile(pts: Pt[], width: number, bevel: number) {
   const shape = new Shape();

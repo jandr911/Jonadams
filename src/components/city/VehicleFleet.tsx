@@ -2,7 +2,7 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { AdditiveBlending, CanvasTexture, Color, InstancedMesh, Matrix4, MeshBasicMaterial, MeshStandardMaterial, Quaternion, Vector3 } from "three";
+import { AdditiveBlending, CanvasTexture, Color, Euler, InstancedMesh, Matrix4, MeshBasicMaterial, MeshStandardMaterial, Quaternion, Vector3 } from "three";
 import { useDayNight } from "./DayNightContext";
 import { labelTexture } from "./labels";
 import {
@@ -28,6 +28,7 @@ export interface VehiclePose {
   yaw: number;
   spin: number;
   brake?: boolean;
+  pitch: number;
 }
 export type PoseFn = (i: number, out: VehiclePose, time: number) => void;
 
@@ -118,7 +119,6 @@ function locals(kind: VehicleKind) {
   return l;
 }
 
-const UP = new Vector3(0, 1, 0);
 const ONE = new Vector3(1, 1, 1);
 const RED = new Color("#ff2a3c");
 const BLUE = new Color("#3f7bff");
@@ -130,6 +130,7 @@ interface Scratch {
   p: VehiclePose;
   pos: Vector3;
   q: Quaternion;
+  e: Euler;
   M: Matrix4;
   spin: Matrix4;
   out: Matrix4;
@@ -146,16 +147,17 @@ function runUpdate(meshes: Map<string, InstancedMesh>, items: FleetItem[], group
   const mirror = meshes.get("mirror");
   const driver = meshes.get("driver");
   const pool = meshes.get("pool");
-  const { p, pos, q, M, spin, out, zero } = s;
+  const { p, pos, q, e, M, spin, out, zero } = s;
   const lightsOn = s.night > 0.18;
   let tailColorDirty = false;
   for (let i = 0; i < items.length; i++) {
     p.brake = false;
+    p.pitch = 0;
     pose(i, p, time);
     const kind = items[i].kind;
     const gi = groups.slot[i];
     pos.set(p.x, p.y, p.z);
-    q.setFromAxisAngle(UP, p.yaw);
+    q.setFromEuler(e.set(p.pitch, p.yaw, 0, "YXZ"));
     M.compose(pos, q, ONE);
     for (const part of PARTS) {
       const im = meshes.get(`${kind}:${part}`);
@@ -234,9 +236,10 @@ export default function VehicleFleet({
   const meshes = useRef(new Map<string, InstancedMesh>());
   const mats = useRef(new Map<string, MeshStandardMaterial | MeshBasicMaterial>());
   const scratch = useRef<Scratch>({
-    p: { x: 0, y: 0, z: 0, yaw: 0, spin: 0, brake: false },
+    p: { x: 0, y: 0, z: 0, yaw: 0, spin: 0, brake: false, pitch: 0 },
     pos: new Vector3(),
     q: new Quaternion(),
+    e: new Euler(),
     M: new Matrix4(),
     spin: new Matrix4(),
     out: new Matrix4(),

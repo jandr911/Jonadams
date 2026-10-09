@@ -16,6 +16,7 @@ import {
 } from "./layout";
 import { mulberry32, range } from "./rng";
 import { makeAsphaltTexture, makeConcreteTexture } from "./textures";
+import BelleIsle from "./BelleIsle";
 import RiverMirror from "./RiverMirror";
 import { enableReflection } from "./layers";
 
@@ -207,45 +208,6 @@ function Asphalt() {
         <planeGeometry args={[OUTER_HALF_X * 2 + 60, CITY_HALF_Z - OUTER_MIN_Z + 30]} />
         <meshStandardMaterial ref={mat} color="#1b182e" map={asphalt} roughness={1} />
       </mesh>
-    </group>
-  );
-}
-
-function BelleIsle() {
-  return (
-    <group position={[340, 0, RIVER_NEAR + 42]}>
-      <mesh position={[0, -0.2, 0]} rotation-x={-Math.PI / 2}>
-        <circleGeometry args={[60, 40]} />
-        <meshStandardMaterial color="#2f6a44" roughness={1} />
-      </mesh>
-      <mesh position={[0, 0.3, 0]} rotation-x={-Math.PI / 2} scale={[1.6, 0.7, 1]}>
-        <circleGeometry args={[60, 40]} />
-        <meshStandardMaterial color="#35774c" roughness={1} />
-      </mesh>
-      <mesh position={[-10, 5, 0]}>
-        <boxGeometry args={[22, 10, 14]} />
-        <meshStandardMaterial color="#e8e2d2" roughness={0.6} />
-      </mesh>
-      <mesh position={[-10, 14, 0]}>
-        <sphereGeometry args={[9, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color="#d8e8ee" roughness={0.25} metalness={0.2} />
-      </mesh>
-      <mesh position={[-10, 23.4, 0]}>
-        <sphereGeometry args={[0.8, 8, 6]} />
-        <meshStandardMaterial color="#f3dfae" emissive="#f3dfae" emissiveIntensity={2} toneMapped={false} />
-      </mesh>
-      {[-40, -26, 14, 28, 44].map((x, i) => (
-        <group key={x} position={[x, 0, (i % 2 ? -1 : 1) * 14]}>
-          <mesh position={[0, 2.5, 0]}>
-            <cylinderGeometry args={[0.3, 0.45, 5, 6]} />
-            <meshStandardMaterial color="#4a2e2a" />
-          </mesh>
-          <mesh position={[0, 7, 0]}>
-            <icosahedronGeometry args={[4, 0]} />
-            <meshStandardMaterial color="#2f8a5a" flatShading />
-          </mesh>
-        </group>
-      ))}
     </group>
   );
 }

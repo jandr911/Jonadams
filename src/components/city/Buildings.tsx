@@ -10,6 +10,9 @@ import {
 } from "three";
 import { useDayNight } from "./DayNightContext";
 import {
+  AMBASSADOR_CLEAR_HALF,
+  AMBASSADOR_RAMP_Z,
+  AMBASSADOR_X,
   BLOCK,
   CITY_HALF_Z,
   COLS,
@@ -128,9 +131,15 @@ function pushBuilding(out: Lot[], cell: { x: number; z: number; w: number; d: nu
   }
 }
 
+function underAmbassador(x: number, z: number, w: number, d: number) {
+  return Math.abs(x - AMBASSADOR_X) < w / 2 + AMBASSADOR_CLEAR_HALF && z + d / 2 > AMBASSADOR_RAMP_Z[0] - 2 && z - d / 2 < AMBASSADOR_RAMP_Z[1] + 2;
+}
+
 function buildLots(): { city: Lot[]; outskirts: Lot[]; windsor: Lot[] } {
   const rand = mulberry32(2024);
   const city: Lot[] = [];
+  // Lots under the bridge still draw from rand so every other lot keeps its seed.
+  const cleared: Lot[] = [];
   for (const { c, r, outer } of allBlocks()) {
     if (!outer && RESERVED_BLOCKS.has(`${c},${r}`)) continue;
     const [bx, bz] = blockCenter(c, r);
@@ -150,7 +159,7 @@ function buildLots(): { city: Lot[]; outskirts: Lot[]; windsor: Lot[] } {
       for (const cell of cells) {
         if (rand() < 0.08) continue;
         const h = range(rand, 5, 12) + range(rand, 0, 22) * falloff * (rand() < 0.3 ? 1.6 : 1);
-        pushBuilding(city, cell, h, rand);
+        pushBuilding(underAmbassador(cell.x, cell.z, cell.w, cell.d) ? cleared : city, cell, h, rand);
       }
     }
   }
@@ -181,7 +190,7 @@ function buildLots(): { city: Lot[]; outskirts: Lot[]; windsor: Lot[] } {
     const x = side * range(rand, 175, 640);
     const z = range(rand, RIVER_FAR + 14, RIVER_FAR + 140);
     const h = range(rand, 5, 26) * (1 - Math.abs(x) / 900);
-    windsor.push({
+    const lot: Lot = {
       x,
       z,
       w: range(rand, 8, 18),
@@ -190,7 +199,8 @@ function buildLots(): { city: Lot[]; outskirts: Lot[]; windsor: Lot[] } {
       color: new Color(pick(rand, PALETTE)).multiplyScalar(0.7),
       seed: rand() * 100,
       roofKind: 0,
-    });
+    };
+    if (!underAmbassador(lot.x, lot.z, lot.w, lot.d)) windsor.push(lot);
   }
   return { city, outskirts, windsor };
 }

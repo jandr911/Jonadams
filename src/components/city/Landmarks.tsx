@@ -5,7 +5,6 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AdditiveBlending,
-  CatmullRomCurve3,
   Color,
   ExtrudeGeometry,
   Group,
@@ -15,15 +14,14 @@ import {
   MeshStandardMaterial,
   Object3D,
   Shape,
-  Vector3,
 } from "three";
+import AmbassadorBridge from "./AmbassadorBridge";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import Hotspot from "./Hotspot";
 import {
   CITY_HALF_Z,
   DESTINATIONS,
-  RIVER_FAR,
   blockCenter,
   destinationPosition,
 } from "./layout";
@@ -1077,106 +1075,6 @@ function AdBoard() {
         </mesh>
       ))}
     </Landmark>
-  );
-}
-
-const BRIDGE = {
-  x: -186,
-  z0: CITY_HALF_Z - 30,
-  z1: RIVER_FAR + 50,
-  towers: [CITY_HALF_Z + 16, RIVER_FAR - 16],
-  towerH: 54,
-  deckY: 18,
-};
-
-function buildBridgeCable() {
-  const { x, z0, z1, towers, towerH, deckY } = BRIDGE;
-  const pts = [
-    new Vector3(x, deckY + 1, z0),
-    new Vector3(x, towerH, towers[0]),
-    new Vector3(x, deckY + 6, (towers[0] + towers[1]) / 2),
-    new Vector3(x, towerH, towers[1]),
-    new Vector3(x, deckY + 1, z1),
-  ];
-  return new CatmullRomCurve3(pts, false, "catmullrom", 0.3);
-}
-
-function AmbassadorBridge() {
-  const dn = useDayNight();
-  const { x: bx, z0, z1, towers: tz, towerH, deckY } = BRIDGE;
-  const cable = useMemo(() => buildBridgeCable(), []);
-  const hangers = useRef<InstancedMesh>(null);
-  const lamps = useRef<InstancedMesh>(null);
-  const lampMat = useRef<MeshStandardMaterial>(null);
-  const dummy = useMemo(() => new Object3D(), []);
-  const hangerCount = 44;
-  useEffect(() => {
-    const h = hangers.current;
-    const l = lamps.current;
-    if (!h || !l) return;
-    for (let i = 0; i < hangerCount; i++) {
-      const u = 0.05 + (i / (hangerCount - 1)) * 0.9;
-      const p = cable.getPointAt(u);
-      const len = Math.max(0.5, p.y - deckY);
-      dummy.position.set(bx, deckY + len / 2, p.z);
-      dummy.scale.set(1, len, 1);
-      dummy.updateMatrix();
-      h.setMatrixAt(i, dummy.matrix);
-      dummy.position.set(bx, p.y + 0.4, p.z);
-      dummy.scale.set(1, 1, 1);
-      dummy.updateMatrix();
-      l.setMatrixAt(i, dummy.matrix);
-    }
-    h.instanceMatrix.needsUpdate = true;
-    l.instanceMatrix.needsUpdate = true;
-  }, [cable, dummy, bx, deckY]);
-  useEffect(() => {
-    if (lampMat.current) lampMat.current.emissiveIntensity = 0.3 + dn.night * 3;
-  }, [dn]);
-  return (
-    <group>
-      {[-4.5, 4.5].map((ox) => (
-        <group key={ox}>
-          <mesh position={[bx + ox, deckY, (z0 + z1) / 2]}>
-            <boxGeometry args={[1.2, 1.2, z1 - z0]} />
-            <meshStandardMaterial color="#3a5a8a" roughness={0.6} />
-          </mesh>
-          <mesh material-color="#4a7ab8" material-roughness={0.5} material-metalness={0.3} position={[bx + ox, deckY, (z0 + z1) / 2]}>
-            <tubeGeometry args={[cable.clone(), 120, 0.28, 6, false]} />
-          </mesh>
-        </group>
-      ))}
-      <mesh position={[bx, deckY - 0.3, (z0 + z1) / 2]}>
-        <boxGeometry args={[10, 0.8, z1 - z0]} />
-        <meshStandardMaterial color="#2a2a44" roughness={0.9} />
-      </mesh>
-      {tz.map((zt) => (
-        <group key={zt} position={[bx, 0, zt]}>
-          {[-4.5, 4.5].map((ox) => (
-            <mesh key={ox} position={[ox, towerH / 2 - 1, 0]}>
-              <boxGeometry args={[2.2, towerH + 2, 2.6]} />
-              <meshStandardMaterial color="#3f7fc9" roughness={0.5} metalness={0.2} />
-            </mesh>
-          ))}
-          {[towerH - 2, towerH - 16, deckY + 4].map((y) => (
-            <mesh key={y} position={[0, y, 0]}>
-              <boxGeometry args={[11, 1.8, 2]} />
-              <meshStandardMaterial color="#3f7fc9" roughness={0.5} metalness={0.2} />
-            </mesh>
-          ))}
-          <Beacon position={[-4.5, towerH + 0.8, 0]} size={0.6} rate={0.9} />
-          <Beacon position={[4.5, towerH + 0.8, 0]} size={0.6} rate={0.9} />
-        </group>
-      ))}
-      <instancedMesh ref={hangers} args={[undefined, undefined, hangerCount]}>
-        <boxGeometry args={[9.2, 1, 0.12]} />
-        <meshStandardMaterial color="#6f9bd6" roughness={0.5} />
-      </instancedMesh>
-      <instancedMesh ref={lamps} args={[undefined, undefined, hangerCount]}>
-        <sphereGeometry args={[0.45, 8, 6]} />
-        <meshStandardMaterial ref={lampMat} color="#dff2ff" emissive="#bfe6ff" emissiveIntensity={3} toneMapped={false} />
-      </instancedMesh>
-    </group>
   );
 }
 

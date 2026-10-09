@@ -1143,23 +1143,25 @@ interface Craft {
   weave: number;
 }
 
+const NORTH_LANE = [RIVER_NEAR + 5.5, RIVER_NEAR + 7.5];
+
 function buildFleet(): Craft[] {
   const rand = mulberry32(17);
   const out: Craft[] = [
-    { kind: "laker", z: RIVER_NEAR + 42, speed: 1.7, start: -200, color: "", bob: 0, weave: 0 },
-    { kind: "princess", z: RIVER_NEAR + 24, speed: 2.4, start: -380, color: "", bob: 0.12, weave: 0 },
+    { kind: "laker", z: RIVER_FAR - 15, speed: 1.7, start: -200, color: "", bob: 0, weave: 0 },
+    { kind: "princess", z: RIVER_FAR - 22, speed: 2.4, start: -380, color: "", bob: 0.12, weave: 0 },
   ];
   for (let i = 0; i < 3; i++) {
-    out.push({ kind: "speed", z: range(rand, RIVER_NEAR + 10, RIVER_FAR - 12), speed: range(rand, 7, 10) * (rand() < 0.5 ? 1 : -1), start: range(rand, -LOOP / 2, LOOP / 2), color: pick(rand, ["#f4f1ea", "#1d2a6a", "#c8102e", "#49d2f2", "#ff4fa3"]), bob: 0.14, weave: 0 });
+    out.push({ kind: "speed", z: i === 0 ? range(rand, NORTH_LANE[0], NORTH_LANE[1]) : range(rand, RIVER_FAR - 25, RIVER_FAR - 9), speed: range(rand, 7, 10) * (rand() < 0.5 ? 1 : -1), start: range(rand, -LOOP / 2, LOOP / 2), color: pick(rand, ["#f4f1ea", "#1d2a6a", "#c8102e", "#49d2f2", "#ff4fa3"]), bob: 0.14, weave: 0 });
   }
   for (let i = 0; i < 2; i++) {
-    out.push({ kind: "trawler", z: range(rand, RIVER_NEAR + 14, RIVER_FAR - 14), speed: range(rand, 3, 4.2) * (rand() < 0.5 ? 1 : -1), start: range(rand, -LOOP / 2, LOOP / 2), color: "", bob: 0.1, weave: 0 });
+    out.push({ kind: "trawler", z: range(rand, RIVER_FAR - 25, RIVER_FAR - 10), speed: range(rand, 3, 4.2) * (rand() < 0.5 ? 1 : -1), start: range(rand, -LOOP / 2, LOOP / 2), color: "", bob: 0.1, weave: 0 });
   }
   for (let i = 0; i < 3; i++) {
-    out.push({ kind: "sail", z: range(rand, RIVER_NEAR + 16, RIVER_FAR - 16), speed: range(rand, 1.6, 2.6) * (rand() < 0.5 ? 1 : -1), start: range(rand, -LOOP / 2, LOOP / 2), color: pick(rand, ["#f4f1ea", "#1d2a6a", "#2f6ea8"]), bob: 0.16, weave: 0 });
+    out.push({ kind: "sail", z: range(rand, RIVER_FAR - 27, RIVER_FAR - 11), speed: range(rand, 1.6, 2.6) * (rand() < 0.5 ? 1 : -1), start: range(rand, -LOOP / 2, LOOP / 2), color: pick(rand, ["#f4f1ea", "#1d2a6a", "#2f6ea8"]), bob: 0.16, weave: 0 });
   }
   for (let i = 0; i < 2; i++) {
-    out.push({ kind: "jetski", z: range(rand, RIVER_NEAR + 8, RIVER_FAR - 10), speed: range(rand, 11, 14) * (rand() < 0.5 ? 1 : -1), start: range(rand, -LOOP / 2, LOOP / 2), color: pick(rand, ["#ffb02e", "#49d2f2", "#ff4fa3"]), bob: 0.2, weave: 4 });
+    out.push({ kind: "jetski", z: range(rand, NORTH_LANE[0], NORTH_LANE[1]), speed: range(rand, 11, 14) * (rand() < 0.5 ? 1 : -1), start: range(rand, -LOOP / 2, LOOP / 2), color: pick(rand, ["#ffb02e", "#49d2f2", "#ff4fa3"]), bob: 0.2, weave: 1.2 });
   }
   return out;
 }

@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Color, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { useDayNight } from "./DayNightContext";
-import { CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR } from "./layout";
+import { AMBASSADOR_CLEAR_HALF, AMBASSADOR_RAMP_Z, AMBASSADOR_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR } from "./layout";
 import { mulberry32, pick, range } from "./rng";
 import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
-import type { VehicleKind } from "./vehicles";
+import { FLEET_COLORS, type VehicleKind } from "./vehicles";
 
 const EXTENT = 1650;
 const LOT = 11;
@@ -77,7 +77,10 @@ function buildHouses(): {
       pads.push({ x: cx, z: cz });
       const windsorPark = cz > RIVER_FAR && cz < RIVER_FAR + 150 && Math.abs(cx) < 420;
       if (windsorPark) {
-        for (let k = 0; k < 10; k++) trees.push({ x: cx + (rand() - 0.5) * (STREET - 10), z: cz + (rand() - 0.5) * (STREET - 10), s: range(rand, 1, 1.8) });
+        for (let k = 0; k < 10; k++) {
+          const tree = { x: cx + (rand() - 0.5) * (STREET - 10), z: cz + (rand() - 0.5) * (STREET - 10), s: range(rand, 1, 1.8) };
+          if (Math.abs(tree.x - AMBASSADOR_X) > AMBASSADOR_CLEAR_HALF + 3 || tree.z > AMBASSADOR_RAMP_Z[1] + 6) trees.push(tree);
+        }
         lawns.push({ x: cx, z: cz });
         continue;
       }
@@ -351,7 +354,7 @@ function buildFreewayFleet(): FreewayFleet {
     cars.push({ lane: pick(rand, [-5.2, -2.6, 2.6, 5.2]), z: range(rand, FREEWAY_Z0, FREEWAY_Z1), speed: kind === "bus" ? range(rand, 15, 19) : range(rand, 18, 28), spin: rand() * 6 });
     items.push({
       kind,
-      color: new Color(kind === "police" ? "#f4f1ea" : pick(rand, ["#f4f1ea", "#1d1d3f", "#c8102e", "#2a3a7a", "#9a95a8", "#d6b56e", "#3f3f4f", "#2f6ea8"])),
+      color: new Color(kind === "police" ? "#f4f1ea" : pick(rand, FLEET_COLORS)),
     });
   }
   return { cars, items, last: -1 };

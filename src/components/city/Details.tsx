@@ -3,14 +3,13 @@
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  CatmullRomCurve3,
   Color,
   InstancedMesh,
   MeshStandardMaterial,
   Object3D,
-  Vector3,
 } from "three";
 import { useDayNight } from "./DayNightContext";
+import MacArthurBridge from "./MacArthurBridge";
 import {
   BLOCK,
   CITY_HALF_X,
@@ -269,60 +268,6 @@ function RooftopSigns() {
           <NeonSign text={s.text} color={s.color} width={s.w} height={3.2} fontSize={2.2} doubleSided depth={0.5} blink="marquee" />
         </group>
       ))}
-    </group>
-  );
-}
-
-function MacArthurBridge() {
-  const dn = useDayNight();
-  const lamps = useRef<InstancedMesh>(null);
-  const lampMat = useRef<MeshStandardMaterial>(null);
-  const dummy = useMemo(() => new Object3D(), []);
-  const x0 = CITY_HALF_X + 90;
-  const curve = useMemo(
-    () =>
-      new CatmullRomCurve3([
-        new Vector3(x0, 2, CITY_HALF_Z + 6),
-        new Vector3(x0 + 60, 7, RIVER_NEAR + 14),
-        new Vector3(x0 + 130, 6, RIVER_NEAR + 38),
-        new Vector3(x0 + 185, 2, RIVER_NEAR + 46),
-      ]),
-    [x0],
-  );
-  const count = 30;
-  useEffect(() => {
-    const l = lamps.current;
-    if (!l) return;
-    for (let i = 0; i < count; i++) {
-      const p = curve.getPointAt(i / (count - 1));
-      dummy.position.set(p.x, p.y + 3.4, p.z);
-      dummy.updateMatrix();
-      l.setMatrixAt(i, dummy.matrix);
-    }
-    l.instanceMatrix.needsUpdate = true;
-  }, [curve, dummy]);
-  useEffect(() => {
-    if (lampMat.current) lampMat.current.emissiveIntensity = 0.3 + dn.night * 3;
-  }, [dn]);
-  return (
-    <group>
-      <mesh>
-        <tubeGeometry args={[curve, 60, 2.6, 6, false]} />
-        <meshStandardMaterial color="#5d5680" roughness={0.9} />
-      </mesh>
-      {Array.from({ length: 7 }).map((_, i) => {
-        const p = curve.getPointAt((i + 1) / 8);
-        return (
-          <mesh key={i} position={[p.x, p.y / 2 - 1, p.z]}>
-            <boxGeometry args={[3, p.y + 2, 6]} />
-            <meshStandardMaterial color="#3f3a5e" />
-          </mesh>
-        );
-      })}
-      <instancedMesh ref={lamps} args={[undefined, undefined, count]}>
-        <sphereGeometry args={[0.35, 8, 6]} />
-        <meshStandardMaterial ref={lampMat} color="#fff6d8" emissive="#ffd27a" emissiveIntensity={3} toneMapped={false} />
-      </instancedMesh>
     </group>
   );
 }

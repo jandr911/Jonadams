@@ -10,6 +10,10 @@ export const CITY_HALF_Z = (ROWS * PITCH) / 2;
 export const RIVER_NEAR = CITY_HALF_Z + 12;
 export const RIVER_FAR = RIVER_NEAR + 70;
 
+export const AMBASSADOR_X = -186;
+export const AMBASSADOR_CLEAR_HALF = 9;
+export const AMBASSADOR_RAMP_Z = [-23, RIVER_FAR + 125] as const;
+
 export const HOME_CAMERA = {
   position: [0, 62, CITY_HALF_Z + 206] as [number, number, number],
   target: [0, 28, -10] as [number, number, number],
