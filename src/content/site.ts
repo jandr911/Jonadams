@@ -4,8 +4,23 @@ export const SITE = {
   city: "Detroit, Michigan",
   year: 2026,
   submitEmail: "",
-  joinHref: "/listen",
+  bookingEmail: "",
+  pressEmail: "",
+  joinHref: "#join-list",
 };
+
+export interface SiteLink {
+  label: string;
+  href: string;
+}
+
+export const LINKS: SiteLink[] = [
+  { label: "Instagram", href: "" },
+  { label: "YouTube", href: "" },
+  { label: "Spotify", href: "" },
+  { label: "Apple Music", href: "" },
+  { label: "TikTok", href: "" },
+];
 
 export interface VideoSlot {
   id: string;

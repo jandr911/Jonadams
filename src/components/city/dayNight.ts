@@ -5,6 +5,7 @@ export type TimePreset = "auto" | "day" | "dusk" | "night";
 export interface DayNight {
   hour: number;
   night: number;
+  cloud: number;
   sunDir: [number, number, number];
   sky: {
     zenith: Color;
@@ -26,10 +27,19 @@ const DAY = {
   horizon: new Color("#b9bfc6"),
   ground: new Color("#aaa8a4"),
   fog: new Color("#b4b9bf"),
-  sun: new Color("#ecebe6"),
-  hemiSky: new Color("#b3b8bd"),
-  hemiGround: new Color("#4a4745"),
+  sun: new Color("#f3eee2"),
+  hemiSky: new Color("#aeb4ba"),
+  hemiGround: new Color("#36332f"),
 };
+
+const CLEAR = {
+  zenith: new Color("#4f7fb8"),
+  horizon: new Color("#c9d6e2"),
+  fog: new Color("#c4ccd4"),
+  sun: new Color("#fff2cf"),
+  hemiSky: new Color("#9fb6cc"),
+};
+const OVERCAST_BASELINE = 0.6;
 
 const DUSK = {
   zenith: new Color("#1c2a6a"),
@@ -69,8 +79,10 @@ export function presetHour(preset: TimePreset, now = new Date()): number {
   }
 }
 
-export function computeDayNight(hour: number): DayNight {
+export function computeDayNight(hour: number, cloud = OVERCAST_BASELINE): DayNight {
   const dayAmount = smooth(6, 8, hour) * (1 - smooth(18, 20.5, hour));
+  const clear = Math.max(0, 1 - cloud / OVERCAST_BASELINE) * dayAmount;
+  const heavy = Math.max(0, (cloud - OVERCAST_BASELINE) / (1 - OVERCAST_BASELINE));
   const duskAmount =
     smooth(5, 6.5, hour) * (1 - smooth(6.5, 8, hour)) +
     smooth(18, 19.5, hour) * (1 - smooth(19.5, 21, hour));
@@ -83,21 +95,25 @@ export function computeDayNight(hour: number): DayNight {
       ? [Math.cos(sunAngle) * 0.9, Math.max(0.12, sunElev), -0.35]
       : [0.55, 0.75, -0.3];
 
-  const mix3 = (k: keyof typeof DAY) =>
-    new Color()
+  const mix3 = (k: keyof typeof DAY) => {
+    const c = new Color()
       .copy(NIGHT[k])
       .lerp(DAY[k], dayAmount)
       .lerp(DUSK[k], duskAmount * 0.85);
+    if (k in CLEAR) c.lerp(CLEAR[k as keyof typeof CLEAR], clear * (1 - duskAmount));
+    return c;
+  };
 
   return {
     hour,
     night,
+    cloud,
     sunDir,
     sky: { zenith: mix3("zenith"), horizon: mix3("horizon"), ground: mix3("ground") },
     fog: mix3("fog"),
     sunColor: mix3("sun"),
-    sunIntensity: 0.25 + dayAmount * 1.15,
-    ambient: 0.3 + dayAmount * 0.55,
+    sunIntensity: 0.25 + dayAmount * (1.7 + clear * 0.5 - heavy * 0.7),
+    ambient: 0.3 + dayAmount * (0.36 + heavy * 0.1),
     hemiSky: mix3("hemiSky"),
     hemiGround: mix3("hemiGround"),
     bloom: 0.3 + night * 0.5,

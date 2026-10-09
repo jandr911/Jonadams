@@ -255,29 +255,44 @@ interface SignSpot {
 function ShopSigns({ spots, sign }: { spots: SignSpot[]; sign: (typeof SHOP_SIGNS)[number] }) {
   const dn = useDayNight();
   const ref = useRef<InstancedMesh>(null);
+  const tubes = useRef<InstancedMesh>(null);
   const mat = useRef<MeshStandardMaterial>(null);
+  const tubeMat = useRef<MeshStandardMaterial>(null);
   const tex = useMemo(() => labelTexture(sign.text, { width: 512, height: 112, bg: sign.bg, fg: sign.fg, border: sign.border, size: 64 }), [sign]);
   useEffect(() => {
     const dummy = new Object3D();
     const m = ref.current;
-    if (!m) return;
+    const t = tubes.current;
+    if (!m || !t) return;
     spots.forEach((it, i) => {
       dummy.position.set(it.x, 0.4 + 3.8, it.z);
       dummy.rotation.set(0, it.rot, 0);
       dummy.scale.set(it.w, it.w * 0.22, 1);
       dummy.updateMatrix();
       m.setMatrixAt(i, dummy.matrix);
+      dummy.position.set(it.x + Math.sin(it.rot) * 0.1, 0.4 + 3.8 - it.w * 0.11 - 0.12, it.z + Math.cos(it.rot) * 0.1);
+      dummy.scale.set(it.w * 0.92, 0.07, 0.07);
+      dummy.updateMatrix();
+      t.setMatrixAt(i, dummy.matrix);
     });
     m.instanceMatrix.needsUpdate = true;
+    t.instanceMatrix.needsUpdate = true;
   }, [spots]);
   useEffect(() => {
     if (mat.current) mat.current.emissiveIntensity = 0.1 + dn.night * 0.9;
+    if (tubeMat.current) tubeMat.current.emissiveIntensity = 0.3 + dn.night * 3.2;
   }, [dn]);
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, spots.length]}>
-      <planeGeometry args={[1, 1]} />
-      <meshStandardMaterial ref={mat} map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.1} roughness={0.6} />
-    </instancedMesh>
+    <group>
+      <instancedMesh ref={ref} args={[undefined, undefined, spots.length]}>
+        <planeGeometry args={[1, 1]} />
+        <meshStandardMaterial ref={mat} map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.1} roughness={0.6} />
+      </instancedMesh>
+      <instancedMesh ref={tubes} args={[undefined, undefined, spots.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial ref={tubeMat} color={sign.border ?? sign.fg} emissive={sign.border ?? sign.fg} emissiveIntensity={0.3} toneMapped={false} />
+      </instancedMesh>
+    </group>
   );
 }
 
@@ -329,7 +344,7 @@ function StreetLevel({ lots }: { lots: Lot[] }) {
     if (a.instanceColor) a.instanceColor.needsUpdate = true;
   }, [items, dummy]);
   return (
-    <group>
+    <group name="street-level">
       <instancedMesh ref={awnings} args={[undefined, undefined, items.awn.length]}>
         <boxGeometry args={[1, 0.12, 1.4]} />
         <meshStandardMaterial color="#ffffff" roughness={0.9} />
@@ -388,6 +403,69 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
     return out;
   }, [lots]);
   const mastLots = useMemo(() => lots.filter((l) => l.roofKind === 2 || (l.h > 44 && !l.y)), [lots]);
+  const parapets = useRef<InstancedMesh>(null);
+  const vents = useRef<InstancedMesh>(null);
+  const skylights = useRef<InstancedMesh>(null);
+  const skylightMat = useRef<MeshStandardMaterial>(null);
+  const dishes = useRef<InstancedMesh>(null);
+  const greenery = useRef<InstancedMesh>(null);
+  const extras = useMemo(() => {
+    const rand = mulberry32(5150);
+    type P = { x: number; y: number; z: number; sx: number; sy: number; sz: number; ry: number; rx?: number };
+    const parapet: P[] = [];
+    const vent: P[] = [];
+    const skylight: P[] = [];
+    const dish: P[] = [];
+    const green: P[] = [];
+    lots.forEach((l) => {
+      const top = 0.4 + (l.y ?? 0) + l.h;
+      parapet.push({ x: l.x, y: top + 0.3, z: l.z + l.d / 2, sx: l.w + 0.5, sy: 0.6, sz: 0.4, ry: 0 });
+      parapet.push({ x: l.x, y: top + 0.3, z: l.z - l.d / 2, sx: l.w + 0.5, sy: 0.6, sz: 0.4, ry: 0 });
+      parapet.push({ x: l.x + l.w / 2, y: top + 0.3, z: l.z, sx: 0.4, sy: 0.6, sz: l.d + 0.5, ry: 0 });
+      parapet.push({ x: l.x - l.w / 2, y: top + 0.3, z: l.z, sx: 0.4, sy: 0.6, sz: l.d + 0.5, ry: 0 });
+      const n = Math.floor(rand() * 4);
+      for (let k = 0; k < n; k++) {
+        vent.push({ x: l.x + (rand() - 0.5) * l.w * 0.7, y: top + 0.45, z: l.z + (rand() - 0.5) * l.d * 0.7, sx: 1, sy: range(rand, 0.6, 1.3), sz: 1, ry: 0 });
+      }
+      if (l.w > 9 && l.d > 9 && rand() < 0.4) {
+        skylight.push({ x: l.x + (rand() - 0.5) * l.w * 0.3, y: top + 0.3, z: l.z + (rand() - 0.5) * l.d * 0.3, sx: range(rand, 1.8, 3.2), sy: 0.5, sz: range(rand, 1.2, 2.2), ry: rand() < 0.5 ? 0 : Math.PI / 2 });
+      }
+      if (rand() < 0.35) {
+        dish.push({ x: l.x + (rand() - 0.5) * l.w * 0.8, y: top + 0.9, z: l.z + (rand() - 0.5) * l.d * 0.8, sx: 1, sy: 1, sz: 1, ry: rand() * 6.28, rx: -0.9 });
+      }
+      if (!l.y && l.h < 30 && l.w > 8 && rand() < 0.14) {
+        green.push({ x: l.x + (rand() - 0.5) * l.w * 0.25, y: top + 0.18, z: l.z + (rand() - 0.5) * l.d * 0.25, sx: l.w * 0.5, sy: 0.3, sz: l.d * 0.45, ry: 0 });
+        const m = 2 + Math.floor(rand() * 4);
+        for (let k = 0; k < m; k++) {
+          green.push({ x: l.x + (rand() - 0.5) * l.w * 0.6, y: top + 0.55, z: l.z + (rand() - 0.5) * l.d * 0.6, sx: range(rand, 0.6, 1.4), sy: range(rand, 0.6, 1.1), sz: range(rand, 0.6, 1.4), ry: 0 });
+        }
+      }
+    });
+    return { parapet, vent, skylight, dish, green };
+  }, [lots]);
+  useEffect(() => {
+    const sets: [InstancedMesh | null, typeof extras.parapet][] = [
+      [parapets.current, extras.parapet],
+      [vents.current, extras.vent],
+      [skylights.current, extras.skylight],
+      [dishes.current, extras.dish],
+      [greenery.current, extras.green],
+    ];
+    for (const [m, items] of sets) {
+      if (!m) continue;
+      items.forEach((it, i) => {
+        dummy.position.set(it.x, it.y, it.z);
+        dummy.rotation.set(it.rx ?? 0, it.ry, 0);
+        dummy.scale.set(it.sx, it.sy, it.sz);
+        dummy.updateMatrix();
+        m.setMatrixAt(i, dummy.matrix);
+      });
+      m.instanceMatrix.needsUpdate = true;
+    }
+  }, [extras, dummy]);
+  useEffect(() => {
+    if (skylightMat.current) skylightMat.current.emissiveIntensity = 0.05 + dn.night * 0.7;
+  }, [dn]);
   useEffect(() => {
     const bk = bulkheads.current;
     if (bk) {
@@ -442,7 +520,27 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
     if (beaconMat.current) beaconMat.current.emissiveIntensity = 1.2 + dn.night * 3;
   }, [dn]);
   return (
-    <group>
+    <group name="roof-details">
+      <instancedMesh ref={parapets} args={[undefined, undefined, extras.parapet.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#9c8f78" roughness={0.95} />
+      </instancedMesh>
+      <instancedMesh ref={vents} args={[undefined, undefined, extras.vent.length]}>
+        <cylinderGeometry args={[0.22, 0.26, 1, 5]} />
+        <meshStandardMaterial color="#8c8c98" roughness={0.6} metalness={0.5} />
+      </instancedMesh>
+      <instancedMesh ref={skylights} args={[undefined, undefined, extras.skylight.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial ref={skylightMat} color="#7f98b0" emissive="#ffd9a0" emissiveIntensity={0.05} roughness={0.15} metalness={0.4} />
+      </instancedMesh>
+      <instancedMesh ref={dishes} args={[undefined, undefined, extras.dish.length]}>
+        <cylinderGeometry args={[0.55, 0.3, 0.12, 10]} />
+        <meshStandardMaterial color="#d8d8e2" roughness={0.5} metalness={0.3} />
+      </instancedMesh>
+      <instancedMesh ref={greenery} args={[undefined, undefined, extras.green.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#4a6b3f" roughness={1} />
+      </instancedMesh>
       <instancedMesh ref={bulkheads} args={[undefined, undefined, bulkLots.length]}>
         <boxGeometry args={[1, 2.6, 1]} />
         <meshStandardMaterial color="#6a6070" roughness={0.9} />
@@ -473,8 +571,125 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
   );
 }
 
-function Facades({ lots }: { lots: Lot[] }) {
+interface Placed {
+  x: number;
+  y: number;
+  z: number;
+  sx: number;
+  sy: number;
+  sz: number;
+  ry: number;
+  rx?: number;
+  color?: Color;
+}
+
+const BILLBOARD_ADS = [
+  { text: "J. ADAMS · NEW SINGLE OUT NOW", bg: "#07060f", fg: "#f3dfae", border: "#d6b56e" },
+  { text: "ADAMS UNIVERSECITY · DETROIT", bg: "#1d1d3f", fg: "#49f2d6" },
+  { text: "CLUB ADAMS · TONIGHT · RENCEN", bg: "#ff4fa3", fg: "#07060f" },
+  { text: "LISTEN · LIVE AT THE FOX", bg: "#b52c24", fg: "#ffe08a" },
+  { text: "313 · MOTOR CITY", bg: "#f4f1ea", fg: "#1d1d3f" },
+  { text: "EASTERN MARKET · SATURDAYS", bg: "#2f8a5a", fg: "#f4f1ea" },
+  { text: "DETROIT RIVERWALK · OPEN DAILY", bg: "#1d2a6a", fg: "#f4f1ea" },
+  { text: "CONEY ISLAND · OPEN 24 HRS", bg: "#c8102e", fg: "#f4f1ea" },
+  { text: "DDOT · RIDE WOODWARD", bg: "#14101c", fg: "#ffb02e", border: "#ffb02e" },
+];
+
+function BillboardFaces({ spots, ad }: { spots: Placed[]; ad: (typeof BILLBOARD_ADS)[number] }) {
   const dn = useDayNight();
+  const ref = useRef<InstancedMesh>(null);
+  const mat = useRef<MeshStandardMaterial>(null);
+  const tex = useMemo(() => labelTexture(ad.text, { width: 512, height: 184, bg: ad.bg, fg: ad.fg, border: ad.border, size: 75 }), [ad]);
+  useEffect(() => {
+    const dummy = new Object3D();
+    const m = ref.current;
+    if (!m) return;
+    spots.forEach((it, i) => {
+      dummy.position.set(it.x + Math.sin(it.ry) * 0.17, it.y, it.z + Math.cos(it.ry) * 0.17);
+      dummy.rotation.set(0, it.ry, 0);
+      dummy.scale.set(it.sx, it.sy, 1);
+      dummy.updateMatrix();
+      m.setMatrixAt(i, dummy.matrix);
+    });
+    m.instanceMatrix.needsUpdate = true;
+  }, [spots]);
+  useEffect(() => {
+    if (mat.current) mat.current.emissiveIntensity = 0.05 + dn.night * 0.75;
+  }, [dn]);
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, spots.length]}>
+      <planeGeometry args={[1, 1]} />
+      <meshStandardMaterial ref={mat} map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.05} roughness={0.7} />
+    </instancedMesh>
+  );
+}
+
+function RoofBillboards({ items }: { items: Placed[] }) {
+  const dn = useDayNight();
+  const backs = useRef<InstancedMesh>(null);
+  const legs = useRef<InstancedMesh>(null);
+  const lamps = useRef<InstancedMesh>(null);
+  const lampMat = useRef<MeshStandardMaterial>(null);
+  const byAd = useMemo(() => {
+    const groups: Placed[][] = BILLBOARD_ADS.map(() => []);
+    items.forEach((it, i) => groups[i % BILLBOARD_ADS.length].push(it));
+    return groups;
+  }, [items]);
+  useEffect(() => {
+    const dummy = new Object3D();
+    const b = backs.current;
+    const l = legs.current;
+    const lp = lamps.current;
+    if (!b || !l || !lp) return;
+    items.forEach((it, i) => {
+      const nx = Math.sin(it.ry);
+      const nz = Math.cos(it.ry);
+      dummy.position.set(it.x, it.y, it.z);
+      dummy.rotation.set(0, it.ry, 0);
+      dummy.scale.set(it.sx + 0.3, it.sy + 0.3, 0.3);
+      dummy.updateMatrix();
+      b.setMatrixAt(i, dummy.matrix);
+      const legH = 2.6 - it.sy / 2;
+      for (const side of [-1, 1]) {
+        dummy.position.set(it.x + Math.cos(it.ry) * side * it.sx * 0.35, it.y - it.sy / 2 - legH / 2, it.z - Math.sin(it.ry) * side * it.sx * 0.35);
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.set(1, legH, 1);
+        dummy.updateMatrix();
+        l.setMatrixAt(i * 2 + (side + 1) / 2, dummy.matrix);
+      }
+      dummy.position.set(it.x + nx * 0.35, it.y + it.sy / 2 + 0.12, it.z + nz * 0.35);
+      dummy.rotation.set(0, it.ry, 0);
+      dummy.scale.set(it.sx * 0.9, 0.08, 0.5);
+      dummy.updateMatrix();
+      lp.setMatrixAt(i, dummy.matrix);
+    });
+    b.instanceMatrix.needsUpdate = true;
+    l.instanceMatrix.needsUpdate = true;
+    lp.instanceMatrix.needsUpdate = true;
+  }, [items]);
+  useEffect(() => {
+    if (lampMat.current) lampMat.current.emissiveIntensity = 0.1 + dn.night * 2.2;
+  }, [dn]);
+  return (
+    <group name="billboards">
+      <instancedMesh ref={backs} args={[undefined, undefined, items.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#2b2b3a" roughness={0.8} />
+      </instancedMesh>
+      <instancedMesh ref={legs} args={[undefined, undefined, items.length * 2]}>
+        <cylinderGeometry args={[0.12, 0.14, 1, 6]} />
+        <meshStandardMaterial color="#6a6a78" roughness={0.6} metalness={0.5} />
+      </instancedMesh>
+      <instancedMesh ref={lamps} args={[undefined, undefined, items.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial ref={lampMat} color="#fff6d8" emissive="#fff2c0" emissiveIntensity={0.1} toneMapped={false} />
+      </instancedMesh>
+      {BILLBOARD_ADS.map((ad, i) => byAd[i].length > 0 && <BillboardFaces key={ad.text} spots={byAd[i]} ad={ad} />)}
+    </group>
+  );
+}
+
+function Facades({ lots }: { lots: Lot[] }) {
   const cornices = useRef<InstancedMesh>(null);
   const belts = useRef<InstancedMesh>(null);
   const pilasters = useRef<InstancedMesh>(null);
@@ -482,25 +697,28 @@ function Facades({ lots }: { lots: Lot[] }) {
   const rails = useRef<InstancedMesh>(null);
   const stairs = useRef<InstancedMesh>(null);
   const balconies = useRef<InstancedMesh>(null);
-  const boards = useRef<InstancedMesh>(null);
-  const boardMat = useRef<MeshStandardMaterial>(null);
   const doors = useRef<InstancedMesh>(null);
   const canopies = useRef<InstancedMesh>(null);
+  const stoops = useRef<InstancedMesh>(null);
+  const planters = useRef<InstancedMesh>(null);
+  const shrubs = useRef<InstancedMesh>(null);
 
   const data = useMemo(() => {
     const rand = mulberry32(4242);
-    type T = { x: number; y: number; z: number; sx: number; sy: number; sz: number; ry: number; rx?: number; color?: Color };
-    const cornice: T[] = [];
-    const belt: T[] = [];
-    const pil: T[] = [];
-    const plat: T[] = [];
-    const rail: T[] = [];
-    const stair: T[] = [];
-    const balc: T[] = [];
-    const board: T[] = [];
-    const door: T[] = [];
-    const canopy: T[] = [];
-    const neon = ["#ff4fa3", "#49f2d6", "#ffb02e", "#9dff57", "#c9a6ff", "#ff8a3a", "#f4f1ea"];
+    const cornice: Placed[] = [];
+    const belt: Placed[] = [];
+    const pil: Placed[] = [];
+    const plat: Placed[] = [];
+    const rail: Placed[] = [];
+    const stair: Placed[] = [];
+    const balc: Placed[] = [];
+    const board: Placed[] = [];
+    const door: Placed[] = [];
+    const canopy: Placed[] = [];
+    const stoop: Placed[] = [];
+    const planter: Placed[] = [];
+    const shrub: Placed[] = [];
+    const planterColors = ["#2a2a30", "#5a4636", "#6e6a60", "#8a3a2a"];
     lots.forEach((l) => {
       const y0 = 0.4 + (l.y ?? 0);
       const top = y0 + l.h;
@@ -553,17 +771,28 @@ function Facades({ lots }: { lots: Lot[] }) {
       }
       if (rand() < 0.18 && l.h > 8) {
         const ry = rand() < 0.5 ? 0 : Math.PI / 2;
-        board.push({ x: l.x, y: top + 2.6, z: l.z, sx: Math.min(l.w, l.d) * 0.7, sy: 3, sz: 0.3, ry, color: new Color(pick(rand, neon)) });
+        const w = Math.min(l.w, l.d) * 0.7;
+        board.push({ x: l.x, y: top + 2.6, z: l.z, sx: w, sy: w * 0.36, sz: 0.3, ry });
       }
       sides.slice(0, 2).forEach(([sx, sz, ry]) => {
         if (rand() < 0.35) return;
-        const px = sx + Math.sin(ry) * 0.2;
-        const pz = sz + Math.cos(ry) * 0.2;
-        door.push({ x: px, y: 0.4 + 1.5, z: pz, sx: 2.2, sy: 3, sz: 0.3, ry });
-        canopy.push({ x: sx + Math.sin(ry) * 1.1, y: 0.4 + 3.3, z: sz + Math.cos(ry) * 1.1, sx: 3.2, sy: 0.2, sz: 1.8, ry });
+        const nx = Math.sin(ry);
+        const nz = Math.cos(ry);
+        door.push({ x: sx + nx * 0.2, y: 0.4 + 1.5, z: sz + nz * 0.2, sx: 2.2, sy: 3, sz: 0.3, ry });
+        canopy.push({ x: sx + nx * 1.1, y: 0.4 + 3.3, z: sz + nz * 1.1, sx: 3.2, sy: 0.2, sz: 1.8, ry });
+        stoop.push({ x: sx + nx * 0.85, y: 0.4 + 0.16, z: sz + nz * 0.85, sx: 3, sy: 0.32, sz: 1.5, ry });
+        if (rand() < 0.45) {
+          const color = new Color(pick(rand, planterColors));
+          for (const side of [-1, 1]) {
+            const ox = Math.cos(ry) * side * 2.1 + nx * 0.75;
+            const oz = -Math.sin(ry) * side * 2.1 + nz * 0.75;
+            planter.push({ x: sx + ox, y: 0.4 + 0.3, z: sz + oz, sx: 0.7, sy: 0.6, sz: 0.7, ry, color });
+            shrub.push({ x: sx + ox, y: 0.4 + 0.95, z: sz + oz, sx: 0.8, sy: 0.7, sz: 0.8, ry: rand() * 6.28 });
+          }
+        }
       });
     });
-    return { cornice, belt, pil, plat, rail, stair, balc, board, door, canopy };
+    return { cornice, belt, pil, plat, rail, stair, balc, board, door, canopy, stoop, planter, shrub };
   }, [lots]);
 
   useEffect(() => {
@@ -576,9 +805,11 @@ function Facades({ lots }: { lots: Lot[] }) {
       [rails.current, data.rail],
       [stairs.current, data.stair],
       [balconies.current, data.balc],
-      [boards.current, data.board],
       [doors.current, data.door],
       [canopies.current, data.canopy],
+      [stoops.current, data.stoop],
+      [planters.current, data.planter],
+      [shrubs.current, data.shrub],
     ];
     for (const [m, items] of sets) {
       if (!m) continue;
@@ -596,12 +827,21 @@ function Facades({ lots }: { lots: Lot[] }) {
     }
   }, [data]);
 
-  useEffect(() => {
-    if (boardMat.current) boardMat.current.emissiveIntensity = 0.15 + dn.night * 1.3;
-  }, [dn]);
-
   return (
-    <group>
+    <group name="facades">
+      <RoofBillboards items={data.board} />
+      <instancedMesh ref={stoops} args={[undefined, undefined, data.stoop.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#7a736a" roughness={0.95} />
+      </instancedMesh>
+      <instancedMesh ref={planters} args={[undefined, undefined, data.planter.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.9} />
+      </instancedMesh>
+      <instancedMesh ref={shrubs} args={[undefined, undefined, data.shrub.length]}>
+        <icosahedronGeometry args={[0.5, 0]} />
+        <meshStandardMaterial color="#44603c" roughness={1} flatShading />
+      </instancedMesh>
       <instancedMesh ref={cornices} args={[undefined, undefined, data.cornice.length]} castShadow>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="#b9a88c" roughness={0.9} />
@@ -629,10 +869,6 @@ function Facades({ lots }: { lots: Lot[] }) {
       <instancedMesh ref={balconies} args={[undefined, undefined, data.balc.length]}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="#6e6a60" roughness={0.9} />
-      </instancedMesh>
-      <instancedMesh ref={boards} args={[undefined, undefined, data.board.length]}>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial ref={boardMat} color="#ffffff" emissive="#ffffff" emissiveIntensity={1} toneMapped={false} />
       </instancedMesh>
       <instancedMesh ref={doors} args={[undefined, undefined, data.door.length]}>
         <boxGeometry args={[1, 1, 1]} />

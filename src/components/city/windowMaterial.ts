@@ -119,17 +119,25 @@ const fragmentShader = /* glsl */ `
     float isGlass = 1.0 - step(0.2, lum);
     float isStone = step(0.5, lum);
 
-    // masonry coursing: bricks on brick, ashlar blocks on stone
+    // masonry coursing: bricks on brick, ashlar blocks on stone, flat render on painted walls
+    float painted = step(0.82, hash(vec2(vSeed * 1.9, 5.0))) * (1.0 - isGlass);
     vec2 bsize = mix(vec2(1.1, 0.42), vec2(2.4, 1.1), isStone);
     vec2 bc = vFace / bsize;
     bc.x += step(0.5, fract(bc.y * 0.5)) * 0.5;
-    float brickTone = 0.9 + 0.2 * hash(floor(bc) + vSeed * 7.1);
-    float mortar = max(step(0.93, fract(bc.x)), step(0.88, fract(bc.y)));
-    float masonry = mix(brickTone, 0.82, mortar * 0.6) * (1.0 - isGlass) + isGlass;
+    float brickTone = 0.8 + 0.4 * hash(floor(bc) + vSeed * 7.1);
+    float mortar = max(step(0.9, fract(bc.x)), step(0.84, fract(bc.y)));
+    float masonry = mix(brickTone, 0.58, mortar * 0.85);
+    masonry = mix(masonry, 0.97 + 0.06 * hash(floor(vFace * 1.3) + vSeed), painted);
+    float floorBand = 0.9 + 0.2 * hash(vec2(floor(vFace.y / 3.4), vSeed * 4.3));
+    float grain = hash(floor(vFace * 0.18) + vSeed * 3.0);
+    float repaired = smoothstep(0.55, 0.85, grain) * 0.14;
+    masonry = (masonry * floorBand - repaired) * (1.0 - isGlass) + isGlass;
 
-    // weathering + ground grime
+    // weathering: ground grime, roofline water stains, soot drift
     float streak = vnoise(vec2(vFace.x * 0.35 + vSeed, vFace.y * 0.05));
-    float grime = 1.0 - 0.22 * streak * (1.0 - smoothstep(0.0, vSize.y * 0.6, vLocalY)) * (1.0 - isGlass);
+    float roofStain = streak * smoothstep(vSize.y * 0.72, vSize.y, vLocalY);
+    float soot = grain * 0.12;
+    float grime = 1.0 - (0.34 * streak * (1.0 - smoothstep(0.0, vSize.y * 0.6, vLocalY)) + 0.3 * roofStain + soot) * (1.0 - isGlass);
     float groundAO = 0.72 + 0.28 * smoothstep(0.0, 4.5, vLocalY);
 
     vec3 base = vColor * masonry * grime * groundAO;
@@ -145,8 +153,9 @@ const fragmentShader = /* glsl */ `
     float cornice = step(vSize.y - 1.3, vLocalY) * (1.0 - vTop);
     vec2 margin = mix(uWinMargin, vec2(0.09, 0.2), isGlass);
     margin = mix(margin, vec2(0.05, 0.04), shop);
-    vec2 g = vFace / uWinSize;
-    vec2 shopG = vec2(vFace.x / (uWinSize.x * 2.2), (vFace.y - 0.5) / (SHOP_GLAZING_TOP - 0.5));
+    vec2 winSize = uWinSize * vec2(0.85 + 0.3 * hash(vec2(vSeed, 1.7)), 0.88 + 0.28 * hash(vec2(vSeed, 2.9)));
+    vec2 g = vFace / winSize;
+    vec2 shopG = vec2(vFace.x / (winSize.x * 2.2), (vFace.y - 0.5) / (SHOP_GLAZING_TOP - 0.5));
     g = mix(g, shopG, shop);
     vec2 cell = floor(g);
     vec2 f = fract(g);
@@ -162,6 +171,11 @@ const fragmentShader = /* glsl */ `
     float hue = hash(cell * 0.77 + vSeed * 2.3);
     tint = mix(tint, tint * vec3(0.9, 0.97, 1.1), step(0.8, hue));
     tint = mix(tint, tint * vec3(1.1, 0.97, 0.88), step(hue, 0.15));
+    if (shop > 0.0) {
+      float neonPick = hash(vec2(vSeed * 5.3, 11.0));
+      vec3 neonCol = mix(mix(vec3(1.0, 0.31, 0.64), vec3(0.29, 0.95, 0.84), step(0.33, neonPick)), vec3(1.0, 0.69, 0.18), step(0.66, neonPick));
+      tint = mix(tint, neonCol, step(0.45, hash(vec2(vSeed * 2.1, 13.0))));
+    }
     float bright = mix(0.55, 1.15, hash(cell * 3.3 + vSeed * 5.9));
     float skyGrad = smoothstep(0.0, max(vSize.y, 1.0), vLocalY);
 
@@ -174,17 +188,25 @@ const fragmentShader = /* glsl */ `
     float dressing = mix(1.0, blinds, step(dress, 0.28)) * mix(1.0, mix(1.0, 0.25, 1.0 - step(fy, 0.35 + 0.4 * hash(cell + 9.0))), step(0.28, dress) * step(dress, 0.5));
     dressing = mix(dressing, 1.0, shop);
 
-    // recessed look: lintel shadow at top, sill highlight at bottom
-    float lintel = 1.0 - 0.45 * smoothstep(0.78, 1.0, fy);
-    float sill = step(fy, 0.08) * 0.5;
+    // recessed look: lintel shadow at top, side reveal, sill highlight at bottom
+    float fx = (f.x - margin.x) / max(1.0 - 2.0 * margin.x, 0.001);
+    float lintel = 1.0 - 0.5 * smoothstep(0.78, 1.0, fy);
+    float reveal = 1.0 - 0.35 * (1.0 - smoothstep(0.0, 0.14, fx)) * (1.0 - isGlass);
+    float sill = step(fy, 0.08) * (1.0 - shop);
 
-    vec3 dayWin = (mix(vColor * 0.4, uHemiSky * 0.95, 0.6) * (0.55 + 0.6 * ndl) * lintel
+    // daytime rooms: sky reflections, dark interiors, a few offices lit
+    float dayKind = hash(cell * 1.3 + vSeed * 7.7);
+    vec3 dayGlass = (mix(vColor * 0.4, uHemiSky * 0.95, 0.6) * (0.55 + 0.6 * ndl)
                 + uSunColor * spec * 2.5 + uHemiSky * fres * 0.6 + uHemiSky * (0.05 + 0.25 * skyGrad))
-                * (0.85 + 0.15 * bright) * (1.0 - 0.35 * shade);
-    vec3 nightUnlit = (facade * 0.5 + vColor * 0.06) * lintel + uHemiSky * 0.05 * skyGrad;
+                * (0.85 + 0.15 * bright);
+    vec3 dayDark = vColor * 0.18 + uHemiSky * (0.06 + 0.1 * fres);
+    vec3 dayLit = tint * 0.55 * dressing + uHemiSky * 0.1;
+    vec3 dayWin = mix(mix(dayGlass, dayDark, step(0.6, dayKind)), dayLit, step(0.9, dayKind) * (1.0 - shop));
+    dayWin = dayWin * lintel * reveal * (1.0 - 0.35 * shade);
+    vec3 nightUnlit = ((facade * 0.5 + vColor * 0.06) * lintel + uHemiSky * 0.05 * skyGrad) * reveal;
     vec3 nightLit = (tint * uWinBoost * dressing * bright + uHemiSky * fres * 0.3) * (1.0 - 0.6 * shade);
     vec3 win = mix(dayWin, mix(nightUnlit, nightLit, lit * flick), uNight);
-    win = mix(win, facade * 1.15, sill * (1.0 - isGlass));
+    win = mix(win, facade * 1.25, sill * (1.0 - isGlass));
 
     // pilasters between bays, mullions on glass
     float edge = min(f.x, 1.0 - f.x);
@@ -206,6 +228,13 @@ const fragmentShader = /* glsl */ `
     float fasciaEdge = step(SHOP_FASCIA_TOP - 0.1, vLocalY) + step(vLocalY, SHOP_GLAZING_TOP + 0.1);
 
     vec3 col = mix(facade, win, inWin);
+    // rust and water streaks running down from a few sills
+    float under = step(f.y, margin.y) * (1.0 - inWin) * (1.0 - vTop) * (1.0 - isGlass) * (1.0 - shop);
+    float streakHere = step(0.8, hash(cell + vSeed * 2.9)) * step(abs(f.x - 0.5), 0.08 + 0.12 * hash(cell * 1.9 + vSeed));
+    float rust = under * streakHere * (1.0 - smoothstep(0.0, margin.y, f.y)) * 0.8;
+    col = mix(col, col * vec3(0.55, 0.42, 0.34), rust);
+    float sillShadow = step(f.y, margin.y) * step(margin.y - 0.06, f.y) * (1.0 - vTop) * (1.0 - isGlass) * (1.0 - shop);
+    col = mix(col, col * 0.7, sillShadow);
     col = mix(col, vec3(0.06, 0.05, 0.07) + tint * 0.06 * uNight, doorMask);
     col = mix(col, vec3(0.12, 0.12, 0.14) * light, shopMullion);
     col = mix(col, facade * 0.78, pilaster * 0.7 * (1.0 - shop));

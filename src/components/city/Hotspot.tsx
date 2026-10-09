@@ -155,6 +155,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
           <div className="hotspot-label" style={{ ["--c" as string]: dest.color }}>
             <strong>{dest.label}</strong>
             <span>{dest.sub}</span>
+            <em>{dest.blurb}</em>
           </div>
         </Html>
       )}

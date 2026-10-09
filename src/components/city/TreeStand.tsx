@@ -4,7 +4,8 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import { Color, InstancedMesh, Object3D } from "three";
 import { fillInstances } from "./instancing";
-import { crownColor, setWindTime, useCrownMaterial, useTreeGeometry, useTrunkMaterial, type CrownQuality, type TreeSpecies } from "./trees";
+import { mulberry32 } from "./rng";
+import { crownTint, setWindTime, useCrownMaterial, useTreeGeometry, useTrunkMaterial, type CrownQuality, type TreeSpecies } from "./trees";
 
 export interface TreePlace {
   x: number;
@@ -16,7 +17,10 @@ export interface TreeSpec extends TreePlace {
   species: TreeSpecies;
   tint: Color;
   yaw: number;
+  autumn: boolean;
 }
+
+const LEAVES_PER_TREE = 9;
 
 export type SpeciesMix = Partial<Record<TreeSpecies, number>>;
 
@@ -31,8 +35,42 @@ export function plantTrees(rand: () => number, places: TreePlace[], mix: Species
       roll -= w;
       if (roll <= 0) break;
     }
-    return { ...p, species, tint: crownColor(species, rand), yaw: rand() * Math.PI * 2 };
+    const { tint, autumn } = crownTint(species, rand);
+    return { ...p, species, tint, yaw: rand() * Math.PI * 2, autumn };
   });
+}
+
+function FallenLeaves({ trees, groundY }: { trees: TreeSpec[]; groundY: number }) {
+  const ref = useRef<InstancedMesh>(null);
+  const autumn = useMemo(() => trees.filter((t) => t.autumn), [trees]);
+  useEffect(() => {
+    const m = ref.current;
+    if (!m) return;
+    const rand = mulberry32(autumn.length * 13 + 5);
+    const dummy = new Object3D();
+    autumn.forEach((t, i) => {
+      for (let k = 0; k < LEAVES_PER_TREE; k++) {
+        const a = rand() * Math.PI * 2;
+        const r = 0.6 + rand() * 2.6 * t.s;
+        dummy.position.set(t.x + Math.cos(a) * r, groundY + 0.03, t.z + Math.sin(a) * r);
+        dummy.rotation.set(-Math.PI / 2, 0, rand() * Math.PI);
+        dummy.scale.setScalar(0.5 + rand() * 0.6);
+        dummy.updateMatrix();
+        m.setMatrixAt(i * LEAVES_PER_TREE + k, dummy.matrix);
+        m.setColorAt(i * LEAVES_PER_TREE + k, t.tint);
+      }
+    });
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    m.computeBoundingSphere();
+  }, [autumn, groundY]);
+  if (autumn.length === 0) return null;
+  return (
+    <instancedMesh ref={ref} name="fallen-leaves" args={[undefined, undefined, autumn.length * LEAVES_PER_TREE]}>
+      <planeGeometry args={[0.7, 0.45]} />
+      <meshStandardMaterial color="#ffffff" roughness={1} />
+    </instancedMesh>
+  );
 }
 
 function Stand({
@@ -112,6 +150,7 @@ export default function TreeStand({
       {groups.map(([species, list]) => (
         <Stand key={species} species={species} trees={list} quality={quality} seed={seed} castShadow={castShadow} groundY={groundY} />
       ))}
+      {quality !== "far" && <FallenLeaves trees={trees} groundY={groundY} />}
     </group>
   );
 }
