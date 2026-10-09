@@ -255,11 +255,7 @@ export default function CityCanvas() {
           </div>
 
           <div className="city-hud city-hud--pad">
-            <span className="city-hint city-hint--mouse">
-              Drag to orbit · Scroll to zoom
-              <br />
-              Shift-drag or arrows to move · Q/E up and down
-            </span>
+            <span className="city-hint city-hint--mouse">Drag to orbit · Scroll to zoom · Shift‑drag or arrows to move · Q/E up and down</span>
             <span className="city-hint city-hint--touch">One finger to look · Two fingers to move · Pinch to zoom</span>
             <NavPad camRef={camRef} reducedMotion={reducedMotion} />
           </div>
