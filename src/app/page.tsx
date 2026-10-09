@@ -1,5 +1,4 @@
 import CityCanvas from "@/components/city/CityCanvas";
-import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 
 export default function Home() {
@@ -9,7 +8,6 @@ export default function Home() {
       <main className="shell__stage">
         <CityCanvas />
       </main>
-      <SiteFooter />
     </div>
   );
 }
