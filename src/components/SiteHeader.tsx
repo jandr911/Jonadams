@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { SITE } from "@/content/site";
+import SiteMenu, { type MenuLink } from "./SiteMenu";
 import Wordmark from "./Wordmark";
 
-const NAV = [
+const NAV: MenuLink[] = [
   { href: "/club", label: "Club" },
   { href: "/listen", label: "Listen" },
   { href: "/listen#watch", label: "Watch" },
@@ -11,6 +12,9 @@ const NAV = [
 ];
 
 export default function SiteHeader({ back = false }: { back?: boolean }) {
+  const cta = back
+    ? { href: "/", label: "Back to the city", short: "Back" }
+    : { href: SITE.joinHref, label: "Join the list", short: "Join" };
   return (
     <header className="site-header">
       <Wordmark />
@@ -21,15 +25,13 @@ export default function SiteHeader({ back = false }: { back?: boolean }) {
           </Link>
         ))}
       </nav>
-      {back ? (
-        <Link href="/" className="btn-outline">
-          Back to the city
+      <div className="site-header__end">
+        <Link href={cta.href} className="btn-outline site-header__cta">
+          <span className="site-header__cta-long">{cta.label}</span>
+          <span className="site-header__cta-short">{cta.short}</span>
         </Link>
-      ) : (
-        <Link href={SITE.joinHref} className="btn-outline">
-          Join the list
-        </Link>
-      )}
+        <SiteMenu links={NAV} cta={cta} />
+      </div>
     </header>
   );
 }

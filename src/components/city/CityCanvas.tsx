@@ -138,6 +138,26 @@ export default function CityCanvas() {
   const ready = stageUp && minWait;
   const flyRef = useRef<((d: Destination) => Promise<void>) | null>(null);
   const camRef = useRef<CameraControls | null>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const update = () => {
+      const overflow = el.scrollWidth - el.clientWidth > 1;
+      const atStart = el.scrollLeft <= 1;
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+      el.dataset.edge = !overflow ? "none" : atStart ? "right" : atEnd ? "left" : "both";
+    };
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    for (const child of el.children) ro.observe(child);
+    el.addEventListener("scroll", update, { passive: true });
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("scroll", update);
+    };
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setMinWait(true), 2400);
@@ -176,6 +196,7 @@ export default function CityCanvas() {
           <nav aria-label="City districts" className="city-hud city-hud--districts">
             <span className="districts__hint">Five districts · Hover to preview · Click to fly in</span>
             <div className="districts">
+              <div ref={trackRef} className="districts__track">
               {DESTINATIONS.map((d, i) => (
               <Link
                 key={d.id}
@@ -195,6 +216,7 @@ export default function CityCanvas() {
                 <span className="district__sub">{d.sub}</span>
               </Link>
               ))}
+              </div>
             </div>
           </nav>
 
@@ -204,7 +226,8 @@ export default function CityCanvas() {
               <span>{preset === "auto" ? "Detroit time" : preset}</span>
               <small>{labelFor(hour)}</small>
             </button>
-            <span className="city-hint">Drag to orbit · Shift-drag or arrows to move · Q/E up-down · Scroll to zoom anywhere</span>
+            <span className="city-hint city-hint--mouse">Drag to orbit · Shift-drag or arrows to move · Q/E up-down · Scroll to zoom anywhere</span>
+            <span className="city-hint city-hint--touch">One finger to look around · Two fingers to move · Pinch to zoom</span>
             <span className="city-geo">Downtown Detroit · 42.33° N, 83.05° W</span>
           </div>
 
