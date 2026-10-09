@@ -1807,7 +1807,8 @@ body {
   gap: 8px;
 }
 .city-hud--pad .city-hint {
-  max-width: 300px;
+  max-width: 400px;
+  text-wrap: balance;
   padding: 5px 10px;
   font-size: 8px;
   letter-spacing: 0.2em;
