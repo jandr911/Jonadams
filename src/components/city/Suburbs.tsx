@@ -214,7 +214,7 @@ function buildHouses(): {
             detail: Math.hypot(hx, hz - CITY_HALF_Z) < DETAIL_REACH,
             porch: rand() < 0.55,
             chimney: rand() < 0.6,
-            garage: rand() < 0.35,
+            garage: k < 4 && rand() < 0.35,
             fence: rand() < 0.35,
           });
           if (rand() < 0.5) trees.push({ x: hx + (rand() - 0.5) * 6, z: hz + (row === 0 ? -6.5 : 6.5) + (rand() - 0.5) * 2, s: range(rand, 0.8, 1.4) });
@@ -277,7 +277,7 @@ function placeHouseParts(houses: House[]) {
     const s = h.s;
     body.push(local(h, 0, h.h / 2 - 0.1, 0, 0, s, h.h, s, h.color));
     roof.push(local(h, 0, h.h - 0.1 + 1.4 * s, 0, Math.PI / 4, s, s, s, h.roof));
-    yard.push(local(h, 0, 0.01, 0, 0, 1, 1, 1));
+    yard.push(local(h, 0, 0.01, -(YARD_DEPTH / 2 - FRONT_SETBACK), 0, 1, 1, 1));
     WINDOW_SLOTS.forEach(([lx, ly, lz, ry], k) => {
       if (h.litMask & (1 << k)) lit.push(local(h, lx * s, ly, lz * s, ry, s, 1, 1));
       else if (h.detail) trim.push(local(h, lx * s, ly, lz * s, ry, 1.5 * s, 1.1, 0.15, TRIM.darkWindow));
@@ -302,7 +302,9 @@ function placeHouseParts(houses: House[]) {
   return { body, roof, lit, trim, yard };
 }
 
-const YARD_GEOMETRY = new PlaneGeometry(LOT, 26).rotateX(-Math.PI / 2);
+const FRONT_SETBACK = 7.5;
+const YARD_DEPTH = 20.5;
+const YARD_GEOMETRY = new PlaneGeometry(LOT, YARD_DEPTH).rotateX(-Math.PI / 2);
 const HIDE_CHECK_FRAMES = 8;
 
 function HideAbove({ y, children }: { y: number; children: React.ReactNode }) {
