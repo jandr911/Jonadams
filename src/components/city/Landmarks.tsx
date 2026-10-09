@@ -363,7 +363,7 @@ function Fan({ position, r }: { position: [number, number, number]; r: number })
 }
 
 function MerchWarehouse() {
-  const d = DESTINATIONS[2];
+  const d = DESTINATIONS[3];
   const [x, z] = destinationPosition(d);
   const eyes = useRef<MeshStandardMaterial>(null);
   useFrame(({ clock }) => {
@@ -442,7 +442,7 @@ function setEmissiveIntensity(mat: MeshStandardMaterial, value: number) {
 const MC_PILASTER_X = [-11.4, -6.8, -2.3, 2.3, 6.8, 11.4];
 
 function MichiganCentral() {
-  const d = DESTINATIONS[3];
+  const d = DESTINATIONS[2];
   const [x, z] = destinationPosition(d);
   const dn = useDayNight();
   const glass = useMemo(() => new MeshStandardMaterial({ color: "#1b2a3a", emissive: "#ffd9a0", emissiveIntensity: 0.2, roughness: 0.2, metalness: 0.3 }), []);

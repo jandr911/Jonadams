@@ -115,12 +115,55 @@ body {
   background: linear-gradient(to bottom, rgba(7, 6, 15, 0.98), rgba(7, 6, 15, 0.86));
   backdrop-filter: blur(14px);
 }
+.site-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(to right, transparent 6%, color-mix(in srgb, var(--gold) 55%, transparent) 50%, transparent 94%);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--gold) 22%, transparent);
+  pointer-events: none;
+}
 .wordmark {
   display: inline-flex;
   align-items: baseline;
   gap: 10px;
   white-space: nowrap;
   flex: 0 0 auto;
+}
+.wordmark__bars {
+  display: inline-flex;
+  align-items: flex-end;
+  align-self: center;
+  gap: 2px;
+  height: 18px;
+  margin-right: 2px;
+}
+.wordmark__bars i {
+  display: block;
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: linear-gradient(to top, var(--gold), var(--gold-2));
+  box-shadow: 0 0 6px color-mix(in srgb, var(--gold) 40%, transparent);
+  transform-origin: bottom;
+  transform: scaleY(var(--h));
+  animation: wordmark-eq var(--t) steps(4, jump-none) var(--d) infinite alternate;
+  transition: box-shadow 0.3s;
+}
+.wordmark:hover .wordmark__bars i,
+.wordmark:focus-visible .wordmark__bars i {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--gold-2) 70%, transparent);
+}
+@keyframes wordmark-eq {
+  from {
+    transform: scaleY(calc(var(--h) * 0.25));
+  }
+  to {
+    transform: scaleY(var(--h));
+  }
 }
 .site-header__end {
   display: flex;
@@ -131,7 +174,7 @@ body {
 .site-header__cta-short {
   display: none;
 }
-@media (max-width: 480px) {
+@media (max-width: 480px), (min-width: 900px) and (max-width: 1099px) {
   .site-header__cta {
     padding: 9px 14px;
   }
@@ -163,7 +206,8 @@ body {
 }
 .site-nav {
   display: none;
-  gap: 30px;
+  align-items: center;
+  gap: 4px;
 }
 @media (min-width: 900px) {
   .site-nav {
@@ -171,31 +215,110 @@ body {
   }
 }
 .site-nav__link {
+  --c: var(--gold);
   position: relative;
-  font-size: 11px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--muted);
-  transition: color 0.25s;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 9px;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 12px;
+}
+.site-nav__link::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(90% 120% at 50% 120%, color-mix(in srgb, var(--c) 18%, transparent), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.35s;
 }
 .site-nav__link::after {
   content: "";
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -8px;
+  left: 12px;
+  right: 12px;
+  bottom: 2px;
   height: 1px;
-  background: var(--gold);
+  background: var(--c);
+  box-shadow: 0 0 10px var(--c), 0 0 2px var(--c);
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform 0.3s;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.site-nav__link:hover,
-.site-nav__link:focus-visible {
+.site-nav__index {
+  grid-row: span 2;
+  font-family: var(--font-serif), serif;
+  font-style: italic;
+  font-size: 19px;
+  line-height: 1;
+  color: var(--c);
+  opacity: 0.75;
+  transition: opacity 0.3s, text-shadow 0.3s;
+}
+.site-nav__name {
+  font-family: var(--font-serif), serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1;
   color: var(--paper);
+  white-space: nowrap;
+  transition: color 0.3s;
 }
-.site-nav__link:hover::after {
+.site-nav__sub {
+  display: none;
+  margin-top: 3px;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: color 0.3s;
+}
+@media (min-width: 1360px) {
+  .site-nav__sub {
+    display: block;
+  }
+}
+@media (max-width: 1099px) {
+  .site-nav__link {
+    padding: 7px 8px;
+  }
+  .site-nav__link::after {
+    left: 8px;
+    right: 8px;
+  }
+}
+.site-nav__link:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--c) 70%, transparent);
+  outline-offset: -1px;
+}
+.site-nav__link:hover::before,
+.site-nav__link:focus-visible::before,
+.site-nav__link[aria-current="page"]::before {
+  opacity: 1;
+}
+.site-nav__link:hover::after,
+.site-nav__link:focus-visible::after,
+.site-nav__link[aria-current="page"]::after {
   transform: scaleX(1);
+}
+.site-nav__link:hover .site-nav__index,
+.site-nav__link:focus-visible .site-nav__index,
+.site-nav__link[aria-current="page"] .site-nav__index {
+  opacity: 1;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--c) 80%, transparent);
+}
+.site-nav__link:hover .site-nav__name,
+.site-nav__link:focus-visible .site-nav__name,
+.site-nav__link[aria-current="page"] .site-nav__name {
+  color: var(--gold-2);
+}
+.site-nav__link:hover .site-nav__sub,
+.site-nav__link:focus-visible .site-nav__sub,
+.site-nav__link[aria-current="page"] .site-nav__sub {
+  color: color-mix(in srgb, var(--c) 75%, var(--paper));
 }
 
 .site-menu {
@@ -269,6 +392,7 @@ body {
   animation: menu-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .site-menu__link {
+  --c: var(--gold);
   display: grid;
   grid-template-columns: 40px 1fr auto;
   align-items: baseline;
@@ -279,24 +403,37 @@ body {
   transition: color 0.25s;
 }
 .site-menu__link:hover,
-.site-menu__link:focus-visible {
+.site-menu__link:focus-visible,
+.site-menu__link[aria-current="page"] {
   color: var(--gold-2);
 }
 .site-menu__index {
   font-family: var(--font-serif), serif;
   font-style: italic;
   font-size: 18px;
-  color: var(--gold);
+  color: var(--c);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--c) 60%, transparent);
 }
 .site-menu__label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   font-family: var(--font-serif), serif;
   font-weight: 600;
   font-size: clamp(26px, 6vh, 36px);
   line-height: 1;
 }
+.site-menu__sub {
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 9px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 .site-menu__arrow {
   font-size: 18px;
-  color: var(--gold);
+  color: var(--c);
   transition: transform 0.3s;
 }
 .site-menu__link:hover .site-menu__arrow {
@@ -318,6 +455,9 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .site-menu__panel {
+    animation: none;
+  }
+  .wordmark__bars i {
     animation: none;
   }
 }

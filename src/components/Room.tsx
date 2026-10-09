@@ -16,7 +16,7 @@ export default function Room({
 }) {
   return (
     <div className="room" style={{ ["--accent" as string]: accent }}>
-      <SiteHeader back />
+      <SiteHeader back current={index} />
       <main className="room__main">
         <section className="room__hero">
           <span className="eyebrow">

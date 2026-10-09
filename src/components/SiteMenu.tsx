@@ -7,11 +7,19 @@ import { createPortal } from "react-dom";
 export interface MenuLink {
   href: string;
   label: string;
+  sub: string;
+  accent: string;
+  index: string;
+}
+
+export interface MenuCta {
+  href: string;
+  label: string;
 }
 
 const DESKTOP = "(min-width: 900px)";
 
-export default function SiteMenu({ links, cta }: { links: MenuLink[]; cta: MenuLink }) {
+export default function SiteMenu({ links, cta, current }: { links: MenuLink[]; cta: MenuCta; current?: string }) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLElement>(null);
@@ -61,10 +69,20 @@ export default function SiteMenu({ links, cta }: { links: MenuLink[]; cta: MenuL
       {open &&
         createPortal(
           <nav ref={panel} id="site-menu-panel" className="site-menu__panel" aria-label="Primary">
-            {links.map((n, i) => (
-              <Link key={n.href} href={n.href} className="site-menu__link" onClick={close}>
-                <span className="site-menu__index">{String(i + 1).padStart(2, "0")}</span>
-                <span className="site-menu__label">{n.label}</span>
+            {links.map((n) => (
+              <Link
+                key={n.href}
+                href={n.href}
+                className="site-menu__link"
+                style={{ ["--c" as string]: n.accent }}
+                aria-current={n.index === current ? "page" : undefined}
+                onClick={close}
+              >
+                <span className="site-menu__index">{n.index}</span>
+                <span className="site-menu__label">
+                  {n.label}
+                  <span className="site-menu__sub">{n.sub}</span>
+                </span>
                 <span className="site-menu__arrow" aria-hidden>
                   →
                 </span>
