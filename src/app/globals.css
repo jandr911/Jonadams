@@ -907,14 +907,6 @@ body {
 .city-clock__weather {
   color: var(--gold);
 }
-.city-pill--sound .city-pill__dot {
-  background: var(--muted);
-  box-shadow: none;
-}
-.city-pill--sound[aria-pressed="true"] .city-pill__dot {
-  background: var(--cyan);
-  box-shadow: 0 0 12px var(--cyan);
-}
 @media (max-width: 640px) {
   .city-clock {
     display: none;
@@ -1849,8 +1841,17 @@ body {
   gap: 8px;
 }
 .city-hud--pad .city-hint {
-  max-width: 340px;
-  line-height: 1.7;
+  max-width: 300px;
+  padding: 5px 10px;
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  line-height: 1.8;
+  opacity: 0.8;
+}
+@media (max-width: 1099px) {
+  .city-hud--pad .city-hint {
+    display: none;
+  }
 }
 .city-pad {
   display: flex;
