@@ -1,6 +1,11 @@
 export const BLOCK = 20;
-export const ROAD = 7;
+export const ROAD = 11;
 export const PITCH = BLOCK + ROAD;
+export const ROAD_HALF = ROAD / 2;
+export const LANE_OFFSET = 1.3;
+export const KERB_PARK_OFFSET = 2.2;
+export const CROSSWALK_OFFSET = ROAD_HALF + 1.1;
+export const CORNER_OFFSET = ROAD_HALF + 0.7;
 export const COLS = 9;
 export const ROWS = 6;
 
@@ -91,7 +96,7 @@ export function lightIsAmber(axis: "x" | "z", ix: number, iz: number, time: numb
 
 export function nearIntersection(v: number, half: number): boolean {
   const m = (((v + half) % PITCH) + PITCH) % PITCH;
-  return Math.abs(m - PITCH / 2) < 4;
+  return Math.abs(m - PITCH / 2) < ROAD_HALF + 0.5;
 }
 
 export function roadLinesX(): number[] {

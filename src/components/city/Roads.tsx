@@ -4,8 +4,12 @@ import { Text } from "@react-three/drei";
 import { useEffect, useMemo, useRef } from "react";
 import { AdditiveBlending, CanvasTexture, Color, InstancedMesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
 import { useDayNight } from "./DayNightContext";
-import { CITY_HALF_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, PITCH, STREETS_EW, STREETS_NS, WOODWARD_INDEX, nearIntersection, outerRoadLinesX, outerRoadLinesZ, roadLinesX, roadLinesZ } from "./layout";
+import { CITY_HALF_X, CITY_HALF_Z, CORNER_OFFSET, CROSSWALK_OFFSET, OUTER_HALF_X, OUTER_MIN_Z, PITCH, ROAD_HALF, STREETS_EW, STREETS_NS, WOODWARD_INDEX, nearIntersection, outerRoadLinesX, outerRoadLinesZ, roadLinesX, roadLinesZ } from "./layout";
 import { DISPLAY_FONT } from "./NeonSign";
+
+const EDGE_LINE = ROAD_HALF - 0.4;
+const EDGE_LEN = PITCH - 2 * (ROAD_HALF + 1);
+const STRIPES = Math.floor((ROAD_HALF - 0.6) / 1.1);
 
 function LaneDashes() {
   const ref = useRef<InstancedMesh>(null);
@@ -56,15 +60,15 @@ function EdgeLines() {
     for (const x of xs) {
       for (let i = 0; i < zs.length - 1; i++) {
         const z = (zs[i] + zs[i + 1]) / 2;
-        out.push({ x: x + 3.1, z, rot: 0, len: PITCH - 9 });
-        out.push({ x: x - 3.1, z, rot: 0, len: PITCH - 9 });
+        out.push({ x: x + EDGE_LINE, z, rot: 0, len: EDGE_LEN });
+        out.push({ x: x - EDGE_LINE, z, rot: 0, len: EDGE_LEN });
       }
     }
     for (const z of zs) {
       for (let i = 0; i < xs.length - 1; i++) {
         const x = (xs[i] + xs[i + 1]) / 2;
-        out.push({ x, z: z + 3.1, rot: Math.PI / 2, len: PITCH - 9 });
-        out.push({ x, z: z - 3.1, rot: Math.PI / 2, len: PITCH - 9 });
+        out.push({ x, z: z + EDGE_LINE, rot: Math.PI / 2, len: EDGE_LEN });
+        out.push({ x, z: z - EDGE_LINE, rot: Math.PI / 2, len: EDGE_LEN });
       }
     }
     return out;
@@ -96,11 +100,11 @@ function Crosswalks() {
     const out: { x: number; z: number; rot: number }[] = [];
     for (const x of outerRoadLinesX()) {
       for (const z of outerRoadLinesZ()) {
-        for (let k = -2; k <= 2; k++) {
-          out.push({ x: x + k * 1.1, z: z + 4.6, rot: 0 });
-          out.push({ x: x + k * 1.1, z: z - 4.6, rot: 0 });
-          out.push({ x: x + 4.6, z: z + k * 1.1, rot: Math.PI / 2 });
-          out.push({ x: x - 4.6, z: z + k * 1.1, rot: Math.PI / 2 });
+        for (let k = -STRIPES; k <= STRIPES; k++) {
+          out.push({ x: x + k * 1.1, z: z + CROSSWALK_OFFSET, rot: 0 });
+          out.push({ x: x + k * 1.1, z: z - CROSSWALK_OFFSET, rot: 0 });
+          out.push({ x: x + CROSSWALK_OFFSET, z: z + k * 1.1, rot: Math.PI / 2 });
+          out.push({ x: x - CROSSWALK_OFFSET, z: z + k * 1.1, rot: Math.PI / 2 });
         }
       }
     }
@@ -179,8 +183,8 @@ function Streetlights() {
     const out: { x: number; z: number }[] = [];
     for (const x of outerRoadLinesX()) {
       for (const z of outerRoadLinesZ()) {
-        out.push({ x: x + 4.2, z: z + 4.2 });
-        out.push({ x: x - 4.2, z: z - 4.2 });
+        out.push({ x: x + CORNER_OFFSET, z: z + CORNER_OFFSET });
+        out.push({ x: x - CORNER_OFFSET, z: z - CORNER_OFFSET });
       }
     }
     return out;
@@ -279,14 +283,14 @@ function StreetSigns() {
     const out: { position: [number, number, number]; rotation: number; text: string }[] = [];
     const wx = xs[WOODWARD_INDEX];
     zs.forEach((z, i) => {
-      out.push({ position: [wx + 4.2, 4.6, z + 4.2], rotation: 0, text: STREETS_EW[i] });
-      out.push({ position: [wx + 4.2, 3.6, z + 4.2], rotation: Math.PI / 2, text: STREETS_NS[WOODWARD_INDEX] });
+      out.push({ position: [wx + CORNER_OFFSET, 4.6, z + CORNER_OFFSET], rotation: 0, text: STREETS_EW[i] });
+      out.push({ position: [wx + CORNER_OFFSET, 3.6, z + CORNER_OFFSET], rotation: Math.PI / 2, text: STREETS_NS[WOODWARD_INDEX] });
     });
     const jz = zs[zs.length - 1];
     xs.forEach((x, i) => {
       if (i === WOODWARD_INDEX) return;
-      out.push({ position: [x - 4.2, 4.6, jz - 4.2], rotation: Math.PI / 2, text: STREETS_NS[i] });
-      out.push({ position: [x - 4.2, 3.6, jz - 4.2], rotation: 0, text: STREETS_EW[STREETS_EW.length - 1] });
+      out.push({ position: [x - CORNER_OFFSET, 4.6, jz - CORNER_OFFSET], rotation: Math.PI / 2, text: STREETS_NS[i] });
+      out.push({ position: [x - CORNER_OFFSET, 3.6, jz - CORNER_OFFSET], rotation: 0, text: STREETS_EW[STREETS_EW.length - 1] });
     });
     return out;
   }, [xs, zs]);

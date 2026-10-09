@@ -1,7 +1,7 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BoxGeometry, CapsuleGeometry, Color, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
 import { useDayNight } from "./DayNightContext";
 import MacArthurBridge from "./MacArthurBridge";
@@ -9,6 +9,7 @@ import {
   BLOCK,
   CITY_HALF_X,
   CITY_HALF_Z,
+  KERB_PARK_OFFSET,
   PITCH,
   RIVER_FAR,
   RIVER_NEAR,
@@ -25,6 +26,8 @@ import NeonSign from "./NeonSign";
 import { RESERVED_BLOCKS } from "./Buildings";
 import People from "./People";
 import StreetFurniture from "./StreetFurniture";
+import VehicleFleet, { type FleetItem, type PoseFn } from "./VehicleFleet";
+import type { VehicleKind } from "./vehicles";
 import { mulberry32, pick, range } from "./rng";
 
 function TrafficLights() {
@@ -110,7 +113,7 @@ function StreetBanners() {
     const out: { z: number; side: number; color: Color }[] = [];
     const palette = [new Color("#c8102e"), new Color("#d6b56e"), new Color("#1d2a6a")];
     for (let z = -CITY_HALF_Z + 8; z < CITY_HALF_Z; z += 9) {
-      if (Math.abs(((z + CITY_HALF_Z) % 27) - 13.5) > 11) continue;
+      if (Math.abs(((z + CITY_HALF_Z) % PITCH) - PITCH / 2) > BLOCK / 2 + 1) continue;
       out.push({ z, side: 1, color: palette[Math.floor((z + 500) / 9) % 3] });
       out.push({ z, side: -1, color: palette[Math.floor((z + 500) / 9 + 1) % 3] });
     }
@@ -394,6 +397,48 @@ function SatelliteDishes() {
   );
 }
 
+function buildParked() {
+  const rand = mulberry32(42);
+  const slots: { x: number; z: number; rot: number }[] = [];
+  const items: FleetItem[] = [];
+  const colors = ["#f4f1ea", "#1d1d3f", "#c8102e", "#2a3a7a", "#9a95a8", "#d6b56e", "#3f3f4f", "#4a2c3a", "#2f6ea8", "#7a8c3a"];
+  const kinds: VehicleKind[] = ["sedan", "sedan", "sedan", "suv", "suv", "pickup", "van"];
+  for (const { c, r, outer } of allBlocks()) {
+    const [bx, bz] = blockCenter(c, r);
+    const n = outer ? 1 + Math.floor(rand() * 2) : 2 + Math.floor(rand() * 4);
+    for (let k = 0; k < n; k++) {
+      const side = rand() < 0.5 ? 1 : -1;
+      const t = range(rand, -BLOCK / 2 + 3, BLOCK / 2 - 3);
+      const vertical = rand() < 0.5;
+      const e = BLOCK / 2 + KERB_PARK_OFFSET;
+      slots.push({
+        x: vertical ? bx + side * e : bx + t,
+        z: vertical ? bz + t : bz + side * e,
+        rot: (vertical ? 0 : Math.PI / 2) + (rand() < 0.5 ? Math.PI : 0),
+      });
+      items.push({ kind: pick(rand, kinds), color: new Color(pick(rand, colors)) });
+    }
+  }
+  return { slots, items };
+}
+
+function ParkedCars() {
+  const [world] = useState(() => buildParked());
+  const slots = world.slots;
+  const pose = useCallback<PoseFn>(
+    (i, out) => {
+      const sl = slots[i];
+      out.x = sl.x;
+      out.y = 0.4;
+      out.z = sl.z;
+      out.yaw = sl.rot;
+      out.spin = 0;
+    },
+    [slots],
+  );
+  return <VehicleFleet items={world.items} pose={pose} pools={false} />;
+}
+
 const POLE_EDGE = 10.7;
 
 function UtilityPoles() {
@@ -455,6 +500,7 @@ export default function Details() {
     <group>
       <People />
       <StreetFurniture />
+      <ParkedCars />
       <TrafficLights />
       <StreetBanners />
       <Gulls />

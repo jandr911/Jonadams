@@ -5,7 +5,7 @@ import { BoxGeometry, BufferGeometry, Color, CylinderGeometry, InstancedMesh, Ob
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { useDayNight } from "./DayNightContext";
 import { labelTexture } from "./labels";
-import { BLOCK, COLS, ROWS, blockCenter, outerRoadLinesX, outerRoadLinesZ } from "./layout";
+import { BLOCK, COLS, CROSSWALK_OFFSET, PITCH, ROAD_HALF, ROWS, blockCenter, outerRoadLinesX, outerRoadLinesZ } from "./layout";
 import { mulberry32, pick, range } from "./rng";
 
 type Kind = "hydrant" | "bin" | "bench" | "rack" | "bike" | "paper" | "mailbox" | "cone" | "manhole" | "drain" | "ramp";
@@ -189,14 +189,14 @@ function buildItems(): Item[] {
           return [x + nx * dist, z + nz * dist];
         };
         if (rand() < 0.5) {
-          const [x, z] = offRoad(range(rand, -7, 7), BLOCK / 2 + 3.5 - e);
+          const [x, z] = offRoad(range(rand, -7, 7), BLOCK / 2 + ROAD_HALF - e);
           out.push({ kind: "manhole", x, z, rot, y: 0 });
         }
         if (rand() < 0.6) {
           const [x, z] = offRoad(range(rand, -8, 8), padEdge + 0.45 - e);
           out.push({ kind: "drain", x, z, rot, y: 0 });
         }
-        for (const t of [-8.9, 8.9]) {
+        for (const t of [-(PITCH / 2 - CROSSWALK_OFFSET), PITCH / 2 - CROSSWALK_OFFSET]) {
           const [x, z] = offRoad(t, padEdge - e);
           out.push({ kind: "ramp", x, z, rot, y: CURB_HEIGHT / 2, tilt: Math.atan(CURB_HEIGHT / RAMP_LENGTH) });
         }
