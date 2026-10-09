@@ -7,7 +7,7 @@ import { useWindowMaterial } from "./useWindowMaterial";
 import { useDayNight } from "./DayNightContext";
 import { AMBASSADOR_CLEAR_HALF, AMBASSADOR_RAMP_Z, AMBASSADOR_X, CITY_HALF_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR, ROAD } from "./layout";
 import { mulberry32, pick, range } from "./rng";
-import { CROWN_PINE, TRUNK_COLOR, useCrownGeometry, useCrownMaterial } from "./trees";
+import TreeStand, { plantTrees, type TreePlace } from "./TreeStand";
 import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
 import { FLEET_COLORS, type VehicleKind } from "./vehicles";
 
@@ -333,39 +333,17 @@ function MidRise({ lots }: { lots: MidLot[] }) {
   );
 }
 
-function SuburbTrees({ trees }: { trees: { x: number; z: number; s: number }[] }) {
-  const trunks = useRef<InstancedMesh>(null);
-  const crowns = useRef<InstancedMesh>(null);
-  const crownGeo = useCrownGeometry(2.1, 23, "far");
-  const crownMat = useCrownMaterial(CROWN_PINE);
-  useEffect(() => {
-    const dummy = new Object3D();
-    const t = trunks.current;
-    const c = crowns.current;
-    if (!t || !c) return;
-    trees.forEach((tr, i) => {
-      dummy.position.set(tr.x, 1.2 * tr.s, tr.z);
-      dummy.scale.set(tr.s, tr.s, tr.s);
-      dummy.rotation.set(0, 0, 0);
-      dummy.updateMatrix();
-      t.setMatrixAt(i, dummy.matrix);
-      dummy.position.set(tr.x, 3.4 * tr.s, tr.z);
-      dummy.rotation.set(0, i * 0.7, 0);
-      dummy.updateMatrix();
-      c.setMatrixAt(i, dummy.matrix);
-    });
-    t.instanceMatrix.needsUpdate = true;
-    c.instanceMatrix.needsUpdate = true;
-  }, [trees]);
-  return (
-    <group>
-      <instancedMesh ref={trunks} args={[undefined, undefined, trees.length]}>
-        <cylinderGeometry args={[0.2, 0.3, 2.4, 5]} />
-        <meshStandardMaterial color={TRUNK_COLOR} roughness={1} />
-      </instancedMesh>
-      <instancedMesh ref={crowns} args={[crownGeo, crownMat, trees.length]} />
-    </group>
+function SuburbTrees({ trees }: { trees: TreePlace[] }) {
+  const specs = useMemo(
+    () =>
+      plantTrees(
+        mulberry32(trees.length * 31 + Math.round(trees[0].x)),
+        trees.map((t) => ({ ...t, s: t.s * 1.3 })),
+        { shade: 0.55, spruce: 0.3, bare: 0.15 },
+      ),
+    [trees],
   );
+  return <TreeStand trees={specs} quality="far" seed={23} />;
 }
 
 function SuburbStreets() {

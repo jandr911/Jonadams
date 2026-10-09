@@ -16,7 +16,7 @@ import {
 } from "./layout";
 import { mulberry32, range } from "./rng";
 import { makeAsphaltTexture, makeConcreteTexture } from "./textures";
-import { CROWN_MOSS, CROWN_OLIVE, TRUNK_COLOR, useCrownGeometry, useCrownMaterial } from "./trees";
+import TreeStand, { plantTrees, type TreePlace } from "./TreeStand";
 import BelleIsle from "./BelleIsle";
 import RiverMirror from "./RiverMirror";
 import { enableReflection } from "./layers";
@@ -107,76 +107,28 @@ function Riverwalk() {
 }
 
 function Trees() {
-  const trunks = useRef<InstancedMesh>(null);
-  const crowns = useRef<InstancedMesh>(null);
-  const crowns2 = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
-  const crownGeo = useCrownGeometry(1.7, 7, "mid");
-  const crownGeo2 = useCrownGeometry(1.5, 11, "mid");
-  const crownMat = useCrownMaterial(CROWN_OLIVE);
-  const crownMat2 = useCrownMaterial(CROWN_MOSS);
-  const specs = useMemo(() => {
+  const trees = useMemo(() => {
     const rand = mulberry32(99);
-    const out: { x: number; z: number; s: number }[] = [];
+    const blocks: TreePlace[] = [];
     for (const { c, r, outer } of allBlocks()) {
-      {
-        const [x, z] = blockCenter(c, r);
-        const n = (outer ? 1 : 2) + Math.floor(rand() * 3);
-        for (let k = 0; k < n; k++) {
-          const side = Math.floor(rand() * 4);
-          const t = range(rand, -BLOCK / 2 + 2, BLOCK / 2 - 2);
-          const e = BLOCK / 2 + 0.6;
-          const [dx, dz] =
-            side === 0 ? [t, e] : side === 1 ? [t, -e] : side === 2 ? [e, t] : [-e, t];
-          out.push({ x: x + dx, z: z + dz, s: range(rand, 0.8, 1.35) });
-        }
+      const [x, z] = blockCenter(c, r);
+      const n = (outer ? 1 : 2) + Math.floor(rand() * 3);
+      for (let k = 0; k < n; k++) {
+        const side = Math.floor(rand() * 4);
+        const t = range(rand, -BLOCK / 2 + 2, BLOCK / 2 - 2);
+        const e = BLOCK / 2 + 0.6;
+        const [dx, dz] = side === 0 ? [t, e] : side === 1 ? [t, -e] : side === 2 ? [e, t] : [-e, t];
+        blocks.push({ x: x + dx, z: z + dz, s: range(rand, 0.8, 1.3) });
       }
     }
     const span = CITY_HALF_X * 2 + 80;
+    const allee: TreePlace[] = [];
     for (let i = 0; i < 26; i++) {
-      out.push({
-        x: -span / 2 + (i / 25) * span + range(rand, -1, 1),
-        z: CITY_HALF_Z + 4.5,
-        s: range(rand, 0.9, 1.3),
-      });
+      allee.push({ x: -span / 2 + (i / 25) * span + range(rand, -1, 1), z: CITY_HALF_Z + 4.5, s: range(rand, 1.0, 1.25) });
     }
-    return out;
+    return [...plantTrees(rand, blocks, { shade: 0.6, elm: 0.25, bare: 0.15 }), ...plantTrees(rand, allee, { elm: 1 })];
   }, []);
-  useEffect(() => {
-    const t = trunks.current;
-    const cr = crowns.current;
-    const cr2 = crowns2.current;
-    if (!t || !cr || !cr2) return;
-    specs.forEach((s, i) => {
-      dummy.position.set(s.x, 0.4 + 1.1 * s.s, s.z);
-      dummy.scale.set(s.s, s.s, s.s);
-      dummy.rotation.set(0, 0, 0);
-      dummy.updateMatrix();
-      t.setMatrixAt(i, dummy.matrix);
-      dummy.position.set(s.x, 0.4 + 3.1 * s.s, s.z);
-      dummy.rotation.set(0, i * 1.3, 0);
-      dummy.updateMatrix();
-      cr.setMatrixAt(i, dummy.matrix);
-      dummy.position.set(s.x + 0.6 * s.s, 0.4 + 4.1 * s.s, s.z - 0.4 * s.s);
-      dummy.rotation.set(0.4, i * 2.1, 0.3);
-      dummy.scale.set(s.s * 0.8, s.s * 0.8, s.s * 0.8);
-      dummy.updateMatrix();
-      cr2.setMatrixAt(i, dummy.matrix);
-    });
-    t.instanceMatrix.needsUpdate = true;
-    cr.instanceMatrix.needsUpdate = true;
-    cr2.instanceMatrix.needsUpdate = true;
-  }, [specs, dummy]);
-  return (
-    <group>
-      <instancedMesh ref={trunks} args={[undefined, undefined, specs.length]} castShadow>
-        <cylinderGeometry args={[0.18, 0.28, 2.2, 6]} />
-        <meshStandardMaterial color={TRUNK_COLOR} roughness={1} />
-      </instancedMesh>
-      <instancedMesh ref={crowns} args={[crownGeo, crownMat, specs.length]} castShadow />
-      <instancedMesh ref={crowns2} args={[crownGeo2, crownMat2, specs.length]} />
-    </group>
-  );
+  return <TreeStand trees={trees} quality="mid" seed={7} castShadow groundY={0.4} />;
 }
 
 function Asphalt() {

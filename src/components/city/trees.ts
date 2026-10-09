@@ -1,14 +1,40 @@
-import { useEffect, useMemo } from "react";
-import { IcosahedronGeometry, MeshStandardMaterial, type BufferGeometry } from "three";
+"use client";
+
+import { useCallback, useEffect, useMemo } from "react";
+import { Color, ConeGeometry, CylinderGeometry, Float32BufferAttribute, IcosahedronGeometry, MeshStandardMaterial, type BufferGeometry } from "three";
 import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { mulberry32, range } from "./rng";
+import { mulberry32, pick, range } from "./rng";
 
 export const TRUNK_COLOR = "#4a3f38";
-export const CROWN_OLIVE = "#3b5a3a";
-export const CROWN_MOSS = "#4a6b3f";
-export const CROWN_PINE = "#2f4a30";
 
+export type TreeSpecies = "shade" | "elm" | "spruce" | "bare";
 export type CrownQuality = "near" | "mid" | "far";
+
+const GREENS = ["#3b5a3a", "#4a6b3f", "#52683a", "#5c7038", "#667234", "#44603c"];
+const TURNING = ["#8a7a2c", "#8f6a2a", "#8a4a26", "#9a6230", "#7a5a24", "#6e6a2c"];
+const SPRUCE = ["#2f4a30", "#2a4034", "#35503a", "#3a4a2e"];
+const AUTUMN_SHARE = 0.3;
+
+export function crownColor(species: TreeSpecies, rand: () => number) {
+  if (species === "spruce") return new Color(pick(rand, SPRUCE));
+  return new Color(rand() < AUTUMN_SHARE ? pick(rand, TURNING) : pick(rand, GREENS));
+}
+
+function shadeVertices(geo: BufferGeometry, rand: () => number, low: number, high: number) {
+  const pos = geo.attributes.position;
+  const nor = geo.attributes.normal;
+  const colors = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const t = Math.min(1, Math.max(0, (pos.getY(i) - low) / (high - low)));
+    const up = nor.getY(i) * 0.5 + 0.5;
+    const n = (rand() - 0.5) * 0.16;
+    const k = (0.5 + 0.5 * t) * (0.7 + 0.3 * up) * (1 + n);
+    colors[i * 3] = k * (1 + n * 0.4);
+    colors[i * 3 + 1] = k;
+    colors[i * 3 + 2] = k * (1 - n * 0.4);
+  }
+  geo.setAttribute("color", new Float32BufferAttribute(colors, 3));
+}
 
 function lobe(radius: number, detail: number, rand: () => number, dx: number, dy: number, dz: number, squash: number) {
   const geo = mergeVertices(new IcosahedronGeometry(radius, detail));
@@ -19,46 +45,186 @@ function lobe(radius: number, detail: number, rand: () => number, dx: number, dy
   const px = rand() * Math.PI * 2;
   const py = rand() * Math.PI * 2;
   const pz = rand() * Math.PI * 2;
-  const amp = range(rand, 0.09, 0.16);
+  const amp = range(rand, 0.12, 0.2);
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
     const z = pos.getZ(i);
     const n = Math.sin(x * fx + px) * Math.sin(y * fy + py) + Math.sin(z * fz + pz) * Math.cos(x * fy + pz);
-    const k = 1 + amp * n;
+    const fine = Math.sin(x * fx * 2.7 + pz) * Math.sin(z * fz * 2.3 + px) * Math.cos(y * fy * 2.1 + py);
+    const k = 1 + amp * n + amp * 0.6 * fine;
     pos.setXYZ(i, x * k + dx, y * k * squash + dy, z * k + dz);
   }
   geo.computeVertexNormals();
   return geo;
 }
 
-export function makeCrownGeometry(radius: number, seed: number, quality: CrownQuality = "near"): BufferGeometry {
-  const rand = mulberry32(seed);
-  if (quality === "far") return lobe(radius, 0, rand, 0, 0, 0, 0.84);
-  if (quality === "mid") return lobe(radius, 1, rand, 0, 0, 0, 0.84);
-  const lobes = [
-    lobe(radius, 1, rand, 0, 0, 0, 0.82),
-    lobe(radius * 0.72, 1, rand, radius * 0.55, radius * 0.22, -radius * 0.32, 0.86),
-    lobe(radius * 0.64, 1, rand, -radius * 0.5, radius * 0.38, radius * 0.36, 0.86),
-  ];
-  const merged = mergeGeometries(lobes);
-  for (const l of lobes) l.dispose();
-  if (!merged) throw new Error("crown lobes could not be merged");
+function cone(radius: number, height: number, y: number, rand: () => number) {
+  const geo = mergeVertices(new ConeGeometry(radius, height, 7, 1));
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    if (pos.getY(i) > 0) continue;
+    const k = range(rand, 0.82, 1.12);
+    pos.setXYZ(i, pos.getX(i) * k, pos.getY(i) + range(rand, -0.15, 0.15) * height, pos.getZ(i) * k);
+  }
+  geo.translate(0, y + height / 2, 0);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function tube(rTop: number, rBottom: number, height: number, segments: number) {
+  const geo = new CylinderGeometry(rTop, rBottom, height, segments, 1);
+  geo.translate(0, height / 2, 0);
+  return geo;
+}
+
+function limb(length: number, radius: number, tilt: number, yaw: number, baseY: number, segments = 5) {
+  const geo = new CylinderGeometry(radius * 0.45, radius, length, segments, 1);
+  geo.translate(0, length / 2, 0);
+  geo.rotateZ(tilt);
+  geo.rotateY(yaw);
+  geo.translate(0, baseY, 0);
+  return geo;
+}
+
+function merge(parts: BufferGeometry[]) {
+  const merged = mergeGeometries(parts);
+  for (const p of parts) p.dispose();
+  if (!merged) throw new Error("tree parts could not be merged");
   return merged;
 }
 
-export function useCrownGeometry(radius: number, seed: number, quality: CrownQuality = "near") {
-  const geo = useMemo(() => makeCrownGeometry(radius, seed, quality), [radius, seed, quality]);
-  useEffect(() => () => geo.dispose(), [geo]);
-  return geo;
+function trunkFor(species: TreeSpecies, quality: CrownQuality, rand: () => number) {
+  const far = quality === "far";
+  const segs = far ? 4 : 6;
+  if (species === "shade") {
+    const parts = [tube(0.3, 0.42, 2.6, segs)];
+    if (!far) for (let k = 0; k < 3; k++) parts.push(limb(2, 0.15, 0.65, k * 2.1 + rand() * 0.6, 2.2));
+    return merge(parts);
+  }
+  if (species === "elm") {
+    const parts = [tube(0.26, 0.36, 3.8, segs)];
+    if (!far) for (let k = 0; k < 2; k++) parts.push(limb(2.2, 0.13, 0.35, k * Math.PI + rand() * 0.8, 3.2));
+    return merge(parts);
+  }
+  if (species === "spruce") return tube(0.16, 0.26, 1.6, segs);
+  const parts = [tube(0.2, 0.32, 3.2, segs)];
+  const lower = far ? 2 : 3;
+  for (let k = 0; k < lower; k++) parts.push(limb(2, 0.12, 0.75, (k * Math.PI * 2) / lower + rand() * 0.7, 2.3, far ? 4 : 5));
+  if (!far) {
+    for (let k = 0; k < 3; k++) parts.push(limb(1.6, 0.09, 0.5, k * 2.1 + 1.05 + rand() * 0.6, 2.9));
+    parts.push(limb(1.3, 0.1, 0.12, rand() * 6, 3.1));
+  }
+  return merge(parts);
+}
+
+function crownFor(species: TreeSpecies, quality: CrownQuality, rand: () => number): BufferGeometry | null {
+  const detail = quality === "near" ? 2 : 1;
+  if (species === "shade") {
+    const r = 1.9;
+    const y = 4.1;
+    if (quality === "far") return lobe(r, 0, rand, 0, y, 0, 0.8);
+    const lobes = [lobe(r, detail, rand, 0, y, 0, 0.8), lobe(r * 0.64, detail, rand, r * 0.6, y + r * 0.18, -r * 0.35, 0.86), lobe(r * 0.6, detail, rand, -r * 0.55, y + r * 0.4, r * 0.4, 0.86)];
+    if (quality === "near") lobes.push(lobe(r * 0.55, detail, rand, r * 0.1, y - r * 0.3, r * 0.7, 0.9));
+    return merge(lobes);
+  }
+  if (species === "elm") {
+    const r = 1.6;
+    const y = 5.4;
+    if (quality === "far") return lobe(r, 0, rand, 0, y, 0, 1.45);
+    return merge([lobe(r * 0.95, detail, rand, 0, y, 0, 1.3), lobe(r * 0.7, detail, rand, r * 0.1, y + r * 1.25, -r * 0.1, 1.1)]);
+  }
+  if (species === "spruce") {
+    if (quality === "far") return cone(1.4, 4.6, 0.9, rand);
+    return merge([cone(1.5, 2.8, 0.9, rand), cone(1.15, 2.4, 2.4, rand), cone(0.75, 2.1, 3.8, rand)]);
+  }
+  return null;
+}
+
+export interface TreeGeometry {
+  trunk: BufferGeometry;
+  crown: BufferGeometry | null;
+}
+
+export function makeTreeGeometry(species: TreeSpecies, quality: CrownQuality, seed: number): TreeGeometry {
+  const rand = mulberry32(seed);
+  const trunk = trunkFor(species, quality, rand);
+  trunk.computeBoundingBox();
+  shadeVertices(trunk, rand, 0, trunk.boundingBox!.max.y);
+  const crown = crownFor(species, quality, rand);
+  if (crown) {
+    crown.computeBoundingBox();
+    shadeVertices(crown, rand, crown.boundingBox!.min.y, crown.boundingBox!.max.y);
+  }
+  return { trunk, crown };
+}
+
+interface SharedEntry<T> {
+  value: T;
+  refs: number;
+}
+const shared = new Map<string, SharedEntry<unknown>>();
+
+function useShared<T>(key: string, create: () => T, dispose: (value: T) => void): T {
+  const value = useMemo(() => {
+    const hit = shared.get(key) as SharedEntry<T> | undefined;
+    if (hit) return hit.value;
+    const made = create();
+    shared.set(key, { value: made, refs: 0 });
+    return made;
+  }, [key, create]);
+  useEffect(() => {
+    const entry = shared.get(key) as SharedEntry<T> | undefined;
+    if (!entry) return;
+    entry.refs += 1;
+    return () => {
+      entry.refs -= 1;
+      if (entry.refs > 0) return;
+      shared.delete(key);
+      dispose(entry.value);
+    };
+  }, [key, dispose]);
+  return value;
+}
+
+function disposeTreeGeometry(geo: TreeGeometry) {
+  geo.trunk.dispose();
+  geo.crown?.dispose();
+}
+
+export function useTreeGeometry(species: TreeSpecies, quality: CrownQuality, seed: number) {
+  const create = useCallback(() => makeTreeGeometry(species, quality, seed), [species, quality, seed]);
+  return useShared(`geometry|${species}|${quality}|${seed}`, create, disposeTreeGeometry);
 }
 
 const NEAR_FADE_START = 2.2;
 const NEAR_FADE_LENGTH = 1.8;
+const WIND = { value: 0 };
 
-export function createCrownMaterial(color: string) {
-  const mat = new MeshStandardMaterial({ color, roughness: 1 });
+export function setWindTime(seconds: number) {
+  WIND.value = seconds;
+}
+
+export function createCrownMaterial() {
+  const mat = new MeshStandardMaterial({ color: "#ffffff", vertexColors: true, roughness: 1, flatShading: true });
   mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uWindTime = WIND;
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nuniform float uWindTime;")
+      .replace(
+        "#include <begin_vertex>",
+        `#include <begin_vertex>
+        #ifdef USE_INSTANCING
+        {
+          vec4 anchor = modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+          float phase = anchor.x * 0.17 + anchor.z * 0.13;
+          float sway = sin(uWindTime * 1.1 + phase) * 0.6 + sin(uWindTime * 2.7 + phase * 2.3) * 0.25;
+          float reach = clamp(position.y * 0.18, 0.2, 1.4);
+          transformed.x += sway * reach * 0.07;
+          transformed.z += sway * reach * 0.04;
+        }
+        #endif`,
+      );
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <clipping_planes_fragment>",
       `#include <clipping_planes_fragment>
@@ -68,12 +234,22 @@ export function createCrownMaterial(color: string) {
       }`,
     );
   };
-  mat.customProgramCacheKey = () => "crown-near-fade";
+  mat.customProgramCacheKey = () => "crown-wind-fade";
   return mat;
 }
 
-export function useCrownMaterial(color: string) {
-  const mat = useMemo(() => createCrownMaterial(color), [color]);
-  useEffect(() => () => mat.dispose(), [mat]);
-  return mat;
+function disposeMaterial(mat: MeshStandardMaterial) {
+  mat.dispose();
+}
+
+function createTrunkMaterial() {
+  return new MeshStandardMaterial({ color: TRUNK_COLOR, vertexColors: true, roughness: 1 });
+}
+
+export function useCrownMaterial() {
+  return useShared("material|crown", createCrownMaterial, disposeMaterial);
+}
+
+export function useTrunkMaterial() {
+  return useShared("material|trunk", createTrunkMaterial, disposeMaterial);
 }
