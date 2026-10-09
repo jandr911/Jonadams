@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Color, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { useDayNight } from "./DayNightContext";
-import { AMBASSADOR_CLEAR_HALF, AMBASSADOR_RAMP_Z, AMBASSADOR_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR } from "./layout";
+import { AMBASSADOR_CLEAR_HALF, AMBASSADOR_RAMP_Z, AMBASSADOR_X, CITY_HALF_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR, ROAD } from "./layout";
 import { mulberry32, pick, range } from "./rng";
 import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
 import { FLEET_COLORS, type VehicleKind } from "./vehicles";
@@ -16,6 +16,13 @@ const RING = 400;
 const HOUSE_COLORS = ["#8a4a3a", "#b07a5a", "#c9b48c", "#9a95a8", "#5a6a7a", "#7c6a5c", "#a3563f", "#e8e2d2", "#6e5a4a", "#3f4e66"];
 const ROOF_COLORS = ["#3a3230", "#4a3a38", "#2c3038", "#5a4a3a"];
 const MID_COLORS = ["#8a4a3a", "#a3563f", "#b89a7a", "#9c8468", "#5a6a7a", "#3f4e66", "#7c6a5c", "#1a2238", "#c9b48c"];
+const LOFT_COLORS = ["#8a4a3a", "#a3563f", "#7c6a5c", "#6e5a4a", "#9c8468", "#5a6a7a", "#c9b48c"];
+const SHED_COLORS = ["#9a95a8", "#7c6a5c", "#5a6a7a"];
+const LAWN = new Color("#3f6a42");
+const PATH = new Color("#5d5680");
+const RIVERWALK_HALF = CITY_HALF_X + 40;
+const DOWNTOWN_MARGIN = 24;
+const LOFT_REACH = 900;
 
 interface House {
   x: number;
@@ -38,8 +45,18 @@ interface MidLot {
   seed: number;
 }
 
+interface Bank {
+  x: number;
+  y: number;
+  z: number;
+  w: number;
+  h: number;
+  d: number;
+  color: Color;
+}
+
 function insideDowntown(x: number, z: number) {
-  return Math.abs(x) < OUTER_HALF_X + 24 && z > OUTER_MIN_Z - 24 && z < RIVER_FAR + 14;
+  return Math.abs(x) < OUTER_HALF_X + DOWNTOWN_MARGIN && z > OUTER_MIN_Z - DOWNTOWN_MARGIN && z < RIVER_FAR + 14;
 }
 
 function nearDowntown(x: number, z: number) {
@@ -56,19 +73,73 @@ function blockTouchesRiver(cz: number) {
   return cz + STREET / 2 > CITY_HALF_Z - 10 && cz - STREET / 2 < RIVER_FAR + 16;
 }
 
+function lawnRect(x: number, z0: number, z1: number, w: number): Bank {
+  return { x, y: -0.02, z: (z0 + z1) / 2, w, h: 0.08, d: z1 - z0, color: LAWN };
+}
+
+function riverStreets() {
+  let near = -EXTENT;
+  let far = EXTENT;
+  for (let z = -EXTENT; z < EXTENT; z += STREET) {
+    const cz = z + STREET / 2;
+    if (!blockTouchesRiver(cz)) continue;
+    if (cz < RIVER_NEAR) near = Math.max(near, z);
+    if (cz > RIVER_FAR) far = Math.min(far, z + STREET);
+  }
+  return { near, far };
+}
+
+function buildRiverfront(rand: () => number, trees: { x: number; z: number; s: number }[], midrise: MidLot[], banks: Bank[]) {
+  const streets = riverStreets();
+  const nearBank = { z0: streets.near + ROAD / 2 + 0.5, z1: RIVER_NEAR - 5 };
+  const farBank = { z0: RIVER_FAR + 5, z1: streets.far - ROAD / 2 - 0.5 };
+  const path = (x: number, z: number, w: number) => banks.push({ x, y: 0.2, z, w, h: 0.5, d: 3, color: PATH });
+  for (let x = -EXTENT; x < EXTENT; x += STREET) {
+    const cx = x + STREET / 2;
+    if (!insideDowntown(cx, nearBank.z0)) {
+      banks.push(lawnRect(cx, nearBank.z0, nearBank.z1, STREET - 4));
+      let built = false;
+      if (cx > 0 && cx < LOFT_REACH) {
+        for (const ox of [-14, 14]) {
+          midrise.push({ x: cx + ox, z: nearBank.z0 + 9, w: 26, d: 16, h: range(rand, 7, 13), color: new Color(pick(rand, LOFT_COLORS)), seed: rand() * 100 });
+        }
+        built = true;
+      } else if (cx < 0 && cx > -LOFT_REACH) {
+        midrise.push({ x: cx, z: nearBank.z0 + 11, w: 46, d: 18, h: range(rand, 6, 9), color: new Color(pick(rand, SHED_COLORS)), seed: rand() * 100 });
+        built = true;
+      }
+      const treeZ0 = built ? nearBank.z0 + 23 : nearBank.z0 + 3;
+      for (let k = 0; k < 7; k++) {
+        trees.push({ x: cx + (rand() - 0.5) * (STREET - 10), z: range(rand, treeZ0, nearBank.z1 - 8), s: range(rand, 1, 1.8) });
+      }
+    }
+    banks.push(lawnRect(cx, farBank.z0, farBank.z1, STREET - 4));
+    for (let k = 0; k < 6; k++) {
+      const tree = { x: cx + (rand() - 0.5) * (STREET - 10), z: range(rand, farBank.z0 + 6, farBank.z1 - 3), s: range(rand, 1, 1.8) };
+      if (Math.abs(tree.x - AMBASSADOR_X) > AMBASSADOR_CLEAR_HALF + 3) trees.push(tree);
+    }
+  }
+  const gapHalf = OUTER_HALF_X + DOWNTOWN_MARGIN;
+  for (const side of [-1, 1]) {
+    banks.push(lawnRect((side * (RIVERWALK_HALF + gapHalf)) / 2, CITY_HALF_Z, nearBank.z1 + 1, gapHalf - RIVERWALK_HALF));
+    path((side * (RIVERWALK_HALF + EXTENT)) / 2, RIVER_NEAR - 7, EXTENT - RIVERWALK_HALF);
+  }
+  path(0, RIVER_FAR + 7, EXTENT * 2);
+}
+
 function buildHouses(): {
   houses: House[];
   trees: { x: number; z: number; s: number }[];
   midrise: MidLot[];
   pads: { x: number; z: number }[];
-  lawns: { x: number; z: number }[];
+  banks: Bank[];
 } {
   const rand = mulberry32(90210);
   const houses: House[] = [];
   const trees: { x: number; z: number; s: number }[] = [];
   const midrise: MidLot[] = [];
   const pads: { x: number; z: number }[] = [];
-  const lawns: { x: number; z: number }[] = [];
+  const banks: Bank[] = [];
   for (let z = -EXTENT; z < EXTENT; z += STREET) {
     for (let x = -EXTENT; x < EXTENT; x += STREET) {
       const cx = x + STREET / 2;
@@ -81,7 +152,7 @@ function buildHouses(): {
           const tree = { x: cx + (rand() - 0.5) * (STREET - 10), z: cz + (rand() - 0.5) * (STREET - 10), s: range(rand, 1, 1.8) };
           if (Math.abs(tree.x - AMBASSADOR_X) > AMBASSADOR_CLEAR_HALF + 3 || tree.z > AMBASSADOR_RAMP_Z[1] + 6) trees.push(tree);
         }
-        lawns.push({ x: cx, z: cz });
+        banks.push(lawnRect(cx, cz - (STREET - 4) / 2, cz + (STREET - 4) / 2, STREET - 4));
         continue;
       }
       const windsorCore = cz >= RIVER_FAR + 150 && cz < RIVER_FAR + 330 && Math.abs(cx) < 260;
@@ -117,26 +188,30 @@ function buildHouses(): {
       }
     }
   }
-  return { houses, trees, midrise, pads, lawns };
+  buildRiverfront(rand, trees, midrise, banks);
+  return { houses, trees, midrise, pads, banks };
 }
 
-function Lawns({ lawns }: { lawns: { x: number; z: number }[] }) {
+function Banks({ banks }: { banks: Bank[] }) {
   const ref = useRef<InstancedMesh>(null);
   useEffect(() => {
     const dummy = new Object3D();
     const m = ref.current;
     if (!m) return;
-    lawns.forEach((l, i) => {
-      dummy.position.set(l.x, -0.02, l.z);
+    banks.forEach((b, i) => {
+      dummy.position.set(b.x, b.y, b.z);
+      dummy.scale.set(b.w, b.h, b.d);
       dummy.updateMatrix();
       m.setMatrixAt(i, dummy.matrix);
+      m.setColorAt(i, b.color);
     });
     m.instanceMatrix.needsUpdate = true;
-  }, [lawns]);
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  }, [banks]);
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, lawns.length]}>
-      <boxGeometry args={[STREET - 4, 0.08, STREET - 4]} />
-      <meshStandardMaterial color="#3f6a42" roughness={1} />
+    <instancedMesh ref={ref} args={[undefined, undefined, banks.length]} receiveShadow>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshStandardMaterial roughness={1} />
     </instancedMesh>
   );
 }
@@ -465,13 +540,13 @@ function Riverbank() {
 }
 
 export default function Suburbs() {
-  const { houses, trees, midrise, pads, lawns } = useMemo(() => buildHouses(), []);
+  const { houses, trees, midrise, pads, banks } = useMemo(() => buildHouses(), []);
   return (
     <group>
       <WindsorShore />
       <Riverbank />
       <SuburbStreets />
-      <Lawns lawns={lawns} />
+      <Banks banks={banks} />
       <Houses houses={houses} pads={pads} />
       <MidRise lots={midrise} />
       <SuburbTrees trees={trees} />
