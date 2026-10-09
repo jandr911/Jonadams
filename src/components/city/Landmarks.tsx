@@ -14,7 +14,9 @@ import {
   blockCenter,
   destinationPosition,
 } from "./layout";
+import { carvedStoneTexture, handPaintedBillboardTexture } from "./labels";
 import NeonSign, { DISPLAY_FONT, SCRIPT_FONT } from "./NeonSign";
+import PaintedSign from "./PaintedSign";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { baseBoxGeometry, fillInstances } from "./instancing";
 import { enableReflection } from "./layers";
@@ -274,7 +276,7 @@ function ClubEntrance() {
         </mesh>
       ))}
       <MarqueeBulbs width={13.6} position={[0, 6.1, 5.0]} />
-      <NeonSign text="Club Adams" color="#ff8ac2" width={12} height={3.2} fontSize={2.2} position={[0, 8.2, 2.4]} backing="#2a0a33" glow={2.2} font={SCRIPT_FONT} />
+      <NeonSign text="Club Adams" color={GOLD_LIGHT} width={12} height={3.2} fontSize={2.2} position={[0, 8.2, 2.4]} backing="#07060f" glow={1.5} font={SCRIPT_FONT} />
     </group>
   );
 }
@@ -352,38 +354,95 @@ function ClubAdams() {
   );
 }
 
-function MarqueeBulbs({ width, position }: { width: number; position: [number, number, number] }) {
+type Point = [number, number, number];
+
+const BULB_ON = new Color("#fff4c0").multiplyScalar(3);
+const BULB_OFF = new Color("#6a4a20").multiplyScalar(0.6);
+const CHASE_STEPS_PER_SECOND = 6;
+
+function paintChase(m: InstancedMesh, count: number, step: number) {
+  for (let i = 0; i < count; i++) m.setColorAt(i, (i + step) % 3 === 0 ? BULB_ON : BULB_OFF);
+  if (m.instanceColor) m.instanceColor.needsUpdate = true;
+}
+
+function ChasingBulbs({ points, position = [0, 0, 0] }: { points: Point[]; position?: Point }) {
   const ref = useRef<InstancedMesh>(null);
-  const mat = useRef<MeshStandardMaterial>(null);
-  const dummy = useMemo(() => new Object3D(), []);
-  const count = Math.floor(width / 0.9);
+  const lastStep = useRef(-1);
   useEffect(() => {
     const m = ref.current;
-    if (!m) return;
-    for (let i = 0; i < count; i++) {
-      dummy.position.set(-width / 2 + 0.45 + i * 0.9, 0, 0);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
-      m.setColorAt(i, new Color(i % 2 === 0 ? "#ffd27a" : "#ffffff"));
-    }
-    m.instanceMatrix.needsUpdate = true;
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
-  }, [count, width, dummy]);
+    fillInstances(m, new Object3D(), points.length, (i, o) => o.position.set(...points[i]));
+    if (m) paintChase(m, points.length, 0);
+  }, [points]);
   useFrame(({ clock }) => {
     const m = ref.current;
-    if (!m) return;
-    const t = Math.floor(clock.elapsedTime * 6);
-    for (let i = 0; i < count; i++) {
-      const on = (i + t) % 3 === 0;
-      m.setColorAt(i, new Color(on ? "#fff4c0" : "#6a4a20").multiplyScalar(on ? 3 : 0.6));
-    }
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    const step = Math.floor(clock.elapsedTime * CHASE_STEPS_PER_SECOND);
+    if (!m || step === lastStep.current) return;
+    lastStep.current = step;
+    paintChase(m, points.length, step);
   });
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, count]} position={position}>
+    <instancedMesh ref={ref} args={[undefined, undefined, points.length]} position={position}>
       <sphereGeometry args={[0.22, 8, 6]} />
-      <meshStandardMaterial ref={mat} color="#ffffff" emissive="#ffffff" emissiveIntensity={1} toneMapped={false} />
+      <meshBasicMaterial color="#ffffff" toneMapped={false} />
     </instancedMesh>
+  );
+}
+
+function MarqueeBulbs({ width, position }: { width: number; position: Point }) {
+  const points = useMemo(() => Array.from({ length: Math.floor(width / 0.9) }, (_, i): Point => [-width / 2 + 0.45 + i * 0.9, 0, 0]), [width]);
+  return <ChasingBulbs points={points} position={position} />;
+}
+
+const FOX_BLADE = { w: 3.6, h: 20, d: 1.2, bulbStep: 0.8 };
+const FOX_LETTERS = new Color("#ffb02e").multiplyScalar(2.6);
+
+function foxBladeBulbs(): Point[] {
+  const { w, h, d, bulbStep } = FOX_BLADE;
+  const out: Point[] = [];
+  for (const z of [d / 2 + 0.14, -d / 2 - 0.14]) {
+    for (let y = -h / 2 + 0.4; y <= h / 2 - 0.4; y += bulbStep) out.push([-w / 2 + 0.28, y, z]);
+    for (let x = -w / 2 + 0.28 + bulbStep; x <= w / 2 - 0.28; x += bulbStep) out.push([x, h / 2 - 0.4, z]);
+    for (let y = h / 2 - 0.4; y >= -h / 2 + 0.4; y -= bulbStep) out.push([w / 2 - 0.28, y, z]);
+  }
+  return out;
+}
+
+function FoxBlade({ position, rotation }: { position: Point; rotation: number }) {
+  const { w, h, d } = FOX_BLADE;
+  const bulbs = useMemo(() => foxBladeBulbs(), []);
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      <mesh>
+        <boxGeometry args={[w, h, d]} />
+        <meshStandardMaterial color="#5e1712" roughness={0.6} />
+      </mesh>
+      <mesh>
+        <boxGeometry args={[w + 0.3, h + 0.3, d - 0.3]} />
+        <meshStandardMaterial color={GOLD} metalness={0.7} roughness={0.35} />
+      </mesh>
+      <mesh position={[0, h / 2 + 1.1, 0]} rotation={[0, Math.PI / 4, 0]}>
+        <coneGeometry args={[1.5, 2.2, 4]} />
+        <meshStandardMaterial color={GOLD} metalness={0.7} roughness={0.35} />
+      </mesh>
+      {[0, Math.PI].map((ry) => (
+        <Text
+          key={ry}
+          font={DISPLAY_FONT}
+          fontSize={4.8}
+          lineHeight={1.08}
+          color={FOX_LETTERS}
+          anchorX="center"
+          anchorY="middle"
+          textAlign="center"
+          rotation={[0, ry, 0]}
+          position={[0, 0, ry === 0 ? d / 2 + 0.06 : -d / 2 - 0.06]}
+          material-toneMapped={false}
+        >
+          {"F\nO\nX"}
+        </Text>
+      ))}
+      <ChasingBulbs points={bulbs} />
+    </group>
   );
 }
 
@@ -415,8 +474,8 @@ function ListenTower() {
           <meshStandardMaterial color="#ffb02e" emissive="#ffb02e" emissiveIntensity={0.7} />
         </mesh>
       ))}
-      <NeonSign text="FOX" color="#ffb02e" width={4.6} height={8} fontSize={3.4} vertical position={[-4.6, 28, 8.5]} blink="slow" />
-      <NeonSign text="LISTEN" color="#ffb02e" width={4.6} height={20} fontSize={3.1} vertical position={[2.2, 20, 8.5]} blink="slow" />
+      <FoxBlade position={[-4.6, 23, 9.4]} rotation={0.75} />
+      <NeonSign text="LISTEN" color="#ffb02e" width={8} height={2.2} fontSize={1.6} position={[0, 11.2, 8.4]} glow={1.8} />
       <group position={[0, 8.2, 9.6]}>
         <mesh>
           <boxGeometry args={[17, 1, 5]} />
@@ -484,7 +543,7 @@ function MerchWarehouse() {
       </mesh>
       <Fan position={[-5.5, 7.5, 8.8]} r={2} />
       <NeonSign text="MERCH" color="#ffb02e" width={11} height={3.6} fontSize={2.8} position={[2.5, 9.6, 8.9]} rotation={[0, 0, -0.06]} blink="fast" />
-      <NeonSign text="RIVERTOWN" color="#49d2f2" width={12} height={2.2} fontSize={1.6} position={[0, 17.4, 0]} doubleSided depth={0.8} glow={2} />
+      <PaintedSign text="RIVERTOWN" bg="#2f4a3a" fg="#e6dbc2" width={12} height={2.2} position={[0, 17.4, 0]} doubleSided depth={0.8} />
       <group position={[6, 15.2, 2]}>
         <mesh position={[0, 3.5, 0]}>
           <boxGeometry args={[4.4, 5, 4.4]} />
@@ -497,7 +556,7 @@ function MerchWarehouse() {
         {[-0.9, 0.9].map((ex) => (
           <mesh key={ex} position={[ex, 8.3, 1.85]}>
             <boxGeometry args={[0.9, 0.5, 0.2]} />
-            <meshStandardMaterial ref={ex < 0 ? eyes : undefined} color="#ff4fa3" emissive="#ff4fa3" emissiveIntensity={3} toneMapped={false} />
+            <meshStandardMaterial ref={ex < 0 ? eyes : undefined} color="#ffd27a" emissive="#ffb02e" emissiveIntensity={3} toneMapped={false} />
           </mesh>
         ))}
         <mesh position={[0, 10.4, 0]}>
@@ -545,6 +604,7 @@ function MichiganCentral() {
   const d = DESTINATIONS[2];
   const [x, z] = destinationPosition(d);
   const dn = useDayNight();
+  const carved = useMemo(() => carvedStoneTexture("MICHIGAN CENTRAL STATION", "#d8c9a8"), []);
   const glass = useMemo(() => new MeshStandardMaterial({ color: "#1b2a3a", emissive: "#ffd9a0", emissiveIntensity: 0.2, roughness: 0.2, metalness: 0.3 }), []);
   const trim = useRef<InstancedMesh>(null);
   const muntins = useRef<InstancedMesh>(null);
@@ -612,13 +672,10 @@ function MichiganCentral() {
         <boxGeometry args={[25, 0.25, 0.5]} />
         <meshStandardMaterial color="#d2c3a2" roughness={0.9} />
       </mesh>
-      <mesh position={[0, 14.9, MC_FRONT - 0.7]}>
-        <boxGeometry args={[9, 1.9, 1]} />
-        <meshStandardMaterial color="#c9b48c" roughness={0.9} />
+      <mesh position={[0, 11.7, MC_FRONT + 1.33]}>
+        <planeGeometry args={[26, 1.7]} />
+        <meshStandardMaterial map={carved} roughness={0.95} polygonOffset polygonOffsetFactor={-2} />
       </mesh>
-      <Text font={DISPLAY_FONT} fontSize={1.05} letterSpacing={0.12} color="#fff2dc" anchorX="center" anchorY="middle" position={[0, 14.9, MC_FRONT + 0.12]} material-toneMapped={false}>
-        MICHIGAN CENTRAL
-      </Text>
       <mesh position={[0, 3.5, -4]}>
         <boxGeometry args={[24.6, 7, 12.6]} />
         <meshStandardMaterial color="#a08c6c" roughness={1} />
@@ -642,7 +699,7 @@ function MichiganCentral() {
           <meshStandardMaterial color="#8a7050" />
         </mesh>
       ))}
-      <NeonSign text="WATCH" color="#49f2d6" width={5.2} height={22} fontSize={3.6} vertical position={[0, 31, 2.35]} blink="slow" backing="#0b1424" />
+      <NeonSign text="WATCH" color="#49f2d6" width={8} height={2.4} fontSize={1.8} position={[0, 18.6, 2.35]} backing="#0b1424" glow={1.8} />
     </Hotspot>
   );
 }
@@ -650,17 +707,18 @@ function MichiganCentral() {
 function CreativesBillboard() {
   const d = DESTINATIONS[4];
   const [x, z] = destinationPosition(d);
+  const billboard = useMemo(() => handPaintedBillboardTexture("The", "CREATIVES", "CORKTOWN · DETROIT MAKERS"), []);
   return (
     <Hotspot dest={d} position={[x, PAD, z]}>
       <WindowedBox w={15} h={16} d={15} color="#7a4034" winSize={[2.2, 2.4]} seed={51} />
       {[-5.5, 5.5].map((px) => (
         <mesh key={px} position={[px, 19, 2]}>
           <cylinderGeometry args={[0.3, 0.35, 6, 6]} />
-          <meshStandardMaterial color="#1d1d3f" />
+          <meshStandardMaterial color="#3a3936" />
         </mesh>
       ))}
-      <group rotation={[0, 0, -0.07]}>
-        <NeonSign text="THE CREATIVES" color="#c9a6ff" width={17} height={9} fontSize={3.4} position={[0, 25.5, 2]} blink="marquee" backing="#14102a" />
+      <group rotation={[0, 0, -0.04]}>
+        <PaintedSign texture={billboard} width={17} height={9} position={[0, 25.5, 2]} depth={0.6} />
       </group>
     </Hotspot>
   );
@@ -693,7 +751,7 @@ function HartPlaza() {
     <Landmark name="Hart Plaza" note="Dodge Fountain · Monument to Joe Louis" position={[x, PAD, z]} labelHeight={18}>
       <mesh position={[0, 0.2, 0]}>
         <boxGeometry args={[21, 0.4, 21]} />
-        <meshStandardMaterial color="#6a648c" />
+        <meshStandardMaterial color="#85827a" />
       </mesh>
       <group position={[-3, 0, -2]}>
         {[0, 1, 2].map((i) => {
@@ -710,7 +768,7 @@ function HartPlaza() {
           <meshStandardMaterial color="#d8d8ee" metalness={0.8} roughness={0.25} />
         </mesh>
         <mesh ref={water} geometry={FOUNTAIN_PLUME} position={[0, 0.4, 0]}>
-          <meshStandardMaterial color="#aef3ff" emissive="#49f2d6" emissiveIntensity={1.2} transparent opacity={0.55} toneMapped={false} />
+          <meshStandardMaterial color="#dfe9ec" emissive="#ffffff" emissiveIntensity={0.15} transparent opacity={0.55} />
         </mesh>
         <mesh position={[0, 0.5, 0]}>
           <cylinderGeometry args={[5.4, 5.4, 0.3, 24]} />
@@ -753,7 +811,7 @@ function SpiritOfDetroit() {
       <WindowedBox w={20} h={24} d={9} position={[0, 0, -5]} color="#b89a7a" winSize={[1.8, 2]} seed={111} />
       <mesh position={[0, 0.2, 4]}>
         <boxGeometry args={[21, 0.4, 12]} />
-        <meshStandardMaterial color="#6a648c" />
+        <meshStandardMaterial color="#85827a" />
       </mesh>
       <group position={[0, 0, 5]}>
         <mesh position={[0, 1.2, 0]}>
@@ -774,7 +832,7 @@ function SpiritOfDetroit() {
         </mesh>
         <mesh position={[3, 5.6, 0.8]}>
           <sphereGeometry args={[0.7, 12, 10]} />
-          <meshStandardMaterial color="#49f2d6" emissive="#49f2d6" emissiveIntensity={2.2} toneMapped={false} />
+          <meshStandardMaterial color="#fff1d0" emissive="#ffd9a8" emissiveIntensity={2.2} toneMapped={false} />
         </mesh>
       </group>
     </Landmark>
@@ -795,14 +853,14 @@ function CampusMartius() {
       </mesh>
       <mesh position={[0, 0.3, 0]} rotation-x={-Math.PI / 2}>
         <ringGeometry args={[7, 11, 36]} />
-        <meshStandardMaterial color="#7a7498" />
+        <meshStandardMaterial color="#8a877f" />
       </mesh>
       <mesh position={[0, 0.5, 0]}>
         <cylinderGeometry args={[4, 4, 0.4, 24]} />
         <meshStandardMaterial color="#2a4a6a" emissive="#1f6b8a" emissiveIntensity={0.3} />
       </mesh>
       <mesh ref={jet} geometry={JET_PLUME} position={[0, 0.6, 0]}>
-        <meshStandardMaterial color="#aef3ff" emissive="#49f2d6" emissiveIntensity={1.2} transparent opacity={0.55} toneMapped={false} />
+        <meshStandardMaterial color="#dfe9ec" emissive="#ffffff" emissiveIntensity={0.15} transparent opacity={0.55} />
       </mesh>
       {[0, 1, 2, 3, 4, 5].map((i) => {
         const a = (i / 6) * Math.PI * 2;
@@ -846,10 +904,10 @@ function Guardian() {
     <Landmark name="Guardian Building" note="1929 · Cathedral of Finance" position={[x, PAD, z]} labelHeight={70}>
       <WindowedBox w={13} h={52} d={16} color="#c0603a" winSize={[1.6, 2.6]} seed={91} warm="#ffe0b0" />
       <WindowedBox w={9} h={10} d={12} position={[0, 52, 0]} color="#c0603a" winSize={[1.6, 2.6]} seed={92} />
-      {[14, 28, 42].map((y, i) => (
+      {[14, 28, 42].map((y) => (
         <mesh key={y} position={[0, y, 8.1]}>
           <boxGeometry args={[11, 1.2, 0.3]} />
-          <meshStandardMaterial color={["#ffb02e", "#49f2d6", "#ff4fa3"][i]} emissive={["#ffb02e", "#49f2d6", "#ff4fa3"][i]} emissiveIntensity={1.4} toneMapped={false} />
+          <meshStandardMaterial color="#c99a6a" roughness={0.8} />
         </mesh>
       ))}
       <mesh position={[0, 63, 0]}>
@@ -1050,7 +1108,7 @@ function FordField() {
         <cylinderGeometry args={[9, 9, 20, 24, 1, false, 0, Math.PI]} />
         <meshStandardMaterial color="#9fb6c8" roughness={0.3} metalness={0.4} />
       </mesh>
-      <NeonSign text="FORD FIELD" color="#4a8cff" width={12} height={2.6} fontSize={1.9} position={[0, 10, 9.7]} glow={2} />
+      <PaintedSign text="FORD FIELD" bg="#1f3a6a" fg="#f4f1ea" width={12} height={2.6} position={[0, 10, 9.7]} />
     </Landmark>
   );
 }
@@ -1139,7 +1197,7 @@ function Carousel() {
       </mesh>
       <mesh position={[0, 0.6, 0]}>
         <cylinderGeometry args={[6.5, 6.5, 0.4, 24]} />
-        <meshStandardMaterial color="#7a7498" />
+        <meshStandardMaterial color="#8a877f" />
       </mesh>
       <group ref={spin}>
         {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
@@ -1179,7 +1237,7 @@ function AdBoard() {
     <Landmark name="Rivertown Lofts" note="Converted warehouse" position={[x, PAD, z]} labelHeight={32}>
       <WindowedBox w={16} h={18} d={16} color="#a3563f" winSize={[2.4, 2.6]} seed={171} />
       <group position={[0, 24, 2]} rotation={[0, 0, -0.1]}>
-        <NeonSign text="YOUR AD HERE" color="#9dff57" width={12} height={6.4} fontSize={2.6} backing="#e84f9e" glow={2} />
+        <PaintedSign text="YOUR AD HERE" bg="#e6dbc2" fg="#1f1d1b" width={12} height={6.4} />
       </group>
       {[-5, 5].map((px) => (
         <mesh key={px} position={[px, 19.5, 2]}>

@@ -22,7 +22,7 @@ import {
   outerRoadLinesZ,
   roadLinesX,
 } from "./layout";
-import NeonSign from "./NeonSign";
+import PaintedSign from "./PaintedSign";
 import { RESERVED_BLOCKS } from "./Buildings";
 import People from "./People";
 import StreetFurniture from "./StreetFurniture";
@@ -91,7 +91,7 @@ function TrafficLights() {
     <group>
       <instancedMesh ref={poles} args={[undefined, undefined, items.length]}>
         <cylinderGeometry args={[0.1, 0.12, 5.2, 5]} />
-        <meshStandardMaterial color="#3a3a58" />
+        <meshStandardMaterial color="#3a3936" />
       </instancedMesh>
       <instancedMesh ref={housings} args={[undefined, undefined, items.length]}>
         <boxGeometry args={[0.5, 1.3, 0.5]} />
@@ -206,12 +206,12 @@ function Gulls() {
 }
 
 const ROOF_SIGNS = [
-  { text: "MOTOR CITY", color: "#ffb02e", block: [1, 2] as [number, number] },
-  { text: "313", color: "#49f2d6", block: [7, 3] as [number, number] },
-  { text: "WOODWARD", color: "#ff4fa3", block: [4, 2] as [number, number] },
-  { text: "BUILT IN DETROIT", color: "#9dff57", block: [6, 3] as [number, number] },
-  { text: "HITSVILLE", color: "#c9a6ff", block: [1, 1] as [number, number] },
-  { text: "EASTERN MARKET", color: "#ff8a3a", block: [8, 2] as [number, number] },
+  { text: "MOTOR CITY", bg: "#e6dbc2", fg: "#8f2a22", block: [1, 2] as [number, number] },
+  { text: "313", bg: "#1f2a3a", fg: "#e6dbc2", block: [7, 3] as [number, number] },
+  { text: "WOODWARD", bg: "#2f4a3a", fg: "#e6dbc2", block: [4, 2] as [number, number] },
+  { text: "BUILT IN DETROIT", bg: "#e6dbc2", fg: "#1f1d1b", block: [6, 3] as [number, number] },
+  { text: "HITSVILLE", bg: "#1f3a6a", fg: "#f4f1ea", block: [1, 1] as [number, number] },
+  { text: "EASTERN MARKET", bg: "#8f2a22", fg: "#e6dbc2", block: [8, 2] as [number, number] },
 ];
 
 function RooftopSigns() {
@@ -229,10 +229,10 @@ function RooftopSigns() {
           {[-s.w / 2 + 1, s.w / 2 - 1].map((px) => (
             <mesh key={px} position={[px, -2.2, 0]}>
               <cylinderGeometry args={[0.18, 0.22, 4.4, 6]} />
-              <meshStandardMaterial color="#3a3a58" />
+              <meshStandardMaterial color="#3a3936" />
             </mesh>
           ))}
-          <NeonSign text={s.text} color={s.color} width={s.w} height={3.2} fontSize={2.2} doubleSided depth={0.5} blink="marquee" />
+          <PaintedSign text={s.text} bg={s.bg} fg={s.fg} width={s.w} height={3.2} doubleSided depth={0.5} />
         </group>
       ))}
     </group>
