@@ -1,22 +1,27 @@
 import type { Metadata } from "next";
 import Room from "@/components/Room";
+import { MERCH } from "@/content/site";
 
 export const metadata: Metadata = { title: "Merch" };
 
 export default function MerchPage() {
   return (
     <Room
-      title="MERCH"
-      lead="The rack is being stocked. First drop coming soon."
+      index="04"
+      title="Merch"
+      lead="The rack is being stocked. Drop 01 arrives with the next single."
+      accent="var(--blue)"
     >
-      <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
-        {["Tee", "Hoodie", "Cap", "Poster"].map((item) => (
-          <div
-            key={item}
-            className="grid aspect-square place-items-center rounded-xl border-2 border-dashed border-[#3a3a58] bg-panel text-sm tracking-[2px] text-[#6a6a8e]"
-          >
-            {item}
-          </div>
+      <div className="grid-4">
+        {MERCH.map((m, i) => (
+          <article key={m.name} className="product-card">
+            <div className="product-card__art" aria-hidden>
+              <span>{String(i + 1).padStart(2, "0")}</span>
+            </div>
+            <span className="product-card__name">{m.name}</span>
+            <span className="product-card__note">{m.note}</span>
+            <span className="product-card__status">Coming soon</span>
+          </article>
         ))}
       </div>
     </Room>

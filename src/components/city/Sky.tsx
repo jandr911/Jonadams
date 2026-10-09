@@ -1,0 +1,449 @@
+"use client";
+
+import { Cloud, Clouds } from "@react-three/drei";
+import { useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useMemo, useRef } from "react";
+import {
+  AdditiveBlending,
+  BackSide,
+  BufferGeometry,
+  DoubleSide,
+  Color,
+  Float32BufferAttribute,
+  Group,
+  InstancedMesh,
+  Mesh,
+  MeshBasicMaterial,
+  Object3D,
+  Points,
+  ShaderMaterial,
+  Vector3,
+} from "three";
+import { useDayNight } from "./DayNightContext";
+import { mulberry32, range } from "./rng";
+import { enableReflection } from "./layers";
+
+const SKY_RADIUS = 1100;
+
+const skyVert = /* glsl */ `
+  varying vec3 vDir;
+  void main() {
+    vDir = (modelMatrix * vec4(position, 1.0)).xyz - cameraPosition;
+    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+  }
+`;
+
+const skyFrag = /* glsl */ `
+  uniform vec3 uZenith;
+  uniform vec3 uHorizon;
+  uniform vec3 uGround;
+  uniform vec3 uSunDir;
+  uniform vec3 uSunColor;
+  uniform float uNight;
+  uniform vec3 uFog;
+  varying vec3 vDir;
+  float hash(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+  }
+  void main() {
+    vec3 d = normalize(vDir);
+    float h = d.y;
+    vec3 col = h > 0.0
+      ? mix(uHorizon, uZenith, pow(h, 0.5))
+      : mix(uHorizon, uGround, pow(-h, 0.5));
+    float haze = 1.0 - smoothstep(0.0, 0.16, h);
+    col = mix(col, uFog, haze * 0.95);
+    float s = max(dot(d, normalize(uSunDir)), 0.0);
+    float glow = pow(s, 64.0) * 1.4 + pow(s, 8.0) * 0.22 + pow(s, 2.0) * 0.04;
+    col += uSunColor * glow * mix(0.35, 1.0, uNight) * (1.0 - uNight * 0.75) * (1.0 - haze * 0.5);
+    if (h >= 0.0 && h < 0.045) {
+      float az = atan(d.z, d.x);
+      float sil = 0.003 + hash(vec2(floor(az * 70.0), 1.0)) * 0.012 + hash(vec2(floor(az * 230.0), 2.0)) * 0.005;
+      float stack = step(0.985, hash(vec2(floor(az * 400.0), 3.0))) * 0.02;
+      float city = 1.0 - step(sil + stack, h);
+      vec3 silCol = uFog * mix(0.8, 0.6, uNight);
+      float lit = uNight * step(0.93, hash(vec2(floor(az * 900.0), floor(h * 900.0)))) * step(h, sil + stack - 0.002);
+      silCol = mix(silCol, vec3(1.0, 0.85, 0.6), lit);
+      col = mix(col, silCol, city * 0.85);
+    }
+    gl_FragColor = vec4(col, 1.0);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
+const starVert = /* glsl */ `
+  attribute float aPhase;
+  attribute float aSize;
+  uniform float uTime;
+  uniform float uAlpha;
+  varying float vA;
+  void main() {
+    float tw = 0.65 + 0.35 * sin(uTime * 1.7 + aPhase * 6.28318);
+    vA = uAlpha * tw;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = aSize * (0.8 + 0.4 * tw);
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+
+const starFrag = /* glsl */ `
+  varying float vA;
+  void main() {
+    vec2 c = gl_PointCoord - 0.5;
+    float d = length(c);
+    float a = smoothstep(0.5, 0.08, d) * vA;
+    gl_FragColor = vec4(vec3(1.0, 0.98, 0.92) * 1.6, a);
+  }
+`;
+
+function Dome() {
+  const dn = useDayNight();
+  const mat = useMemo(
+    () =>
+      new ShaderMaterial({
+        vertexShader: skyVert,
+        fragmentShader: skyFrag,
+        side: BackSide,
+        depthWrite: false,
+        uniforms: {
+          uZenith: { value: new Color() },
+          uHorizon: { value: new Color() },
+          uGround: { value: new Color() },
+          uSunDir: { value: new Vector3() },
+          uSunColor: { value: new Color() },
+          uNight: { value: 1 },
+          uFog: { value: new Color() },
+        },
+      }),
+    [],
+  );
+  const ref = useRef<Mesh>(null);
+  useEffect(() => {
+    const m = ref.current?.material as ShaderMaterial | undefined;
+    if (!m) return;
+    m.uniforms.uZenith.value.copy(dn.sky.zenith);
+    m.uniforms.uHorizon.value.copy(dn.sky.horizon);
+    m.uniforms.uGround.value.copy(dn.sky.ground);
+    m.uniforms.uSunDir.value.set(...dn.sunDir);
+    m.uniforms.uSunColor.value.copy(dn.sunColor);
+    m.uniforms.uNight.value = dn.night;
+    m.uniforms.uFog.value.copy(dn.fog);
+  }, [dn]);
+  const camera = useThree((s) => s.camera);
+  useFrame(() => {
+    ref.current?.position.copy(camera.position);
+  });
+  return (
+    <mesh ref={ref} material={mat} frustumCulled={false} renderOrder={-10}>
+      <sphereGeometry args={[SKY_RADIUS, 48, 24]} />
+    </mesh>
+  );
+}
+
+function Stars() {
+  const dn = useDayNight();
+  const { geometry, material } = useMemo(() => {
+    const rand = mulberry32(7);
+    const n = 2200;
+    const pos = new Float32Array(n * 3);
+    const phase = new Float32Array(n);
+    const size = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const u = rand();
+      const v = rand();
+      const theta = u * Math.PI * 2;
+      const phi = Math.acos(1 - v * 0.92);
+      const r = SKY_RADIUS * 0.92;
+      pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      pos[i * 3 + 1] = r * Math.cos(phi) + 20;
+      pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+      phase[i] = rand();
+      size[i] = range(rand, 2.2, 5.2);
+    }
+    const geometry = new BufferGeometry();
+    geometry.setAttribute("position", new Float32BufferAttribute(pos, 3));
+    geometry.setAttribute("aPhase", new Float32BufferAttribute(phase, 1));
+    geometry.setAttribute("aSize", new Float32BufferAttribute(size, 1));
+    const material = new ShaderMaterial({
+      vertexShader: starVert,
+      fragmentShader: starFrag,
+      transparent: true,
+      depthWrite: false,
+      blending: AdditiveBlending,
+      uniforms: { uTime: { value: 0 }, uAlpha: { value: 0 } },
+    });
+    return { geometry, material };
+  }, []);
+  const ref = useRef<Points>(null);
+  useEffect(() => {
+    const m = ref.current?.material as ShaderMaterial | undefined;
+    if (m) m.uniforms.uAlpha.value = dn.starAlpha;
+  }, [dn]);
+  const camera = useThree((s) => s.camera);
+  useFrame(({ clock }) => {
+    const p = ref.current;
+    if (!p) return;
+    (p.material as ShaderMaterial).uniforms.uTime.value = clock.elapsedTime;
+    p.position.copy(camera.position);
+  });
+  return (
+    <points
+      ref={ref}
+      geometry={geometry}
+      material={material}
+      frustumCulled={false}
+      renderOrder={-9}
+    />
+  );
+}
+
+function SunAndMoon() {
+  const dn = useDayNight();
+  const sunPos = useMemo(() => {
+    const v = new Vector3(...dn.sunDir).normalize().multiplyScalar(SKY_RADIUS * 0.8);
+    return v;
+  }, [dn.sunDir]);
+  const moonPos = useMemo(
+    () => new Vector3(-0.55, 0.58, -0.5).normalize().multiplyScalar(SKY_RADIUS * 0.8),
+    [],
+  );
+  const group = useRef<Group>(null);
+  const camera = useThree((s) => s.camera);
+  useFrame(() => {
+    group.current?.position.copy(camera.position);
+  });
+  const dayAmount = 1 - dn.night;
+  return (
+    <group ref={group}>
+      <mesh position={sunPos} visible={dayAmount > 0.03}>
+        <sphereGeometry args={[34, 24, 16]} />
+        <meshBasicMaterial color={new Color("#fff6d8").multiplyScalar(1.5)} toneMapped={false} fog={false} />
+      </mesh>
+      <mesh position={sunPos} visible={dayAmount > 0.03}>
+        <sphereGeometry args={[110, 24, 16]} />
+        <meshBasicMaterial color="#fff1c0" transparent opacity={0.22} blending={AdditiveBlending} depthWrite={false} toneMapped={false} fog={false} />
+      </mesh>
+      <mesh position={moonPos} visible={dn.night > 0.4}>
+        <sphereGeometry args={[30, 24, 16]} />
+        <meshBasicMaterial color={new Color("#f4eed7").multiplyScalar(1.35)} toneMapped={false} fog={false} />
+      </mesh>
+      <mesh position={moonPos.clone().add(new Vector3(9, 6, 0))} visible={dn.night > 0.4}>
+        <sphereGeometry args={[25, 24, 16]} />
+        <meshBasicMaterial color="#0a0620" fog={false} />
+      </mesh>
+    </group>
+  );
+}
+
+const HIGH_BIRDS = 36;
+const BIRD_GEOMETRY = (() => {
+  const geo = new BufferGeometry();
+  const verts = new Float32Array([-1.1, 0, 0.35, 0, 0, 0, -1.1, 0, -0.35, 1.1, 0, 0.35, 0, 0, 0, 1.1, 0, -0.35]);
+  geo.setAttribute("position", new Float32BufferAttribute(verts, 3));
+  geo.computeVertexNormals();
+  return geo;
+})();
+
+function HighBirds() {
+  const dn = useDayNight();
+  const ref = useRef<InstancedMesh>(null);
+  const dummy = useMemo(() => new Object3D(), []);
+  const flock = useMemo(() => {
+    const rand = mulberry32(44);
+    return Array.from({ length: HIGH_BIRDS }, () => ({ ox: range(rand, -60, 60), oy: range(rand, -10, 10), oz: range(rand, -40, 40), flap: rand() * 10, s: range(rand, 0.7, 1.3) }));
+  }, []);
+  useFrame(({ clock }) => {
+    const m = ref.current;
+    if (!m) return;
+    const t = clock.elapsedTime;
+    const a = t * 0.045;
+    const cx = Math.cos(a) * 520;
+    const cz = -200 + Math.sin(a) * 420;
+    for (let i = 0; i < flock.length; i++) {
+      const b = flock[i];
+      const flap = Math.sin(t * 7 + b.flap) * 0.6;
+      dummy.position.set(cx + b.ox, 150 + b.oy + Math.sin(t * 0.8 + b.flap) * 3, cz + b.oz);
+      dummy.rotation.set(0, -a + Math.PI / 2, flap);
+      dummy.scale.setScalar(b.s);
+      dummy.updateMatrix();
+      m.setMatrixAt(i, dummy.matrix);
+    }
+    m.instanceMatrix.needsUpdate = true;
+  });
+  if (dn.night > 0.8) return null;
+  return (
+    <instancedMesh ref={ref} name="high-birds" args={[BIRD_GEOMETRY, undefined, HIGH_BIRDS]} frustumCulled={false} userData={{ noReflect: true }}>
+      <meshBasicMaterial color="#2a2a30" side={DoubleSide} />
+    </instancedMesh>
+  );
+}
+
+const CLOUD_SPECS = (() => {
+  const rand = mulberry32(21);
+  const out: { x: number; y: number; z: number; w: number; seed: number; segments: number }[] = [];
+  for (let i = 0; i < 6; i++) {
+    out.push({ x: range(rand, -500, 500), y: range(rand, 330, 380), z: range(rand, -650, -180), w: range(rand, 90, 160), seed: i * 7 + 1, segments: 24 });
+  }
+  for (let i = 0; i < 2; i++) {
+    out.push({ x: range(rand, -300, 300), y: range(rand, 340, 390), z: range(rand, 200, 420), w: range(rand, 80, 130), seed: 100 + i * 3, segments: 20 });
+  }
+  for (let i = 0; i < 4; i++) {
+    out.push({ x: range(rand, -900, 900), y: range(rand, 300, 330), z: range(rand, -1100, -700), w: range(rand, 140, 220), seed: 200 + i * 5, segments: 18 });
+  }
+  return out;
+})();
+
+function Cumulus() {
+  const dn = useDayNight();
+  const group = useRef<Group>(null);
+  const tint = useMemo(() => {
+    const dusk = Math.max(0, 1 - Math.abs(dn.night - 0.5) * 2.4);
+    return new Color("#dfe2e6").lerp(new Color("#ffb48c"), dusk * 0.6).lerp(new Color("#2a2a58"), dn.night);
+  }, [dn]);
+  useFrame(({ clock }) => {
+    const g = group.current;
+    if (!g) return;
+    g.position.x = -((clock.elapsedTime * 0.7) % 500) + 250;
+  });
+  return (
+    <group ref={group} name="cumulus">
+      <Clouds material={MeshBasicMaterial} limit={300} frustumCulled={false}>
+        {CLOUD_SPECS.map((c, i) => (
+          <Cloud
+            key={i}
+            seed={c.seed}
+            segments={c.segments}
+            bounds={[c.w, c.w * 0.32, c.w * 0.55]}
+            volume={c.w * 0.95}
+            position={[c.x, c.y, c.z]}
+            color={tint}
+            opacity={(0.78 - dn.night * 0.3) * (0.45 + dn.cloud * 0.55)}
+            speed={0.06}
+            growth={14}
+            fade={140}
+          />
+        ))}
+      </Clouds>
+    </group>
+  );
+}
+
+const coverVert = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vWorld;
+  void main() {
+    vUv = uv;
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vWorld = wp.xyz;
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }
+`;
+
+const coverFrag = /* glsl */ `
+  uniform float uTime;
+  uniform vec3 uTint;
+  uniform vec3 uShade;
+  uniform float uCoverage;
+  uniform float uAlpha;
+  uniform vec3 uSunDir;
+  varying vec2 vUv;
+  varying vec3 vWorld;
+
+  float hash(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+  }
+  float vnoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+  }
+  float fbm(vec2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    for (int i = 0; i < 3; i++) {
+      v += a * vnoise(p);
+      p = p * 2.03 + vec2(17.0, 9.0);
+      a *= 0.5;
+    }
+    return v;
+  }
+  void main() {
+    vec2 p = vWorld.xz * 0.0022 + vec2(uTime * 0.006, uTime * 0.0015);
+    float n = fbm(p);
+    float cover = smoothstep(uCoverage, uCoverage + 0.22, n);
+    vec2 toSun = normalize(uSunDir.xz + vec2(0.001)) * 0.03;
+    float n2 = vnoise(p * 4.1 + toSun * 4.0 + vec2(17.0, 9.0)) * 0.125 + vnoise(p * 2.03 + toSun * 2.0 + vec2(17.0, 9.0)) * 0.25 + vnoise(p + toSun) * 0.5;
+    float lit = clamp(0.55 + (n2 - n) * 9.0, 0.3, 1.15);
+    vec3 col = mix(uShade, uTint, lit);
+    float dist = length(vWorld.xz - cameraPosition.xz);
+    float far = 1.0 - smoothstep(1800.0, 3600.0, dist);
+    gl_FragColor = vec4(col, cover * uAlpha * far);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
+function CloudCover() {
+  const dn = useDayNight();
+  const ref = useRef<Mesh>(null);
+  const mat = useMemo(
+    () =>
+      new ShaderMaterial({
+        vertexShader: coverVert,
+        fragmentShader: coverFrag,
+        transparent: true,
+        depthWrite: false,
+        side: DoubleSide,
+        uniforms: {
+          uTime: { value: 0 },
+          uTint: { value: new Color("#e9ebee") },
+          uShade: { value: new Color("#8d939e") },
+          uCoverage: { value: 0.52 },
+          uAlpha: { value: 0.85 },
+          uSunDir: { value: new Vector3(0.5, 0.8, -0.3) },
+        },
+      }),
+    [],
+  );
+  useEffect(() => {
+    const m = ref.current?.material as ShaderMaterial | undefined;
+    if (!m) return;
+    const dusk = Math.max(0, 1 - Math.abs(dn.night - 0.5) * 2.4);
+    m.uniforms.uTint.value.set("#e9ebee").lerp(new Color("#ffc39a"), dusk * 0.7).lerp(new Color("#3a3a6a"), dn.night);
+    m.uniforms.uShade.value.set("#8d939e").lerp(new Color("#c06a5a"), dusk * 0.6).lerp(new Color("#13142c"), dn.night);
+    m.uniforms.uCoverage.value = Math.min(0.9, Math.max(0.1, 0.64 - dn.cloud * 0.5 + dn.night * 0.18));
+    m.uniforms.uAlpha.value = (0.85 - dn.night * 0.35) * (0.5 + dn.cloud * 0.5);
+    m.uniforms.uSunDir.value.set(...dn.sunDir);
+  }, [dn]);
+  useFrame(({ clock }) => {
+    const p = ref.current;
+    if (!p) return;
+    (p.material as ShaderMaterial).uniforms.uTime.value = clock.elapsedTime;
+  });
+  return (
+    <mesh ref={ref} material={mat} rotation-x={-Math.PI / 2} position={[0, 520, 0]} frustumCulled={false} renderOrder={-5}>
+      <planeGeometry args={[9000, 9000, 1, 1]} />
+    </mesh>
+  );
+}
+
+export default function Sky() {
+  const root = useRef<Group>(null);
+  useEffect(() => enableReflection(root.current), []);
+  return (
+    <group ref={root}>
+      <Dome />
+      <Stars />
+      <SunAndMoon />
+      <CloudCover />
+      <Cumulus />
+      <HighBirds />
+    </group>
+  );
+}
