@@ -70,20 +70,23 @@ export function outerRoadLinesZ(): number[] {
   return zs;
 }
 
-export const LIGHT_CYCLE = 14;
+export const LIGHT_CYCLE = 16;
+const GREEN_UNTIL = 0.35;
+const AMBER_UNTIL = 0.42;
 
-export function lightIsGreen(axis: "x" | "z", ix: number, iz: number, time: number): boolean {
+function lightPhase(axis: "x" | "z", ix: number, iz: number, time: number) {
   const cycle = (time % LIGHT_CYCLE) / LIGHT_CYCLE;
   const phase = ((ix + iz) % 2) * 0.5 + (axis === "x" ? 0.5 : 0);
-  const c = (cycle + phase) % 1;
-  return c < 0.44;
+  return (cycle + phase) % 1;
+}
+
+export function lightIsGreen(axis: "x" | "z", ix: number, iz: number, time: number): boolean {
+  return lightPhase(axis, ix, iz, time) < GREEN_UNTIL;
 }
 
 export function lightIsAmber(axis: "x" | "z", ix: number, iz: number, time: number): boolean {
-  const cycle = (time % LIGHT_CYCLE) / LIGHT_CYCLE;
-  const phase = ((ix + iz) % 2) * 0.5 + (axis === "x" ? 0.5 : 0);
-  const c = (cycle + phase) % 1;
-  return c >= 0.44 && c < 0.5;
+  const c = lightPhase(axis, ix, iz, time);
+  return c >= GREEN_UNTIL && c < AMBER_UNTIL;
 }
 
 export function nearIntersection(v: number, half: number): boolean {

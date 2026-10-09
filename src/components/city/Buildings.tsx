@@ -26,6 +26,7 @@ import {
   blockCenter,
 } from "./layout";
 import { mulberry32, pick, range } from "./rng";
+import { labelTexture } from "./labels";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { makeShadowBlobTexture } from "./textures";
 import { useBaseBoxGeometry } from "./instancing";
@@ -231,20 +232,65 @@ function InstancedLots({ lots, winSize }: { lots: Lot[]; winSize?: [number, numb
   );
 }
 
-function StreetLevel({ lots }: { lots: Lot[] }) {
+const SHOP_SIGNS = [
+  { text: "CONEY ISLAND", bg: "#c8102e", fg: "#f4f1ea" },
+  { text: "PARTY STORE · LOTTO", bg: "#1d2a6a", fg: "#ffb02e" },
+  { text: "BARBER", bg: "#14101c", fg: "#f4f1ea", border: "#c8102e" },
+  { text: "RECORDS · TAPES", bg: "#2f8a5a", fg: "#f4f1ea" },
+  { text: "CASS CORRIDOR CAFE", bg: "#f4f1ea", fg: "#1d1d3f" },
+  { text: "TAILOR & CLEANERS", bg: "#8a2f63", fg: "#f4f1ea" },
+  { text: "313 PIZZA", bg: "#ffb02e", fg: "#1d1d3f" },
+  { text: "GALLERY", bg: "#14101c", fg: "#d6b56e", border: "#d6b56e" },
+  { text: "COFFEE · DONUTS", bg: "#5a4636", fg: "#f4f1ea" },
+  { text: "VINTAGE", bg: "#1d1d3f", fg: "#49f2d6" },
+];
+
+interface SignSpot {
+  x: number;
+  z: number;
+  rot: number;
+  w: number;
+}
+
+function ShopSigns({ spots, sign }: { spots: SignSpot[]; sign: (typeof SHOP_SIGNS)[number] }) {
   const dn = useDayNight();
+  const ref = useRef<InstancedMesh>(null);
+  const mat = useRef<MeshStandardMaterial>(null);
+  const tex = useMemo(() => labelTexture(sign.text, { width: 512, height: 112, bg: sign.bg, fg: sign.fg, border: sign.border, size: 64 }), [sign]);
+  useEffect(() => {
+    const dummy = new Object3D();
+    const m = ref.current;
+    if (!m) return;
+    spots.forEach((it, i) => {
+      dummy.position.set(it.x, 0.4 + 3.8, it.z);
+      dummy.rotation.set(0, it.rot, 0);
+      dummy.scale.set(it.w, it.w * 0.22, 1);
+      dummy.updateMatrix();
+      m.setMatrixAt(i, dummy.matrix);
+    });
+    m.instanceMatrix.needsUpdate = true;
+  }, [spots]);
+  useEffect(() => {
+    if (mat.current) mat.current.emissiveIntensity = 0.1 + dn.night * 0.9;
+  }, [dn]);
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, spots.length]}>
+      <planeGeometry args={[1, 1]} />
+      <meshStandardMaterial ref={mat} map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.1} roughness={0.6} />
+    </instancedMesh>
+  );
+}
+
+function StreetLevel({ lots }: { lots: Lot[] }) {
   const awnings = useRef<InstancedMesh>(null);
-  const signs = useRef<InstancedMesh>(null);
-  const signMat = useRef<MeshStandardMaterial>(null);
   const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const rand = mulberry32(777);
     const awn: { x: number; z: number; rot: number; color: Color; w: number }[] = [];
-    const sg: { x: number; z: number; rot: number; color: Color }[] = [];
+    const signs: SignSpot[][] = SHOP_SIGNS.map(() => []);
     const palette = ["#c8102e", "#1d2a6a", "#2f8a5a", "#f4f1ea", "#d6b56e", "#8a2f63"];
-    const neon = ["#ff4fa3", "#49f2d6", "#ffb02e", "#9dff57", "#c9a6ff", "#ff8a3a"];
     lots.forEach((l) => {
-      if (l.y) return;
+      if (l.y || l.h < 6) return;
       const sides: [number, number, number][] = [
         [l.x, l.z + l.d / 2, 0],
         [l.x, l.z - l.d / 2, Math.PI],
@@ -258,20 +304,19 @@ function StreetLevel({ lots }: { lots: Lot[] }) {
           const t = (k + 0.5 + (rand() - 0.5) * 0.5) / n - 0.5;
           const ox = Math.cos(rot) * t * len * 0.8;
           const oz = -Math.sin(rot) * t * len * 0.8;
-          const nx = Math.sin(rot) * 0.9;
-          const nz = Math.cos(rot) * 0.9;
+          const nx = Math.sin(rot);
+          const nz = Math.cos(rot);
           const w = range(rand, 2.2, 3.6);
-          awn.push({ x: sx + ox + nx, z: sz + oz + nz, rot, color: new Color(pick(rand, palette)), w });
-          if (rand() < 0.6) sg.push({ x: sx + ox + nx * 0.3, z: sz + oz + nz * 0.3, rot, color: new Color(pick(rand, neon)).multiplyScalar(2.2) });
+          if (rand() < 0.5) awn.push({ x: sx + ox + nx * 0.9, z: sz + oz + nz * 0.9, rot, color: new Color(pick(rand, palette)), w });
+          if (rand() < 0.6) signs[Math.floor(rand() * SHOP_SIGNS.length)].push({ x: sx + ox + nx * 0.08, z: sz + oz + nz * 0.08, rot, w: Math.min(3.4, len * 0.6 / n) });
         }
       });
     });
-    return { awn, sg };
+    return { awn, signs };
   }, [lots]);
   useEffect(() => {
     const a = awnings.current;
-    const s = signs.current;
-    if (!a || !s) return;
+    if (!a) return;
     items.awn.forEach((it, i) => {
       dummy.position.set(it.x, 0.4 + 3.1, it.z);
       dummy.rotation.set(0.35, it.rot, 0);
@@ -280,32 +325,16 @@ function StreetLevel({ lots }: { lots: Lot[] }) {
       a.setMatrixAt(i, dummy.matrix);
       a.setColorAt(i, it.color);
     });
-    items.sg.forEach((it, i) => {
-      dummy.position.set(it.x, 0.4 + 4.4, it.z);
-      dummy.rotation.set(0, it.rot, 0);
-      dummy.scale.set(1, 1, 1);
-      dummy.updateMatrix();
-      s.setMatrixAt(i, dummy.matrix);
-      s.setColorAt(i, it.color);
-    });
     a.instanceMatrix.needsUpdate = true;
-    s.instanceMatrix.needsUpdate = true;
     if (a.instanceColor) a.instanceColor.needsUpdate = true;
-    if (s.instanceColor) s.instanceColor.needsUpdate = true;
   }, [items, dummy]);
-  useEffect(() => {
-    if (signMat.current) signMat.current.emissiveIntensity = 0.2 + dn.night * 1.4;
-  }, [dn]);
   return (
     <group>
       <instancedMesh ref={awnings} args={[undefined, undefined, items.awn.length]}>
         <boxGeometry args={[1, 0.12, 1.4]} />
         <meshStandardMaterial color="#ffffff" roughness={0.9} />
       </instancedMesh>
-      <instancedMesh ref={signs} args={[undefined, undefined, items.sg.length]}>
-        <boxGeometry args={[1.8, 0.55, 0.14]} />
-        <meshStandardMaterial ref={signMat} color="#ffffff" emissive="#ffffff" emissiveIntensity={1} toneMapped={false} />
-      </instancedMesh>
+      {SHOP_SIGNS.map((sign, i) => items.signs[i].length > 0 && <ShopSigns key={sign.text} spots={items.signs[i]} sign={sign} />)}
     </group>
   );
 }

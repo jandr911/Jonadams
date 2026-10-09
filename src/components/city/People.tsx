@@ -296,9 +296,13 @@ function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: numbe
     let elL = 0.25;
     let elR = 0.25;
     let bob = 0;
+    let heading: 1 | -1 = p.dir;
     if (p.mode === "walk") {
-      const u = (((p.start + (t * p.speed * p.dir) / p.len) % 1) + 1) % 1;
-      const along = (u - 0.5) * p.len;
+      const u = (p.start + (t * p.speed) / (2 * p.len)) % 1;
+      const outbound = u < 0.5;
+      const tri = outbound ? u * 2 : 2 - u * 2;
+      const along = (tri - 0.5) * p.len * p.dir;
+      heading = outbound ? p.dir : p.dir === 1 ? -1 : 1;
       x = p.axis === "x" ? p.x + along : p.x;
       z = p.axis === "x" ? p.z : p.z + along;
     }
@@ -306,7 +310,7 @@ function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: numbe
     const dz = z - camZ;
     if (dx * dx + dz * dz > 22500 && (s.frame + i) % 4 !== 0) continue;
     if (p.mode === "walk") {
-      yaw = p.axis === "x" ? (p.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : p.dir > 0 ? 0 : Math.PI;
+      yaw = p.axis === "x" ? (heading > 0 ? Math.PI / 2 : -Math.PI / 2) : heading > 0 ? 0 : Math.PI;
       const w = t * p.speed * 5.2 + p.phase;
       const sw = Math.sin(w);
       hipL = sw * 0.5;

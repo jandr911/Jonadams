@@ -30,6 +30,7 @@ import { mulberry32, pick, range } from "./rng";
 
 function TrafficLights() {
   const poles = useRef<InstancedMesh>(null);
+  const housings = useRef<InstancedMesh>(null);
   const lamps = useRef<InstancedMesh>(null);
   const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
@@ -46,8 +47,8 @@ function TrafficLights() {
   }, []);
   useEffect(() => {
     const p = poles.current;
-    const l = lamps.current;
-    if (!p || !l) return;
+    const h = housings.current;
+    if (!p || !h) return;
     items.forEach((it, i) => {
       dummy.position.set(it.x, 2.6, it.z);
       dummy.rotation.set(0, 0, 0);
@@ -56,14 +57,14 @@ function TrafficLights() {
       dummy.position.set(it.x, 4.8, it.z);
       dummy.rotation.set(0, it.rot, 0);
       dummy.updateMatrix();
-      l.setMatrixAt(i, dummy.matrix);
+      h.setMatrixAt(i, dummy.matrix);
     });
     p.instanceMatrix.needsUpdate = true;
-    l.instanceMatrix.needsUpdate = true;
+    h.instanceMatrix.needsUpdate = true;
   }, [items, dummy]);
-  const red = useMemo(() => new Color("#ff2a3c").multiplyScalar(3), []);
-  const green = useMemo(() => new Color("#2aff7a").multiplyScalar(3), []);
-  const amber = useMemo(() => new Color("#ffb02e").multiplyScalar(3), []);
+  const red = useMemo(() => new Color("#ff2a3c").multiplyScalar(1.6), []);
+  const green = useMemo(() => new Color("#2aff7a").multiplyScalar(1.6), []);
+  const amber = useMemo(() => new Color("#ffb02e").multiplyScalar(1.6), []);
   const lastTick = useRef(-1);
   useFrame(({ clock }) => {
     const l = lamps.current;
@@ -73,8 +74,15 @@ function TrafficLights() {
     if (tick === lastTick.current) return;
     lastTick.current = tick;
     items.forEach((it, i) => {
-      l.setColorAt(i, lightIsGreen(it.axis, it.ix, it.iz, time) ? green : lightIsAmber(it.axis, it.ix, it.iz, time) ? amber : red);
+      const isGreen = lightIsGreen(it.axis, it.ix, it.iz, time);
+      const isAmber = !isGreen && lightIsAmber(it.axis, it.ix, it.iz, time);
+      l.setColorAt(i, isGreen ? green : isAmber ? amber : red);
+      dummy.position.set(it.x + Math.sin(it.rot) * 0.27, 4.8 + (isGreen ? -0.4 : isAmber ? 0 : 0.4), it.z + Math.cos(it.rot) * 0.27);
+      dummy.rotation.set(0, 0, 0);
+      dummy.updateMatrix();
+      l.setMatrixAt(i, dummy.matrix);
     });
+    l.instanceMatrix.needsUpdate = true;
     if (l.instanceColor) l.instanceColor.needsUpdate = true;
   });
   return (
@@ -83,8 +91,12 @@ function TrafficLights() {
         <cylinderGeometry args={[0.1, 0.12, 5.2, 5]} />
         <meshStandardMaterial color="#3a3a58" />
       </instancedMesh>
-      <instancedMesh ref={lamps} args={[undefined, undefined, items.length]}>
-        <boxGeometry args={[0.5, 1.2, 0.5]} />
+      <instancedMesh ref={housings} args={[undefined, undefined, items.length]}>
+        <boxGeometry args={[0.5, 1.3, 0.5]} />
+        <meshStandardMaterial color="#1f1f28" roughness={0.7} />
+      </instancedMesh>
+      <instancedMesh ref={lamps} args={[undefined, undefined, items.length]} frustumCulled={false}>
+        <sphereGeometry args={[0.15, 8, 6]} />
         <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={1} toneMapped={false} />
       </instancedMesh>
     </group>

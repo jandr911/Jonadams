@@ -7,7 +7,7 @@ import { useWindowMaterial } from "./useWindowMaterial";
 import { useDayNight } from "./DayNightContext";
 import { AMBASSADOR_CLEAR_HALF, AMBASSADOR_RAMP_Z, AMBASSADOR_X, CITY_HALF_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR, ROAD } from "./layout";
 import { mulberry32, pick, range } from "./rng";
-import { CROWN_PINE, TRUNK_COLOR, useCrownGeometry } from "./trees";
+import { CROWN_PINE, TRUNK_COLOR, useCrownGeometry, useCrownMaterial } from "./trees";
 import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
 import { FLEET_COLORS, type VehicleKind } from "./vehicles";
 
@@ -337,6 +337,7 @@ function SuburbTrees({ trees }: { trees: { x: number; z: number; s: number }[] }
   const trunks = useRef<InstancedMesh>(null);
   const crowns = useRef<InstancedMesh>(null);
   const crownGeo = useCrownGeometry(2.1, 23, "far");
+  const crownMat = useCrownMaterial(CROWN_PINE);
   useEffect(() => {
     const dummy = new Object3D();
     const t = trunks.current;
@@ -362,9 +363,7 @@ function SuburbTrees({ trees }: { trees: { x: number; z: number; s: number }[] }
         <cylinderGeometry args={[0.2, 0.3, 2.4, 5]} />
         <meshStandardMaterial color={TRUNK_COLOR} roughness={1} />
       </instancedMesh>
-      <instancedMesh ref={crowns} args={[crownGeo, undefined, trees.length]}>
-        <meshStandardMaterial color={CROWN_PINE} roughness={1} />
-      </instancedMesh>
+      <instancedMesh ref={crowns} args={[crownGeo, crownMat, trees.length]} />
     </group>
   );
 }
@@ -441,7 +440,7 @@ function poseFreewayCar(f: FreewayFleet, i: number, out: VehiclePose, time: numb
     const dt = f.last < 0 ? 0 : Math.min(time - f.last, 0.05);
     f.last = time;
     for (const c of f.cars) {
-      const dir = c.lane > 0 ? 1 : -1;
+      const dir = c.lane < 0 ? 1 : -1;
       c.z += c.speed * dt * dir;
       c.spin += (c.speed * dt) / 0.4;
       if (c.z > FREEWAY_Z1) c.z = FREEWAY_Z0;
@@ -452,7 +451,7 @@ function poseFreewayCar(f: FreewayFleet, i: number, out: VehiclePose, time: numb
   out.x = FREEWAY_X + c.lane;
   out.y = FREEWAY_Y + 0.5;
   out.z = c.z;
-  out.yaw = c.lane > 0 ? 0 : Math.PI;
+  out.yaw = c.lane < 0 ? 0 : Math.PI;
   out.spin = c.spin;
 }
 
@@ -483,7 +482,7 @@ function Freeway() {
     l.instanceMatrix.needsUpdate = true;
   }, [pylonCount]);
   useEffect(() => {
-    if (lampMat.current) lampMat.current.emissiveIntensity = 0.2 + dn.night * 2.6;
+    if (lampMat.current) lampMat.current.emissiveIntensity = 0.2 + dn.night * 1.3;
   }, [dn]);
   const len = FREEWAY_Z1 - FREEWAY_Z0;
   const mid = (FREEWAY_Z0 + FREEWAY_Z1) / 2;

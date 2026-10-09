@@ -1,13 +1,11 @@
 "use client";
 
 import { Text } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import { AdditiveBlending, CanvasTexture, Color, InstancedMesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
 import { useDayNight } from "./DayNightContext";
 import { CITY_HALF_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, PITCH, STREETS_EW, STREETS_NS, WOODWARD_INDEX, nearIntersection, outerRoadLinesX, outerRoadLinesZ, roadLinesX, roadLinesZ } from "./layout";
 import { DISPLAY_FONT } from "./NeonSign";
-import { Group } from "three";
 
 function LaneDashes() {
   const ref = useRef<InstancedMesh>(null);
@@ -204,7 +202,7 @@ function Streetlights() {
   }, [items, dummy]);
   useEffect(() => {
     if (!headMat.current) return;
-    headMat.current.emissiveIntensity = 0.1 + dn.night * 2.4;
+    headMat.current.emissiveIntensity = 0.1 + dn.night * 1.2;
     headMat.current.color.set(new Color("#ffffff").lerp(new Color("#ffd27a"), dn.night));
   }, [dn]);
   return (
@@ -254,51 +252,6 @@ function WoodwardMedian() {
       <boxGeometry args={[1.2, 0.24, 1]} />
       <meshStandardMaterial color="#6a6488" roughness={0.9} />
     </instancedMesh>
-  );
-}
-
-function QLine() {
-  const dn = useDayNight();
-  const x = roadLinesX()[WOODWARD_INDEX];
-  const cars = useRef<(Group | null)[]>([]);
-  const winMat = useRef<MeshStandardMaterial>(null);
-  useEffect(() => {
-    if (winMat.current) winMat.current.emissiveIntensity = 0.3 + dn.night * 1.6;
-  }, [dn]);
-  useFrame(({ clock }) => {
-    const span = CITY_HALF_Z * 2 - 6;
-    cars.current.forEach((g, i) => {
-      if (!g) return;
-      const dir = i === 0 ? 1 : -1;
-      const t = ((clock.elapsedTime * 4.5 + i * 97) % (span * 2)) / span;
-      const u = t < 1 ? t : 2 - t;
-      g.position.set(x + dir * 1.6, 0.9, -CITY_HALF_Z + 3 + u * span);
-    });
-  });
-  return (
-    <group>
-      {[0, 1].map((i) => (
-        <group
-          key={i}
-          ref={(el) => {
-            cars.current[i] = el;
-          }}
-        >
-          <mesh position={[0, 1.2, 0]} castShadow>
-            <boxGeometry args={[2.2, 2.4, 11]} />
-            <meshStandardMaterial color="#c8102e" roughness={0.4} metalness={0.2} />
-          </mesh>
-          <mesh position={[0, 1.6, 0]}>
-            <boxGeometry args={[2.3, 0.9, 10.6]} />
-            <meshStandardMaterial ref={i === 0 ? winMat : undefined} color="#bfe6ff" emissive="#bfe6ff" emissiveIntensity={1.2} toneMapped={false} />
-          </mesh>
-          <mesh position={[0, 2.5, 0]}>
-            <boxGeometry args={[1.8, 0.2, 10.4]} />
-            <meshStandardMaterial color="#e8e8f2" roughness={0.5} />
-          </mesh>
-        </group>
-      ))}
-    </group>
   );
 }
 
@@ -360,7 +313,6 @@ export default function Roads() {
       <Crosswalks />
       <Streetlights />
       <WoodwardMedian />
-      <QLine />
       <StreetSigns />
     </group>
   );
