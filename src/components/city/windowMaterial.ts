@@ -87,6 +87,7 @@ const fragmentShader = /* glsl */ `
 
   const float SHOP_GLAZING_TOP = 3.4;
   const float SHOP_FASCIA_TOP = 4.2;
+  const float COOL_WINDOW_THRESHOLD = 0.94;
 
   float hash(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -137,7 +138,10 @@ const fragmentShader = /* glsl */ `
     float streak = vnoise(vec2(vFace.x * 0.35 + vSeed, vFace.y * 0.05));
     float roofStain = streak * smoothstep(vSize.y * 0.72, vSize.y, vLocalY);
     float soot = grain * 0.12;
-    float grime = 1.0 - (0.34 * streak * (1.0 - smoothstep(0.0, vSize.y * 0.6, vLocalY)) + 0.3 * roofStain + soot) * (1.0 - isGlass);
+    float runLength = vnoise(vec2(vFace.x * 0.9 + vSeed * 3.1, 7.0)) * vSize.y * 0.85;
+    float runLine = smoothstep(0.55, 0.85, vnoise(vec2(vFace.x * 2.6 + vSeed, 1.3)));
+    float rain = runLine * (1.0 - smoothstep(0.0, max(runLength, 0.5), vSize.y - vLocalY));
+    float grime = 1.0 - (0.34 * streak * (1.0 - smoothstep(0.0, vSize.y * 0.6, vLocalY)) + 0.3 * roofStain + 0.28 * rain + soot) * (1.0 - isGlass);
     float groundAO = 0.72 + 0.28 * smoothstep(0.0, 4.5, vLocalY);
 
     vec3 base = vColor * masonry * grime * groundAO;
@@ -167,15 +171,10 @@ const fragmentShader = /* glsl */ `
     float floorDark = step(0.12, hash(vec2(cell.y, vSeed * 3.7)));
     float lit = max(step(1.0 - uLitDensity * uNight, h) * floorDark, shop * step(0.25, h) * uNight);
     float flick = 1.0 - 0.45 * step(0.992, hash(cell + floor(uTime * 0.7) + vSeed));
-    vec3 tint = mix(uWarm, uCool, step(0.72, hash(cell * 1.71 + vSeed)));
+    vec3 tint = mix(uWarm, uCool, step(COOL_WINDOW_THRESHOLD, hash(cell * 1.71 + vSeed)));
     float hue = hash(cell * 0.77 + vSeed * 2.3);
-    tint = mix(tint, tint * vec3(0.9, 0.97, 1.1), step(0.8, hue));
-    tint = mix(tint, tint * vec3(1.1, 0.97, 0.88), step(hue, 0.15));
-    if (shop > 0.0) {
-      float neonPick = hash(vec2(vSeed * 5.3, 11.0));
-      vec3 neonCol = mix(mix(vec3(1.0, 0.31, 0.64), vec3(0.29, 0.95, 0.84), step(0.33, neonPick)), vec3(1.0, 0.69, 0.18), step(0.66, neonPick));
-      tint = mix(tint, neonCol, step(0.45, hash(vec2(vSeed * 2.1, 13.0))));
-    }
+    tint = mix(tint, tint * vec3(1.0, 0.98, 0.9), step(0.8, hue));
+    tint = mix(tint, tint * vec3(1.08, 0.88, 0.66), step(hue, 0.3));
     float bright = mix(0.55, 1.15, hash(cell * 3.3 + vSeed * 5.9));
     float skyGrad = smoothstep(0.0, max(vSize.y, 1.0), vLocalY);
 
@@ -230,9 +229,12 @@ const fragmentShader = /* glsl */ `
     vec3 col = mix(facade, win, inWin);
     // rust and water streaks running down from a few sills
     float under = step(f.y, margin.y) * (1.0 - inWin) * (1.0 - vTop) * (1.0 - isGlass) * (1.0 - shop);
-    float streakHere = step(0.8, hash(cell + vSeed * 2.9)) * step(abs(f.x - 0.5), 0.08 + 0.12 * hash(cell * 1.9 + vSeed));
-    float rust = under * streakHere * (1.0 - smoothstep(0.0, margin.y, f.y)) * 0.8;
-    col = mix(col, col * vec3(0.55, 0.42, 0.34), rust);
+    float stainPick = hash(cell + vSeed * 2.9);
+    float fromSill = smoothstep(0.0, margin.y, f.y);
+    float stainWidth = (0.08 + 0.2 * hash(cell * 1.9 + vSeed)) * (0.4 + 0.6 * fromSill);
+    float belowSill = under * step(abs(f.x - 0.5), stainWidth) * fromSill;
+    col = mix(col, col * 0.62, belowSill * step(0.45, stainPick) * 0.5);
+    col = mix(col, col * vec3(0.55, 0.42, 0.34), belowSill * step(0.85, stainPick) * 0.8);
     float sillShadow = step(f.y, margin.y) * step(margin.y - 0.06, f.y) * (1.0 - vTop) * (1.0 - isGlass) * (1.0 - shop);
     col = mix(col, col * 0.7, sillShadow);
     col = mix(col, vec3(0.06, 0.05, 0.07) + tint * 0.06 * uNight, doorMask);
@@ -286,7 +288,7 @@ export function createWindowMaterial(opts: WindowMaterialOptions = {}) {
         uCylindrical: { value: opts.cylindrical ? 1 : 0 },
         uShop: { value: opts.storefront === false || opts.cylindrical ? 0 : 1 },
         uGlow: { value: opts.glow ?? 0 },
-        uColor: { value: new Color(opts.color ?? "#5a4d7a") },
+        uColor: { value: new Color(opts.color ?? "#5e5a56") },
         uNight: { value: 1 },
         uTime: { value: 0 },
         uSunDir: { value: new Vector3(0.5, 0.8, -0.3) },

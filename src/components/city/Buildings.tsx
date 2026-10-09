@@ -242,7 +242,7 @@ const SHOP_SIGNS = [
   { text: "313 PIZZA", bg: "#ffb02e", fg: "#1d1d3f" },
   { text: "GALLERY", bg: "#14101c", fg: "#d6b56e", border: "#d6b56e" },
   { text: "COFFEE · DONUTS", bg: "#5a4636", fg: "#f4f1ea" },
-  { text: "VINTAGE", bg: "#1d1d3f", fg: "#49f2d6" },
+  { text: "VINTAGE", bg: "#1d1d3f", fg: "#d6b56e" },
 ];
 
 interface SignSpot {
@@ -258,7 +258,7 @@ function ShopSigns({ spots, sign }: { spots: SignSpot[]; sign: (typeof SHOP_SIGN
   const tubes = useRef<InstancedMesh>(null);
   const mat = useRef<MeshStandardMaterial>(null);
   const tubeMat = useRef<MeshStandardMaterial>(null);
-  const tex = useMemo(() => labelTexture(sign.text, { width: 512, height: 112, bg: sign.bg, fg: sign.fg, border: sign.border, size: 64 }), [sign]);
+  const tex = useMemo(() => labelTexture(sign.text, { width: 512, height: 112, bg: sign.bg, fg: sign.fg, border: sign.border, size: 64, weathered: true }), [sign]);
   useEffect(() => {
     const dummy = new Object3D();
     const m = ref.current;
@@ -280,7 +280,7 @@ function ShopSigns({ spots, sign }: { spots: SignSpot[]; sign: (typeof SHOP_SIGN
   }, [spots]);
   useEffect(() => {
     if (mat.current) mat.current.emissiveIntensity = 0.1 + dn.night * 0.9;
-    if (tubeMat.current) tubeMat.current.emissiveIntensity = 0.3 + dn.night * 3.2;
+    if (tubeMat.current) tubeMat.current.emissiveIntensity = 0.1 + dn.night * 1.8;
   }, [dn]);
   return (
     <group>
@@ -290,7 +290,7 @@ function ShopSigns({ spots, sign }: { spots: SignSpot[]; sign: (typeof SHOP_SIGN
       </instancedMesh>
       <instancedMesh ref={tubes} args={[undefined, undefined, spots.length]}>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial ref={tubeMat} color={sign.border ?? sign.fg} emissive={sign.border ?? sign.fg} emissiveIntensity={0.3} toneMapped={false} />
+        <meshStandardMaterial ref={tubeMat} color="#fff1d0" emissive="#ffd9a8" emissiveIntensity={0.1} toneMapped={false} />
       </instancedMesh>
     </group>
   );
@@ -543,7 +543,7 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
       </instancedMesh>
       <instancedMesh ref={bulkheads} args={[undefined, undefined, bulkLots.length]}>
         <boxGeometry args={[1, 2.6, 1]} />
-        <meshStandardMaterial color="#6a6070" roughness={0.9} />
+        <meshStandardMaterial color="#6c6862" roughness={0.9} />
       </instancedMesh>
       <instancedMesh ref={units} args={[undefined, undefined, unitLots.length]}>
         <boxGeometry args={[1.2, 1, 1.2]} />
@@ -585,8 +585,8 @@ interface Placed {
 
 const BILLBOARD_ADS = [
   { text: "J. ADAMS · NEW SINGLE OUT NOW", bg: "#07060f", fg: "#f3dfae", border: "#d6b56e" },
-  { text: "ADAMS UNIVERSECITY · DETROIT", bg: "#1d1d3f", fg: "#49f2d6" },
-  { text: "CLUB ADAMS · TONIGHT · RENCEN", bg: "#ff4fa3", fg: "#07060f" },
+  { text: "ADAMS UNIVERSECITY · DETROIT", bg: "#1d1d3f", fg: "#f4f1ea" },
+  { text: "CLUB ADAMS · TONIGHT · RENCEN", bg: "#d6b56e", fg: "#07060f" },
   { text: "LISTEN · LIVE AT THE FOX", bg: "#b52c24", fg: "#ffe08a" },
   { text: "313 · MOTOR CITY", bg: "#f4f1ea", fg: "#1d1d3f" },
   { text: "EASTERN MARKET · SATURDAYS", bg: "#2f8a5a", fg: "#f4f1ea" },
@@ -599,7 +599,7 @@ function BillboardFaces({ spots, ad }: { spots: Placed[]; ad: (typeof BILLBOARD_
   const dn = useDayNight();
   const ref = useRef<InstancedMesh>(null);
   const mat = useRef<MeshStandardMaterial>(null);
-  const tex = useMemo(() => labelTexture(ad.text, { width: 512, height: 184, bg: ad.bg, fg: ad.fg, border: ad.border, size: 75 }), [ad]);
+  const tex = useMemo(() => labelTexture(ad.text, { width: 512, height: 184, bg: ad.bg, fg: ad.fg, border: ad.border, size: 75, weathered: true }), [ad]);
   useEffect(() => {
     const dummy = new Object3D();
     const m = ref.current;

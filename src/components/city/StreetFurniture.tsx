@@ -298,7 +298,7 @@ export default function StreetFurniture() {
       if (m.instanceColor) m.instanceColor.needsUpdate = true;
     }
   }, [items]);
-  const colors: Record<Kind, string> = { hydrant: "#c8102e", bin: "#ffffff", bench: "#5a4636", rack: "#8a8f9c", bike: "#ffffff", paper: "#ffffff", mailbox: "#2a3a7a", cone: "#ff7a1a", manhole: "#3a3a40", drain: "#2a2a30", ramp: "#8a84a0" };
+  const colors: Record<Kind, string> = { hydrant: "#c8102e", bin: "#ffffff", bench: "#5a4636", rack: "#8a8f9c", bike: "#ffffff", paper: "#ffffff", mailbox: "#2a3a7a", cone: "#ff7a1a", manhole: "#3a3a40", drain: "#2a2a30", ramp: "#8f8c86" };
   const xs = outerRoadLinesX();
   const zs = outerRoadLinesZ();
   const shelters: { position: [number, number, number]; rotation: number }[] = [

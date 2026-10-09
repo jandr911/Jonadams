@@ -1822,40 +1822,49 @@ body {
 }
 .city-pad {
   display: flex;
-  gap: 8px;
-  padding: 8px;
+  gap: 6px;
+  padding: 5px;
   border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--panel);
-  backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ink) 35%, transparent);
+  opacity: 0.5;
+  transition: opacity 0.2s;
   user-select: none;
   touch-action: none;
 }
+.city-pad:hover,
+.city-pad:focus-within {
+  opacity: 1;
+}
+@media (hover: none) {
+  .city-pad {
+    opacity: 0.8;
+  }
+}
 .city-pad__grid {
   display: grid;
-  grid-template-columns: repeat(3, 34px);
-  grid-template-rows: repeat(3, 34px);
-  gap: 4px;
+  grid-template-columns: repeat(3, 26px);
+  grid-template-rows: repeat(3, 26px);
+  gap: 3px;
 }
 .city-pad__col {
   display: grid;
-  grid-template-columns: 34px 34px;
-  grid-template-rows: repeat(2, 34px);
-  gap: 4px;
+  grid-template-columns: 26px 26px;
+  grid-template-rows: repeat(2, 26px);
+  gap: 3px;
   align-content: start;
-  margin-top: 19px;
+  margin-top: 14.5px;
 }
 .city-pad__btn {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--paper);
-  font-size: 16px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
   line-height: 1;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;

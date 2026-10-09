@@ -45,20 +45,20 @@ const DUSK = {
   zenith: new Color("#1c2a6a"),
   horizon: new Color("#ff8a3a"),
   ground: new Color("#ffb347"),
-  fog: new Color("#7a4a5e"),
+  fog: new Color("#7a564c"),
   sun: new Color("#ffa05c"),
-  hemiSky: new Color("#6a5aa8"),
-  hemiGround: new Color("#2b1a3a"),
+  hemiSky: new Color("#8a7470"),
+  hemiGround: new Color("#2a211c"),
 };
 
 const NIGHT = {
   zenith: new Color("#04071c"),
-  horizon: new Color("#17295f"),
-  ground: new Color("#2a3a7a"),
-  fog: new Color("#101a40"),
+  horizon: new Color("#1a2648"),
+  ground: new Color("#283250"),
+  fog: new Color("#121a2e"),
   sun: new Color("#b9c8ff"),
-  hemiSky: new Color("#1e2c62"),
-  hemiGround: new Color("#070a1a"),
+  hemiSky: new Color("#1f2738"),
+  hemiGround: new Color("#0c0b0a"),
 };
 
 function smooth(a: number, b: number, x: number) {

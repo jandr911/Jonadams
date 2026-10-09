@@ -850,7 +850,7 @@ function Princess({ night }: { night: number }) {
         <meshStandardMaterial color="#c8102e" side={DoubleSide} roughness={0.7} />
       </mesh>
       <NeonSign text="DETROIT PRINCESS" color="#f3dfae" width={13} height={1.5} fontSize={1.1} position={[-1, 1.5, 4.35]} depth={0.15} glow={1.6} doubleSided />
-      <NeonSign text="J. ADAMS · LIVE ON DECK TONIGHT" color="#ff8ac2" width={19} height={1.4} fontSize={0.95} position={[-2.2, 4.3, 3.95]} depth={0.15} glow={2} blink="marquee" doubleSided />
+      <NeonSign text="J. ADAMS · LIVE ON DECK TONIGHT" color="#f3dfae" width={19} height={1.4} fontSize={0.95} position={[-2.2, 4.3, 3.95]} depth={0.15} glow={1.4} doubleSided />
       <NavLights length={28} beam={8.6} mastY={9.8} night={night} />
       <Wake length={26} width={9} opacity={0.3} />
     </group>
