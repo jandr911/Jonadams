@@ -12,6 +12,11 @@ import { VEHICLE_SPECS, type VehicleKind } from "./vehicles";
 const CAR_COLORS = ["#f4f1ea", "#1d1d3f", "#c8102e", "#2a3a7a", "#9a95a8", "#d6b56e", "#3f3f4f", "#ffb02e", "#49d2f2", "#ff4d6d", "#2f6ea8", "#e8e8f2", "#4a2c3a", "#7a8c3a"];
 const LANE_OFFSET = 1.75;
 const FOLLOW_GAP = 3.5;
+const ROAD_OVERRUN = 16;
+const Z_ROAD_MIN = OUTER_MIN_Z - ROAD_OVERRUN;
+const Z_ROAD_MAX = CITY_HALF_Z + 3;
+const X_ROAD_MIN = -OUTER_HALF_X - ROAD_OVERRUN;
+const X_ROAD_MAX = OUTER_HALF_X + ROAD_OVERRUN;
 const BOX_HALF = 3.5;
 const AXIS_Z = 1;
 const AXIS_X = 2;
@@ -95,8 +100,8 @@ function buildWorld(): World {
     const line = axis === "z" ? xs[lineIndex] : zs[lineIndex];
     const dir: 1 | -1 = rand() < 0.5 ? 1 : -1;
     const kind = pickKind(rand);
-    const min = axis === "z" ? OUTER_MIN_Z - 20 : -OUTER_HALF_X - 30;
-    const max = axis === "z" ? CITY_HALF_Z + 3 : OUTER_HALF_X + 30;
+    const min = axis === "z" ? Z_ROAD_MIN : X_ROAD_MIN;
+    const max = axis === "z" ? Z_ROAD_MAX : X_ROAD_MAX;
     cars.push({
       kind,
       axis,
@@ -254,8 +259,8 @@ function stepWorld(w: World, time: number) {
   for (const t of w.trams) markOccupied(w, "z", WOODWARD_OUTER, t.along, TRAM_LEN);
   for (const t of w.trams) stepTram(w, t, dt, time);
   w.cars.forEach((c, i) => {
-    const min = c.axis === "z" ? OUTER_MIN_Z - 20 : -OUTER_HALF_X - 30;
-    const max = c.axis === "z" ? CITY_HALF_Z + 3 : OUTER_HALF_X + 30;
+    const min = c.axis === "z" ? Z_ROAD_MIN : X_ROAD_MIN;
+    const max = c.axis === "z" ? Z_ROAD_MAX : X_ROAD_MAX;
     let target = c.speed;
     if (!mayEnter(w, c.axis, c.lineIndex, c.along, c.dir, c.len, w.lanes[i], c, time)) target = 0;
     target = followSpeed(w.lanes[i], c, c.along, c.dir, c.len, target);
@@ -264,9 +269,22 @@ function stepWorld(w: World, time: number) {
     c.vel += (target - c.vel) * Math.min(1, dt * (target < c.vel ? 6 : 2.5));
     c.along += c.vel * dt * c.dir;
     c.spin += (c.vel * dt) / VEHICLE_SPECS[c.kind].wheelR;
-    if (c.along > max) c.along = min;
-    if (c.along < min) c.along = max;
+    if (c.along > max || c.along < min) {
+      c.along = c.dir === 1 ? min : max;
+      c.vel = 0;
+      clearEntry(w.lanes[i], c);
+    }
   });
+}
+
+function clearEntry(lane: Car[], c: Car) {
+  for (let j = 0; j < lane.length; j++) {
+    const o = lane[j];
+    if (o === c) continue;
+    const gap = (o.along - c.along) * c.dir;
+    const need = FOLLOW_GAP + c.len / 2 + o.len / 2;
+    if (gap > -need && gap < need) c.along = o.along - c.dir * need;
+  }
 }
 
 function poseCar(w: World, i: number, out: VehiclePose, time: number) {

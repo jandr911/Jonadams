@@ -81,6 +81,9 @@ function person(rand: () => number, p: Partial<Person>): Person {
   };
 }
 
+const WALK_EDGE = 0.1;
+const WALK_KEEP_RIGHT = 0.3;
+
 function crowd(rand: () => number, out: Person[], cx: number, cz: number, halfW: number, depth: number, n: number, phoneShare: number, cheerShare: number) {
   for (let i = 0; i < n; i++) {
     out.push(
@@ -110,10 +113,12 @@ function buildPeople(): { people: Person[]; extras: Extras } {
     const n = outer ? (rand() < 0.6 ? 1 : 2) : 3 + Math.floor(rand() * 4);
     for (let k = 0; k < n; k++) {
       const side = Math.floor(rand() * 4);
-      const e = BLOCK / 2 + 1.5;
+      const dir: 1 | -1 = rand() < 0.5 ? 1 : -1;
+      const outward = side === 0 || side === 2 ? 1 : -1;
+      const e = BLOCK / 2 + WALK_EDGE + dir * outward * WALK_KEEP_RIGHT;
       const axis: "x" | "z" = side < 2 ? "x" : "z";
       const fixed = side === 0 ? bz + e : side === 1 ? bz - e : side === 2 ? bx + e : bx - e;
-      out.push(person(rand, { x: axis === "x" ? bx : fixed, z: axis === "x" ? fixed : bz, axis, dir: rand() < 0.5 ? 1 : -1 }));
+      out.push(person(rand, { x: axis === "x" ? bx : fixed, z: axis === "x" ? fixed : bz, axis, dir }));
     }
   }
   for (let i = 0; i < 70; i++) {

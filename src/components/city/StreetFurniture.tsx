@@ -22,6 +22,7 @@ interface Item {
 
 const RAMP_LENGTH = 1.4;
 const CURB_HEIGHT = 0.4;
+const BIKE_OUTWARD = 0.4;
 
 function nonIdx<T extends BufferGeometry>(g: T) {
   return g.toNonIndexed();
@@ -285,7 +286,8 @@ export default function StreetFurniture() {
       const m = refs.current.get(it.kind);
       if (!m) continue;
       const i = idx[it.kind]++;
-      d.position.set(it.x, it.y ?? CURB_HEIGHT, it.z);
+      const bikeOut = it.kind === "bike" ? BIKE_OUTWARD : 0;
+      d.position.set(it.x - Math.sin(it.rot) * bikeOut, it.y ?? CURB_HEIGHT, it.z + Math.cos(it.rot) * bikeOut);
       d.rotation.set(it.tilt ?? 0, it.rot + (it.kind === "bike" ? Math.PI / 2 : 0), 0);
       d.updateMatrix();
       m.setMatrixAt(i, d.matrix);
