@@ -441,7 +441,7 @@ function poseFreewayCar(f: FreewayFleet, i: number, out: VehiclePose, time: numb
     const dt = f.last < 0 ? 0 : Math.min(time - f.last, 0.05);
     f.last = time;
     for (const c of f.cars) {
-      const dir = c.lane > 0 ? 1 : -1;
+      const dir = c.lane < 0 ? 1 : -1;
       c.z += c.speed * dt * dir;
       c.spin += (c.speed * dt) / 0.4;
       if (c.z > FREEWAY_Z1) c.z = FREEWAY_Z0;
@@ -452,7 +452,7 @@ function poseFreewayCar(f: FreewayFleet, i: number, out: VehiclePose, time: numb
   out.x = FREEWAY_X + c.lane;
   out.y = FREEWAY_Y + 0.5;
   out.z = c.z;
-  out.yaw = c.lane > 0 ? 0 : Math.PI;
+  out.yaw = c.lane < 0 ? 0 : Math.PI;
   out.spin = c.spin;
 }
 
