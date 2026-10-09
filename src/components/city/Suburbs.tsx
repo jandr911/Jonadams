@@ -1,8 +1,10 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BufferGeometry, Color, Group, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, Object3D, PlaneGeometry, Texture } from "three";
+import { BufferGeometry, CircleGeometry, Color, ConeGeometry, CylinderGeometry, Group, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, Object3D, PlaneGeometry, Texture } from "three";
+import { labelTexture } from "./labels";
 import { fillInstances, useBaseBoxGeometry } from "./instancing";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { useDayNight } from "./DayNightContext";
@@ -20,7 +22,10 @@ const RING = 400;
 const GROUND = 0.25;
 const PAD = STREET - 7;
 const DETAIL_REACH = 560;
-const LIGHT_REACH = 900;
+const LIGHT_REACH = 1500;
+const VACANT_SHARE = 0.12;
+const BOARDED_SHARE = 0.08;
+const TWO_STOREY_SHARE = 0.2;
 const WINDOW_SLOTS: [number, number, number, number][] = [
   [-1.7, 1.6, 3.5, 0],
   [1.7, 1.6, 3.5, 0],
@@ -51,7 +56,122 @@ interface House {
   chimney: boolean;
   garage: boolean;
   fence: boolean;
+  boarded: boolean;
 }
+
+type BlockKind = "houses" | "park" | "church" | "school" | "store" | "apartments" | "industrial";
+
+interface SignSpot {
+  text: string;
+  placements: Placement[];
+}
+
+interface Features {
+  boxes: Placement[];
+  roofs: Placement[];
+  lots: Placement[];
+  fields: Placement[];
+  lawns: Placement[];
+  weeds: Placement[];
+  towers: Placement[];
+  signs: SignSpot[];
+}
+
+const STORE_SIGNS = ["PARTY STORE · LOTTO", "CONEY ISLAND", "LIQUOR · BEER · WINE", "LAUNDROMAT", "AUTO PARTS · TIRES"];
+const BOX_COLORS = { church: ["#e8e2d2", "#8a4a3a", "#c9b48c"], school: ["#b89a7a", "#9c8468", "#c9b48c"], store: ["#8a4a3a", "#5a6a7a", "#e8e2d2", "#a3563f"], shed: ["#9a95a8", "#7c6a5c", "#5a6a7a"] };
+
+function rollBlockKind(rand: () => number): BlockKind {
+  const r = rand();
+  if (r < 0.06) return "park";
+  if (r < 0.1) return "church";
+  if (r < 0.13) return "school";
+  if (r < 0.19) return "store";
+  if (r < 0.24) return "apartments";
+  if (r < 0.28) return "industrial";
+  return "houses";
+}
+
+function placed(x: number, y: number, z: number, sx: number, sy: number, sz: number, ry = 0, color?: Color): Placement {
+  return { x, y: GROUND + y, z, ry, sx, sy, sz, color };
+}
+
+function placeFeatureBlock(kind: BlockKind, cx: number, cz: number, rand: () => number, f: Features, trees: { x: number; z: number; s: number }[], midrise: MidLot[]) {
+  const half = PAD / 2;
+  if (kind === "park") {
+    f.lawns.push(placed(cx, 0.02, cz, PAD - 2, 1, PAD - 2));
+    f.fields.push(placed(cx + 9, 0.04, cz + 9, 9, 1, 9));
+    f.boxes.push(placed(cx - 12, 1.5, cz - 12, 6, 3, 6, 0, new Color("#5a4636")));
+    f.roofs.push(placed(cx - 12, 3, cz - 12, 1.3, 0.8, 1.3, Math.PI / 4, new Color("#3a3230")));
+    for (let k = 0; k < 16; k++) trees.push({ x: cx + range(rand, -half + 4, half - 4), z: cz + range(rand, -half + 4, half - 4), s: range(rand, 1.1, 1.9) });
+    return;
+  }
+  if (kind === "church") {
+    const body = new Color(pick(rand, BOX_COLORS.church));
+    f.lawns.push(placed(cx, 0.02, cz, PAD - 2, 1, PAD - 2));
+    f.boxes.push(placed(cx - 6, 4.5, cz, 14, 9, 24, 0, body));
+    f.roofs.push(placed(cx - 6, 9, cz, 2.05, 1.6, 3.5, Math.PI / 4, new Color("#3a3230")));
+    f.boxes.push(placed(cx - 6, 8, cz + 10.5, 3.2, 16, 3.2, 0, body));
+    f.roofs.push(placed(cx - 6, 16, cz + 10.5, 0.5, 2.4, 0.5, Math.PI / 4, new Color("#2c3038")));
+    f.lots.push(placed(cx + 13, 0.03, cz, 22, 1, 30));
+    for (let k = 0; k < 5; k++) trees.push({ x: cx + range(rand, -half + 3, -14), z: cz + range(rand, -half + 3, half - 3), s: range(rand, 1, 1.6) });
+    return;
+  }
+  if (kind === "school") {
+    const body = new Color(pick(rand, BOX_COLORS.school));
+    f.lawns.push(placed(cx, 0.02, cz, PAD - 2, 1, PAD - 2));
+    f.boxes.push(placed(cx, 4, cz - 14, 42, 8, 14, 0, body));
+    f.boxes.push(placed(cx - 16, 2.5, cz - 2, 10, 5, 10, 0, body));
+    f.lots.push(placed(cx + 12, 0.03, cz - 1, 22, 1, 12));
+    f.fields.push(placed(cx, 0.04, cz + 14, 14, 1, 10));
+    for (let k = 0; k < 6; k++) trees.push({ x: cx + range(rand, -half + 3, half - 3), z: cz + range(rand, 8, half - 3), s: range(rand, 0.9, 1.4) });
+    return;
+  }
+  if (kind === "store") {
+    const body = new Color(pick(rand, BOX_COLORS.store));
+    f.boxes.push(placed(cx, 2.6, cz - 19, 44, 5.2, 14, 0, body));
+    f.boxes.push(placed(cx, 5.4, cz - 19, 45, 0.6, 15, 0, new Color("#2b2b3a")));
+    f.lots.push(placed(cx, 0.03, cz - 2, 46, 1, 20));
+    const sign = pick(rand, STORE_SIGNS);
+    let spot = f.signs.find((sg) => sg.text === sign);
+    if (!spot) {
+      spot = { text: sign, placements: [] };
+      f.signs.push(spot);
+    }
+    spot.placements.push(placed(cx, 4.2, cz - 11.9, 16, 3.2, 1, 0));
+    f.boxes.push(placed(cx + 20, 4, cz + 8, 0.5, 8, 0.5, 0, new Color("#5a5a78")));
+    spot.placements.push(placed(cx + 20, 9, cz + 8, 8, 2, 1, Math.PI / 2));
+    f.lawns.push(placed(cx, 0.02, cz + 18, PAD - 2, 1, 16));
+    for (let k = 0; k < 4; k++) trees.push({ x: cx + range(rand, -half + 3, half - 3), z: cz + range(rand, 13, half - 3), s: range(rand, 0.9, 1.3) });
+    return;
+  }
+  if (kind === "apartments") {
+    for (const [ox, oz] of [[-15, -10], [15, -10], [0, 14]] as [number, number][]) {
+      midrise.push({ x: cx + ox, z: cz + oz, w: 18, d: 13, h: range(rand, 9, 15), color: new Color(pick(rand, MID_COLORS)), seed: rand() * 100 });
+    }
+    f.lots.push(placed(cx, 0.03, cz - 1, 20, 1, 12));
+    f.lawns.push(placed(cx, 0.02, cz, PAD - 2, 1, PAD - 2));
+    for (let k = 0; k < 6; k++) trees.push({ x: cx + range(rand, -half + 3, half - 3), z: cz + range(rand, -half + 3, half - 3), s: range(rand, 0.9, 1.5) });
+    return;
+  }
+  const shed = new Color(pick(rand, BOX_COLORS.shed));
+  f.boxes.push(placed(cx - 10, 4, cz - 8, 30, 8, 22, 0, shed));
+  f.boxes.push(placed(cx + 14, 3, cz + 10, 20, 6, 18, 0, shed));
+  f.boxes.push(placed(cx - 10, 8.3, cz - 8, 31, 0.6, 23, 0, new Color("#3a3a46")));
+  f.lots.push(placed(cx - 6, 0.03, cz + 15, 34, 1, 18));
+  f.towers.push(placed(cx + 16, 0, cz - 14, 1, 1, 1));
+}
+
+const WATER_TOWER = (() => {
+  const tank = new CylinderGeometry(3.2, 3.2, 4.5, 12).translate(0, 16, 0).toNonIndexed();
+  const cap = new ConeGeometry(3.3, 1.6, 12).translate(0, 19, 0).toNonIndexed();
+  const legs = [[-2, -2], [2, -2], [-2, 2], [2, 2]].map(([x, z]) => new CylinderGeometry(0.18, 0.22, 14, 6).translate(x, 7, z).toNonIndexed());
+  const merged = mergeGeometries([tank, cap, ...legs]);
+  if (!merged) throw new Error("water tower parts could not be merged");
+  return merged;
+})();
+const FEATURE_ROOF = new ConeGeometry(4.9, 2.8, 4).translate(0, 1.4, 0);
+const FLAT_PLANE = new PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+const FIELD_DISC = new CircleGeometry(1, 20).rotateX(-Math.PI / 2);
 
 interface Placement {
   x: number;
@@ -162,6 +282,7 @@ function buildHouses(): {
   midrise: MidLot[];
   pads: { x: number; z: number }[];
   banks: Bank[];
+  features: Features;
 } {
   const rand = mulberry32(90210);
   const houses: House[] = [];
@@ -169,6 +290,7 @@ function buildHouses(): {
   const midrise: MidLot[] = [];
   const pads: { x: number; z: number }[] = [];
   const banks: Bank[] = [];
+  const features: Features = { boxes: [], roofs: [], lots: [], fields: [], lawns: [], weeds: [], towers: [], signs: [] };
   for (let z = -EXTENT; z < EXTENT; z += STREET) {
     for (let x = -EXTENT; x < EXTENT; x += STREET) {
       const cx = x + STREET / 2;
@@ -197,25 +319,37 @@ function buildHouses(): {
         });
         continue;
       }
+      const kind = rollBlockKind(rand);
+      if (kind !== "houses") {
+        placeFeatureBlock(kind, cx, cz, rand, features, trees, midrise);
+        continue;
+      }
       for (let row = 0; row < 2; row++) {
         for (let k = 0; k < 5; k++) {
           const hx = x + 8 + k * LOT + (rand() - 0.5) * 1.5;
           const hz = z + 11 + row * 38 + (rand() - 0.5) * 2;
-          if (rand() < 0.04) continue;
+          const rot = row === 0 ? Math.PI : 0;
+          if (rand() < VACANT_SHARE) {
+            features.weeds.push({ x: hx, y: GROUND + 0.015, z: hz - Math.cos(rot) * (YARD_DEPTH / 2 - FRONT_SETBACK), ry: rot, sx: LOT, sy: 1, sz: YARD_DEPTH, color: new Color(pick(rand, ["#6b6a3a", "#5a6a38", "#7a7040"])) });
+            if (rand() < 0.6) trees.push({ x: hx + (rand() - 0.5) * 4, z: hz + (rand() - 0.5) * 6, s: range(rand, 1.0, 1.7) });
+            continue;
+          }
+          const boarded = rand() < BOARDED_SHARE;
           houses.push({
             x: hx,
             z: hz,
-            rot: row === 0 ? Math.PI : 0,
+            rot,
             s: range(rand, 0.85, 1.2),
-            h: range(rand, 3.4, 5.4),
-            color: new Color(pick(rand, HOUSE_COLORS)),
+            h: range(rand, 3.4, 5.4) * (rand() < TWO_STOREY_SHARE ? 1.6 : 1),
+            color: boarded ? new Color("#4a3f3a") : new Color(pick(rand, HOUSE_COLORS)),
             roof: new Color(pick(rand, ROOF_COLORS)),
-            litMask: rand() < 0.45 ? 1 + Math.floor(rand() * 7) : 0,
+            litMask: boarded || rand() >= 0.45 ? 0 : 1 + Math.floor(rand() * 7),
             detail: Math.hypot(hx, hz - CITY_HALF_Z) < DETAIL_REACH,
-            porch: rand() < 0.55,
+            porch: !boarded && rand() < 0.55,
             chimney: rand() < 0.6,
             garage: k < 4 && rand() < 0.35,
             fence: rand() < 0.35,
+            boarded,
           });
           if (rand() < 0.5) trees.push({ x: hx + (rand() - 0.5) * 6, z: hz + (row === 0 ? -6.5 : 6.5) + (rand() - 0.5) * 2, s: range(rand, 0.8, 1.4) });
         }
@@ -223,7 +357,7 @@ function buildHouses(): {
     }
   }
   buildRiverfront(rand, trees, midrise, banks);
-  return { houses, trees, midrise, pads, banks };
+  return { houses, trees, midrise, pads, banks, features };
 }
 
 function Banks({ banks }: { banks: Bank[] }) {
@@ -264,6 +398,7 @@ const TRIM = {
   garageDoor: new Color("#d8d2c4"),
   drive: new Color("#6f6f7a"),
   fence: new Color("#8a7a60"),
+  plywood: new Color("#8a6a3a"),
   doors: [new Color("#5a2a22"), new Color("#1d2a4a"), new Color("#2f4a3a"), new Color("#14101c"), new Color("#c8102e")],
 };
 
@@ -280,7 +415,7 @@ function placeHouseParts(houses: House[]) {
     yard.push(local(h, 0, 0.01, -(YARD_DEPTH / 2 - FRONT_SETBACK), 0, 1, 1, 1));
     WINDOW_SLOTS.forEach(([lx, ly, lz, ry], k) => {
       if (h.litMask & (1 << k)) lit.push(local(h, lx * s, ly, lz * s, ry, s, 1, 1));
-      else if (h.detail) trim.push(local(h, lx * s, ly, lz * s, ry, 1.5 * s, 1.1, 0.15, TRIM.darkWindow));
+      else if (h.detail) trim.push(local(h, lx * s, ly, lz * s, ry, 1.5 * s, 1.1, 0.15, h.boarded ? TRIM.plywood : TRIM.darkWindow));
     });
     if (!h.detail) continue;
     trim.push(local(h, 0, 1.05, 3.52 * s, 0, 1.0, 2.1, 0.14, TRIM.doors[Math.abs(Math.floor(h.x * 7 + h.z * 3)) % TRIM.doors.length]));
@@ -765,12 +900,61 @@ function tileWorld(world: ReturnType<typeof buildHouses>): Tile[] {
   return tiles;
 }
 
+function StoreSigns({ spot }: { spot: SignSpot }) {
+  const dn = useDayNight();
+  const mat = useRef<MeshStandardMaterial>(null);
+  const tex = useMemo(() => labelTexture(spot.text, { width: 512, height: 112, bg: "#1d1d3f", fg: "#ffb02e", border: "#ffb02e", size: 60 }), [spot.text]);
+  useEffect(() => () => tex.dispose(), [tex]);
+  useEffect(() => {
+    if (mat.current) mat.current.emissiveIntensity = 0.1 + dn.night * 1.1;
+  }, [dn]);
+  return (
+    <Parts items={spot.placements}>
+      <planeGeometry args={[1, 1]} />
+      <meshStandardMaterial ref={mat} map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.1} side={2} />
+    </Parts>
+  );
+}
+
+function BlockFeatures({ features, textures }: { features: Features; textures: SuburbTextures }) {
+  return (
+    <group name="block-features">
+      <Parts items={features.lawns} geometry={FLAT_PLANE}>
+        <meshStandardMaterial color="#ffffff" map={textures.lawn} roughness={1} />
+      </Parts>
+      <Parts items={features.weeds} geometry={FLAT_PLANE}>
+        <meshStandardMaterial color="#ffffff" map={textures.lawn} roughness={1} />
+      </Parts>
+      <Parts items={features.lots} geometry={FLAT_PLANE}>
+        <meshStandardMaterial color="#3a3a44" roughness={1} />
+      </Parts>
+      <Parts items={features.fields} geometry={FIELD_DISC}>
+        <meshStandardMaterial color="#8a6a46" roughness={1} />
+      </Parts>
+      <Parts items={features.boxes} castShadow>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.95} />
+      </Parts>
+      <Parts items={features.roofs} geometry={FEATURE_ROOF}>
+        <meshStandardMaterial color="#ffffff" map={textures.shingles} roughness={0.95} flatShading />
+      </Parts>
+      <Parts items={features.towers} geometry={WATER_TOWER}>
+        <meshStandardMaterial color="#9a9aa8" roughness={0.6} metalness={0.4} />
+      </Parts>
+      {features.signs.map((spot) => (
+        <StoreSigns key={spot.text} spot={spot} />
+      ))}
+    </group>
+  );
+}
+
 export default function Suburbs() {
   const world = useMemo(() => buildHouses(), []);
   const tiles = useMemo(() => tileWorld(world), [world]);
   const textures = useSuburbTextures();
   return (
     <group>
+      <BlockFeatures features={world.features} textures={textures} />
       <WindsorShore />
       <Riverbank />
       <SuburbStreets />
