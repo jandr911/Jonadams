@@ -9,6 +9,7 @@ import { CityContext, type CityApi } from "./CityContext";
 import { DayNightContext } from "./DayNightContext";
 import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
 import { useDetroitWeather } from "./DetroitWeather";
+import { SITE } from "@/content/site";
 import { DESTINATIONS, homeCamera, type Destination } from "./layout";
 import Loader, { markVisited, useReturningVisitor } from "./Loader";
 
@@ -191,7 +192,7 @@ export default function CityCanvas() {
 
   const flyTo = useCallback(
     async (d: Destination) => {
-      if (navigating) return;
+      if (navigating || SITE.navLocked) return;
       setNavigating(true);
       setHovered(null);
       router.prefetch(d.href);
@@ -225,12 +226,16 @@ export default function CityCanvas() {
               {DESTINATIONS.map((d, i) => (
               <Link
                 key={d.id}
-                href={d.href}
+                href={SITE.navLocked ? "#" : d.href}
                 className={`district ${hovered?.id === d.id ? "is-hot" : ""}`}
                 style={{ ["--c" as string]: d.color, ["--i" as string]: i }}
                 onMouseEnter={() => !navigating && setHovered(d)}
                 onMouseLeave={() => setHovered(null)}
                 onClick={(e) => {
+                  if (SITE.navLocked) {
+                    e.preventDefault();
+                    return;
+                  }
                   if (reducedMotion) return;
                   e.preventDefault();
                   void flyTo(d);

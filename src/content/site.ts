@@ -7,6 +7,7 @@ export const SITE = {
   bookingEmail: "",
   pressEmail: "",
   joinHref: "/listen#join-list",
+  navLocked: true,
 };
 
 export interface SiteLink {
