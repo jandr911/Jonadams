@@ -151,10 +151,16 @@ const fragmentShader = /* glsl */ `
     float lit = max(step(1.0 - uLitDensity * uNight, h) * floorDark, shop * step(0.25, h) * uNight);
     float flick = 1.0 - 0.45 * step(0.992, hash(cell + floor(uTime * 0.7) + vSeed));
     vec3 tint = mix(uWarm, uCool, step(0.72, hash(cell * 1.71 + vSeed)));
+    float hue = hash(cell * 0.77 + vSeed * 2.3);
+    tint = mix(tint, tint * vec3(0.9, 0.97, 1.1), step(0.8, hue));
+    tint = mix(tint, tint * vec3(1.1, 0.97, 0.88), step(hue, 0.15));
+    float bright = mix(0.55, 1.15, hash(cell * 3.3 + vSeed * 5.9));
+    float skyGrad = smoothstep(0.0, max(vSize.y, 1.0), vLocalY);
 
     // blinds / curtains per window
     float dress = hash(cell * 2.3 + vSeed * 0.7);
     float fy = (f.y - margin.y) / max(1.0 - 2.0 * margin.y, 0.001);
+    float shade = step(hash(cell * 4.7 + vSeed * 1.9), 0.3) * smoothstep(0.6, 0.7, fy);
     float blinds = step(dress, 0.28) * (0.7 + 0.3 * step(0.5, fract(fy * 7.0)));
     float curtain = step(0.28, dress) * step(dress, 0.5) * step(fy, 0.35 + 0.4 * hash(cell + 9.0));
     float dressing = mix(1.0, blinds, step(dress, 0.28)) * mix(1.0, mix(1.0, 0.25, 1.0 - step(fy, 0.35 + 0.4 * hash(cell + 9.0))), step(0.28, dress) * step(dress, 0.5));
@@ -164,10 +170,11 @@ const fragmentShader = /* glsl */ `
     float lintel = 1.0 - 0.45 * smoothstep(0.78, 1.0, fy);
     float sill = step(fy, 0.08) * 0.5;
 
-    vec3 dayWin = mix(vColor * 0.4, uHemiSky * 0.95, 0.6) * (0.55 + 0.6 * ndl) * lintel
-                + uSunColor * spec * 2.5 + uHemiSky * fres * 0.6;
-    vec3 nightUnlit = (facade * 0.5 + vColor * 0.06) * lintel;
-    vec3 nightLit = tint * uWinBoost * dressing + uHemiSky * fres * 0.3;
+    vec3 dayWin = (mix(vColor * 0.4, uHemiSky * 0.95, 0.6) * (0.55 + 0.6 * ndl) * lintel
+                + uSunColor * spec * 2.5 + uHemiSky * fres * 0.6 + uHemiSky * (0.05 + 0.25 * skyGrad))
+                * (0.85 + 0.15 * bright) * (1.0 - 0.35 * shade);
+    vec3 nightUnlit = (facade * 0.5 + vColor * 0.06) * lintel + uHemiSky * 0.05 * skyGrad;
+    vec3 nightLit = (tint * uWinBoost * dressing * bright + uHemiSky * fres * 0.3) * (1.0 - 0.6 * shade);
     vec3 win = mix(dayWin, mix(nightUnlit, nightLit, lit * flick), uNight);
     win = mix(win, facade * 1.15, sill * (1.0 - isGlass));
 

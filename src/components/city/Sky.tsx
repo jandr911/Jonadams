@@ -47,7 +47,7 @@ const skyFrag = /* glsl */ `
       : mix(uHorizon, uGround, pow(-h, 0.5));
     float s = max(dot(d, normalize(uSunDir)), 0.0);
     float glow = pow(s, 64.0) * 1.4 + pow(s, 8.0) * 0.22 + pow(s, 2.0) * 0.04;
-    col += uSunColor * glow * (1.0 - uNight * 0.75);
+    col += uSunColor * glow * mix(0.35, 1.0, uNight) * (1.0 - uNight * 0.75);
     gl_FragColor = vec4(col, 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -198,7 +198,7 @@ function SunAndMoon() {
     <group ref={group}>
       <mesh position={sunPos} visible={dayAmount > 0.03}>
         <sphereGeometry args={[44, 24, 16]} />
-        <meshBasicMaterial color={new Color("#fff3b0").multiplyScalar(2.6)} toneMapped={false} />
+        <meshBasicMaterial color={new Color("#fff3b0").multiplyScalar(1.35)} toneMapped={false} />
       </mesh>
       <mesh position={moonPos} visible={dn.night > 0.4}>
         <sphereGeometry args={[30, 24, 16]} />
@@ -229,7 +229,7 @@ function Cumulus() {
   const group = useRef<Group>(null);
   const tint = useMemo(() => {
     const dusk = Math.max(0, 1 - Math.abs(dn.night - 0.5) * 2.4);
-    return new Color("#f8f8fc").lerp(new Color("#ffb48c"), dusk * 0.6).lerp(new Color("#2a2a58"), dn.night);
+    return new Color("#dfe2e6").lerp(new Color("#ffb48c"), dusk * 0.6).lerp(new Color("#2a2a58"), dn.night);
   }, [dn]);
   useFrame(({ clock }) => {
     const g = group.current;
@@ -330,8 +330,8 @@ function CloudCover() {
         side: DoubleSide,
         uniforms: {
           uTime: { value: 0 },
-          uTint: { value: new Color("#ffffff") },
-          uShade: { value: new Color("#9aa3b8") },
+          uTint: { value: new Color("#e9ebee") },
+          uShade: { value: new Color("#8d939e") },
           uCoverage: { value: 0.52 },
           uAlpha: { value: 0.85 },
           uSunDir: { value: new Vector3(0.5, 0.8, -0.3) },
@@ -343,8 +343,9 @@ function CloudCover() {
     const m = ref.current?.material as ShaderMaterial | undefined;
     if (!m) return;
     const dusk = Math.max(0, 1 - Math.abs(dn.night - 0.5) * 2.4);
-    m.uniforms.uTint.value.set("#ffffff").lerp(new Color("#ffc39a"), dusk * 0.7).lerp(new Color("#3a3a6a"), dn.night);
-    m.uniforms.uShade.value.set("#9aa3b8").lerp(new Color("#c06a5a"), dusk * 0.6).lerp(new Color("#13142c"), dn.night);
+    m.uniforms.uTint.value.set("#e9ebee").lerp(new Color("#ffc39a"), dusk * 0.7).lerp(new Color("#3a3a6a"), dn.night);
+    m.uniforms.uShade.value.set("#8d939e").lerp(new Color("#c06a5a"), dusk * 0.6).lerp(new Color("#13142c"), dn.night);
+    m.uniforms.uCoverage.value = 0.52 - (1 - dn.night) * 0.18;
     m.uniforms.uAlpha.value = 0.85 - dn.night * 0.35;
     m.uniforms.uSunDir.value.set(...dn.sunDir);
   }, [dn]);

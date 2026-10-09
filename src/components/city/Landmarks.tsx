@@ -302,7 +302,6 @@ function MarqueeBulbs({ width, position }: { width: number; position: [number, n
 function ListenTower() {
   const d = DESTINATIONS[1];
   const [x, z] = destinationPosition(d);
-  const starGeo = useMemo(() => makeStar(2.6, 1.1), []);
   return (
     <Hotspot dest={d} position={[x, PAD, z]}>
       <WindowedBox w={15} h={34} d={16} color="#b3382c" winSize={[1.8, 2.3]} seed={21} warm="#ffe08a" />
@@ -330,17 +329,6 @@ function ListenTower() {
         <boxGeometry args={[6, 6, 0.4]} />
         <meshStandardMaterial color="#2a0a0a" />
       </mesh>
-      <group position={[5.5, 38, 0]}>
-        <mesh position={[0, -2, 0]}>
-          <cylinderGeometry args={[0.12, 0.12, 6, 4]} />
-          <meshStandardMaterial color="#1d1d3f" />
-        </mesh>
-        <Float speed={2} rotationIntensity={0.4} floatIntensity={1.2}>
-          <mesh geometry={starGeo} position={[0, 2.4, 0]}>
-            <meshStandardMaterial color="#ffd95e" emissive="#ffd95e" emissiveIntensity={1.3} toneMapped={false} />
-          </mesh>
-        </Float>
-      </group>
     </Hotspot>
   );
 }
@@ -461,44 +449,7 @@ function MichiganCentral() {
         MICHIGAN CENTRAL
       </Text>
       <NeonSign text="WATCH" color="#49f2d6" width={5.2} height={22} fontSize={3.6} vertical position={[0, 30, 5.2]} blink="slow" backing="#0b1424" />
-      <StarBalloon position={[10, 60, -4]} color="#49f2d6" />
     </Hotspot>
-  );
-}
-
-function Rocket({ position }: { position: [number, number, number] }) {
-  const flame = useRef<Mesh>(null);
-  useFrame(({ clock }) => {
-    if (flame.current) {
-      const s = 0.8 + Math.sin(clock.elapsedTime * 22) * 0.25;
-      flame.current.scale.set(1, s, 1);
-    }
-  });
-  return (
-    <group position={position} rotation={[0, 0, -0.5]}>
-      <mesh>
-        <capsuleGeometry args={[1.1, 3.2, 6, 12]} />
-        <meshStandardMaterial color="#f4f4fa" roughness={0.4} />
-      </mesh>
-      <mesh position={[0, 3.2, 0]}>
-        <coneGeometry args={[1.1, 1.8, 12]} />
-        <meshStandardMaterial color="#ff4d6d" />
-      </mesh>
-      {[0, 1, 2].map((i) => (
-        <mesh key={i} position={[0, -2.2, 0]} rotation={[0, (i * Math.PI * 2) / 3, 0]}>
-          <boxGeometry args={[0.2, 1.6, 2.4]} />
-          <meshStandardMaterial color="#ff4d6d" />
-        </mesh>
-      ))}
-      <mesh position={[0, 0.4, 0.95]}>
-        <circleGeometry args={[0.5, 12]} />
-        <meshStandardMaterial color="#49d2f2" emissive="#49d2f2" emissiveIntensity={1} />
-      </mesh>
-      <mesh ref={flame} position={[0, -3.6, 0]} rotation={[Math.PI, 0, 0]}>
-        <coneGeometry args={[0.8, 2.6, 8]} />
-        <meshStandardMaterial color="#ffb02e" emissive="#ffb02e" emissiveIntensity={3.5} toneMapped={false} />
-      </mesh>
-    </group>
   );
 }
 
@@ -517,8 +468,6 @@ function CreativesBillboard() {
       <group rotation={[0, 0, -0.07]}>
         <NeonSign text="THE CREATIVES" color="#c9a6ff" width={17} height={9} fontSize={3.4} position={[0, 25.5, 2]} blink="marquee" backing="#14102a" />
       </group>
-      <Rocket position={[9.4, 29, 2]} />
-      <StarBalloon position={[-7, 36, -2]} />
     </Hotspot>
   );
 }
