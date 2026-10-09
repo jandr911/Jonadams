@@ -85,37 +85,6 @@ function Beacon({
   );
 }
 
-function makeStar(outer: number, inner: number) {
-  const s = new Shape();
-  for (let i = 0; i < 10; i++) {
-    const r = i % 2 === 0 ? outer : inner;
-    const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
-    const x = Math.cos(a) * r;
-    const y = Math.sin(a) * r;
-    if (i === 0) s.moveTo(x, y);
-    else s.lineTo(x, y);
-  }
-  s.closePath();
-  return new ExtrudeGeometry(s, { depth: 0.6, bevelEnabled: true, bevelSize: 0.12, bevelThickness: 0.12 });
-}
-
-function StarBalloon({ position, color = "#ffd95e" }: { position: [number, number, number]; color?: string }) {
-  const geo = useMemo(() => makeStar(3.2, 1.4), []);
-  return (
-    <group position={position}>
-      <Float speed={1.6} rotationIntensity={0.3} floatIntensity={1.4}>
-        <mesh geometry={geo}>
-          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.1} toneMapped={false} />
-        </mesh>
-        <mesh position={[0, -4.6, 0]}>
-          <cylinderGeometry args={[0.05, 0.05, 6, 4]} />
-          <meshStandardMaterial color="#1d1d3f" />
-        </mesh>
-      </Float>
-    </group>
-  );
-}
-
 function SearchBeams({ position, color }: { position: [number, number, number]; color: string }) {
   const dn = useDayNight();
   const a = useRef<Group>(null);
@@ -126,33 +95,34 @@ function SearchBeams({ position, color }: { position: [number, number, number]; 
       new MeshBasicMaterial({
         color: new Color(color),
         transparent: true,
-        opacity: 0.1,
+        opacity: 0.09,
         blending: AdditiveBlending,
         depthWrite: false,
         toneMapped: false,
       }),
     [color],
   );
+  useEffect(() => () => mat.dispose(), [mat]);
   useEffect(() => {
     const m = beam.current?.material as MeshBasicMaterial | undefined;
-    if (m) m.opacity = 0.14 * dn.night;
+    if (m) m.opacity = 0.09 * dn.night;
   }, [dn]);
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    if (a.current) a.current.rotation.set(Math.sin(t * 0.5) * 0.5, 0, Math.cos(t * 0.37) * 0.5);
-    if (b.current) b.current.rotation.set(Math.cos(t * 0.43) * 0.5, 0, Math.sin(t * 0.61) * 0.5);
+    if (a.current) a.current.rotation.set(0.35 + Math.sin(t * 0.5) * 0.28, 0, -0.2 + Math.cos(t * 0.37) * 0.28);
+    if (b.current) b.current.rotation.set(0.35 + Math.cos(t * 0.43) * 0.28, 0, -0.2 + Math.sin(t * 0.61) * 0.28);
   });
   if (dn.night < 0.05) return null;
   return (
     <group position={position}>
       <group ref={a}>
-        <mesh ref={beam} position={[0, 45, 0]} material={mat}>
-          <coneGeometry args={[6, 90, 12, 1, true]} />
+        <mesh ref={beam} position={[0, 30, 0]} material={mat} userData={{ noReflect: true }}>
+          <coneGeometry args={[2, 60, 12, 1, true]} />
         </mesh>
       </group>
       <group ref={b}>
-        <mesh position={[0, 45, 0]} material={mat}>
-          <coneGeometry args={[6, 90, 12, 1, true]} />
+        <mesh position={[0, 30, 0]} material={mat} userData={{ noReflect: true }}>
+          <coneGeometry args={[2, 60, 12, 1, true]} />
         </mesh>
       </group>
     </group>
@@ -198,6 +168,20 @@ function Landmark({
   );
 }
 
+function PinkStrip({ position, rotation }: { position: [number, number, number]; rotation: number }) {
+  const dn = useDayNight();
+  const mat = useRef<MeshStandardMaterial>(null);
+  useEffect(() => {
+    if (mat.current) mat.current.emissiveIntensity = 0.25 + dn.night * 1.4;
+  }, [dn]);
+  return (
+    <mesh position={position} rotation={[0, rotation, 0]}>
+      <boxGeometry args={[0.5, 64, 0.5]} />
+      <meshStandardMaterial ref={mat} color="#b0607f" emissive="#ff8ac2" emissiveIntensity={1.6} toneMapped={false} />
+    </mesh>
+  );
+}
+
 function BlueCrown({ position, r }: { position: [number, number, number]; r: number }) {
   const dn = useDayNight();
   const mat = useRef<MeshStandardMaterial>(null);
@@ -234,10 +218,7 @@ function ClubAdams() {
       {[0, 1, 2, 3].map((i) => {
         const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
         return (
-          <mesh key={i} position={[Math.cos(a) * 7.3, 33, Math.sin(a) * 7.3]} rotation={[0, -a, 0]}>
-            <boxGeometry args={[0.5, 64, 0.5]} />
-            <meshStandardMaterial color="#ff8ac2" emissive="#ff8ac2" emissiveIntensity={1.6} toneMapped={false} />
-          </mesh>
+          <PinkStrip key={i} position={[Math.cos(a) * 7.3, 33, Math.sin(a) * 7.3]} rotation={-a} />
         );
       })}
       <mesh position={[0, 66.6, 0]}>

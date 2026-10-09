@@ -12,13 +12,13 @@ import NeonSign from "./NeonSign";
 function Searchlight({ length, radius, color, intensity }: { length: number; radius: number; color: string; intensity: number }) {
   return (
     <group>
-      <mesh position={[0, -length / 2, 0]}>
+      <mesh position={[0, -length / 2, 0]} userData={{ noReflect: true }}>
         <coneGeometry args={[radius, length, 18, 1, true]} />
-        <meshBasicMaterial color={color} transparent opacity={0.06 * intensity} blending={AdditiveBlending} depthWrite={false} side={DoubleSide} toneMapped={false} />
+        <meshBasicMaterial color={color} transparent opacity={0.04 * intensity} blending={AdditiveBlending} depthWrite={false} side={DoubleSide} toneMapped={false} />
       </mesh>
-      <mesh position={[0, -length * 0.5, 0]} scale={[0.45, 1, 0.45]}>
+      <mesh position={[0, -length * 0.5, 0]} scale={[0.45, 1, 0.45]} userData={{ noReflect: true }}>
         <coneGeometry args={[radius, length, 14, 1, true]} />
-        <meshBasicMaterial color={color} transparent opacity={0.09 * intensity} blending={AdditiveBlending} depthWrite={false} side={DoubleSide} toneMapped={false} />
+        <meshBasicMaterial color={color} transparent opacity={0.06 * intensity} blending={AdditiveBlending} depthWrite={false} side={DoubleSide} toneMapped={false} />
       </mesh>
       <mesh>
         <sphereGeometry args={[0.3, 8, 8]} />
@@ -237,7 +237,7 @@ function Blimp() {
             </group>
           ))}
           <group ref={beam} position={[1.5, -1.2, 0]}>
-            <Searchlight length={95} radius={14} color="#ffe6a8" intensity={0.25 + dn.night} />
+            <Searchlight length={48} radius={2.6} color="#ffe6a8" intensity={0.25 + dn.night} />
           </group>
         </group>
         <NeonSign text={BLIMP_MESSAGES[msg]} color={msg === 1 ? "#ff8ac2" : msg === 2 ? "#f3dfae" : "#49f2d6"} width={20} height={2.6} fontSize={1.7} position={[0, 0.4, 0]} depth={10.4} backing="#101028" blink="marquee" doubleSided />
@@ -481,7 +481,7 @@ function Helicopter() {
         <Strobe position={[0, 2.6, -7.5]} color="#ffffff" rate={7} size={0.16} base={0.5} />
         <Strobe position={[0, -1.15, 0.4]} color="#ff2a3c" rate={10} size={0.2} />
         <group ref={beam} position={[0, -1.0, 1.6]}>
-          <Searchlight length={80} radius={9} color="#eaf4ff" intensity={0.3 + dn.night} />
+          <Searchlight length={60} radius={3.2} color="#eaf4ff" intensity={0.3 + dn.night} />
         </group>
       </group>
     </group>
