@@ -73,6 +73,7 @@ const fragmentShader = /* glsl */ `
   uniform vec3 uCool;
   uniform float uGlow;
   uniform float uCylindrical;
+  uniform float uShop;
   varying vec3 vNormalW;
   varying vec2 vFace;
   varying vec2 vTopXZ;
@@ -83,6 +84,9 @@ const fragmentShader = /* glsl */ `
   varying float vLocalY;
   varying vec3 vWorld;
   #include <fog_pars_fragment>
+
+  const float SHOP_GLAZING_TOP = 3.4;
+  const float SHOP_FASCIA_TOP = 4.2;
 
   float hash(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -135,16 +139,20 @@ const fragmentShader = /* glsl */ `
                 + uHemiSky * fres * mix(0.3, 0.6, isGlass) + uSunColor * spec * mix(1.0, 2.0, isGlass);
 
     // bays + windows
-    float shop = step(vLocalY, 3.6) * (1.0 - vTop);
+    float groundFloor = step(vWorld.y - vLocalY, 1.5) * step(6.0, vSize.y) * uShop;
+    float shop = step(vLocalY, mix(SHOP_FASCIA_TOP, SHOP_GLAZING_TOP, isGlass)) * (1.0 - vTop) * groundFloor;
+    float fascia = shop * step(SHOP_GLAZING_TOP, vLocalY);
     float cornice = step(vSize.y - 1.3, vLocalY) * (1.0 - vTop);
-    vec2 winSize = mix(uWinSize, vec2(uWinSize.x * 2.4, 3.6), shop);
     vec2 margin = mix(uWinMargin, vec2(0.09, 0.2), isGlass);
-    vec2 g = vFace / winSize;
+    margin = mix(margin, vec2(0.05, 0.04), shop);
+    vec2 g = vFace / uWinSize;
+    vec2 shopG = vec2(vFace.x / (uWinSize.x * 2.2), (vFace.y - 0.5) / (SHOP_GLAZING_TOP - 0.5));
+    g = mix(g, shopG, shop);
     vec2 cell = floor(g);
     vec2 f = fract(g);
     float inWin = step(margin.x, f.x) * step(f.x, 1.0 - margin.x)
                 * step(margin.y, f.y) * step(f.y, 1.0 - margin.y);
-    inWin *= (1.0 - vTop) * step(0.5, vLocalY) * (1.0 - cornice);
+    inWin *= (1.0 - vTop) * step(0.5, vLocalY) * (1.0 - cornice) * (1.0 - fascia);
 
     float h = hash(cell + vSeed * 13.17);
     float floorDark = step(0.12, hash(vec2(cell.y, vSeed * 3.7)));
@@ -185,14 +193,28 @@ const fragmentShader = /* glsl */ `
     float ledge = step(0.96, f.y) * (1.0 - vTop) * (1.0 - isGlass);
     float spandrel = step(0.92, f.y) * (1.0 - vTop) * isGlass;
 
+    float shopBay = hash(vec2(cell.x * 1.37 + vSeed * 4.4, 3.0));
+    float isDoor = shop * (1.0 - fascia) * step(0.74, shopBay);
+    float doorMask = isDoor * step(0.3, f.x) * step(f.x, 0.7) * step(fy, 0.76) * inWin;
+    float shopMullion = shop * inWin * (step(abs(f.x - 0.5), 0.012) * (1.0 - isDoor) + step(abs(fy - 0.74), 0.016));
+    float fasciaTone = hash(vec2(vSeed * 3.1, 7.0));
+    vec3 fasciaCol = vec3(0.07, 0.07, 0.08);
+    fasciaCol = mix(fasciaCol, vec3(0.12, 0.26, 0.18), step(0.2, fasciaTone));
+    fasciaCol = mix(fasciaCol, vec3(0.32, 0.08, 0.1), step(0.4, fasciaTone));
+    fasciaCol = mix(fasciaCol, vec3(0.08, 0.1, 0.24), step(0.6, fasciaTone));
+    fasciaCol = mix(fasciaCol, vec3(0.78, 0.72, 0.58), step(0.8, fasciaTone));
+    float fasciaEdge = step(SHOP_FASCIA_TOP - 0.1, vLocalY) + step(vLocalY, SHOP_GLAZING_TOP + 0.1);
+
     vec3 col = mix(facade, win, inWin);
-    col = mix(col, facade * 0.78, pilaster * 0.7);
+    col = mix(col, vec3(0.06, 0.05, 0.07) + tint * 0.06 * uNight, doorMask);
+    col = mix(col, vec3(0.12, 0.12, 0.14) * light, shopMullion);
+    col = mix(col, facade * 0.78, pilaster * 0.7 * (1.0 - shop));
     col = mix(col, vec3(0.55, 0.6, 0.68) * light, mullion);
-    col = mix(col, facade * 0.7, ledge * 0.6);
-    col = mix(col, vColor * 0.55 * light, spandrel);
+    col = mix(col, facade * 0.7, ledge * 0.6 * (1.0 - shop));
+    col = mix(col, vColor * 0.55 * light, spandrel * (1.0 - shop));
     col = mix(col, facade * 1.12, cornice * step(0.5, fract(vLocalY * 2.0)));
     col = mix(col, facade * 0.6, step(vLocalY, 0.5) * (1.0 - vTop));
-    col = mix(col, mix(facade * 0.7, tint * 0.9, uNight), shop * step(0.96, f.y) * 0.8);
+    col = mix(col, mix(fasciaCol * light, facade * 1.1, fasciaEdge * 0.6), fascia);
 
     // roof: gravel, parapet rim, slight AO
     vec2 rim = vSize.xz * 0.5 - abs(vTopXZ);
@@ -220,6 +242,7 @@ export interface WindowMaterialOptions {
   cool?: string;
   cylindrical?: boolean;
   glow?: number;
+  storefront?: boolean;
 }
 
 export function createWindowMaterial(opts: WindowMaterialOptions = {}) {
@@ -232,6 +255,7 @@ export function createWindowMaterial(opts: WindowMaterialOptions = {}) {
       {
         uSeed: { value: opts.seed ?? Math.random() * 100 },
         uCylindrical: { value: opts.cylindrical ? 1 : 0 },
+        uShop: { value: opts.storefront === false || opts.cylindrical ? 0 : 1 },
         uGlow: { value: opts.glow ?? 0 },
         uColor: { value: new Color(opts.color ?? "#5a4d7a") },
         uNight: { value: 1 },
