@@ -360,11 +360,10 @@ function SuburbTrees({ trees }: { trees: { x: number; z: number; s: number }[] }
     <group>
       <instancedMesh ref={trunks} args={[undefined, undefined, trees.length]}>
         <cylinderGeometry args={[0.2, 0.3, 2.4, 5]} />
-        <meshStandardMaterial color="#4a2e2a" roughness={1} />
+        <meshStandardMaterial color={TRUNK_COLOR} roughness={1} />
       </instancedMesh>
-      <instancedMesh ref={crowns} args={[undefined, undefined, trees.length]}>
-        <icosahedronGeometry args={[2.1, 0]} />
-        <meshStandardMaterial color="#2f7a50" roughness={0.9} flatShading />
+      <instancedMesh ref={crowns} args={[crownGeo, undefined, trees.length]}>
+        <meshStandardMaterial color={CROWN_PINE} roughness={1} />
       </instancedMesh>
     </group>
   );
@@ -541,17 +540,46 @@ function Riverbank() {
   );
 }
 
+const TILES_PER_SIDE = 4;
+
+interface Tile {
+  houses: House[];
+  pads: { x: number; z: number }[];
+  trees: { x: number; z: number; s: number }[];
+  banks: Bank[];
+}
+
+function tileIndex(x: number, z: number) {
+  const size = (EXTENT * 2) / TILES_PER_SIDE;
+  const clamp = (v: number) => Math.min(TILES_PER_SIDE - 1, Math.max(0, Math.floor((v + EXTENT) / size)));
+  return clamp(x) * TILES_PER_SIDE + clamp(z);
+}
+
+function tileWorld(world: ReturnType<typeof buildHouses>): Tile[] {
+  const tiles: Tile[] = Array.from({ length: TILES_PER_SIDE * TILES_PER_SIDE }, () => ({ houses: [], pads: [], trees: [], banks: [] }));
+  for (const h of world.houses) tiles[tileIndex(h.x, h.z)].houses.push(h);
+  for (const p of world.pads) tiles[tileIndex(p.x, p.z)].pads.push(p);
+  for (const t of world.trees) tiles[tileIndex(t.x, t.z)].trees.push(t);
+  for (const b of world.banks) tiles[tileIndex(b.x, b.z)].banks.push(b);
+  return tiles;
+}
+
 export default function Suburbs() {
-  const { houses, trees, midrise, pads, banks } = useMemo(() => buildHouses(), []);
+  const world = useMemo(() => buildHouses(), []);
+  const tiles = useMemo(() => tileWorld(world), [world]);
   return (
     <group>
       <WindsorShore />
       <Riverbank />
       <SuburbStreets />
-      <Banks banks={banks} />
-      <Houses houses={houses} pads={pads} />
-      <MidRise lots={midrise} />
-      <SuburbTrees trees={trees} />
+      {tiles.map((t, i) => (
+        <Fragment key={i}>
+          {t.banks.length > 0 && <Banks banks={t.banks} />}
+          {t.houses.length > 0 && <Houses houses={t.houses} pads={t.pads} />}
+          {t.trees.length > 0 && <SuburbTrees trees={t.trees} />}
+        </Fragment>
+      ))}
+      <MidRise lots={world.midrise} />
       <Freeway />
     </group>
   );

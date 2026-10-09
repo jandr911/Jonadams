@@ -300,12 +300,12 @@ export function buildKindGeometry(kind: VehicleKind): VehicleKindGeometry {
 }
 
 export function buildWheelGeometry() {
-  const tire = mergeGeometries([new CylinderGeometry(1, 1, 0.3, 16).toNonIndexed(), new CylinderGeometry(0.86, 0.86, 0.34, 16).toNonIndexed()])!;
+  const tire = mergeGeometries([new CylinderGeometry(1, 1, 0.3, 10).toNonIndexed(), new CylinderGeometry(0.86, 0.86, 0.34, 10).toNonIndexed()])!;
   tire.rotateZ(Math.PI / 2);
-  const rimPieces: BufferGeometry[] = [new CylinderGeometry(0.64, 0.64, 0.3, 12).toNonIndexed(), new CylinderGeometry(0.18, 0.18, 0.4, 8).toNonIndexed()];
-  for (let i = 0; i < 5; i++) {
+  const rimPieces: BufferGeometry[] = [new CylinderGeometry(0.64, 0.64, 0.3, 8).toNonIndexed(), new CylinderGeometry(0.18, 0.18, 0.4, 6).toNonIndexed()];
+  for (let i = 0; i < 3; i++) {
     const spoke = new BoxGeometry(1.1, 0.34, 0.12).toNonIndexed();
-    spoke.rotateY((i / 5) * Math.PI);
+    spoke.rotateY((i / 3) * Math.PI);
     rimPieces.push(spoke);
   }
   const rim = mergeGeometries(rimPieces)!;

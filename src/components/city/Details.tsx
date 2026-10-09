@@ -97,9 +97,9 @@ function buildParked() {
   const items: FleetItem[] = [];
   const colors = ["#f4f1ea", "#1d1d3f", "#c8102e", "#2a3a7a", "#9a95a8", "#d6b56e", "#3f3f4f", "#4a2c3a", "#2f6ea8", "#7a8c3a"];
   const kinds: VehicleKind[] = ["sedan", "sedan", "sedan", "suv", "suv", "pickup", "van"];
-  for (const { c, r } of allBlocks()) {
+  for (const { c, r, outer } of allBlocks()) {
     const [bx, bz] = blockCenter(c, r);
-    const n = 2 + Math.floor(rand() * 4);
+    const n = outer ? 1 + Math.floor(rand() * 2) : 2 + Math.floor(rand() * 4);
     for (let k = 0; k < n; k++) {
       const side = rand() < 0.5 ? 1 : -1;
       const t = range(rand, -BLOCK / 2 + 3, BLOCK / 2 - 3);
@@ -420,7 +420,7 @@ function SatelliteDishes() {
   }, [items, dummy]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
-      <sphereGeometry args={[0.55, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2.4]} />
+      <sphereGeometry args={[0.55, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2.4]} />
       <meshStandardMaterial color="#d8d8e0" roughness={0.5} metalness={0.3} side={2} />
     </instancedMesh>
   );

@@ -2,15 +2,13 @@
 
 import { AdaptiveDpr, PerformanceMonitor } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { useState } from "react";
 import { ACESFilmicToneMapping } from "three";
 import Scene from "./Scene";
 
 export default function CityStage({ onQuality, onReady }: { onQuality: (q: "high" | "low") => void; onReady: () => void }) {
-  const [dpr, setDpr] = useState(1);
   return (
     <Canvas
-      dpr={dpr}
+      dpr={1}
       shadows
       camera={{ fov: 40, near: 1, far: 2600, position: [0, 80, 260] }}
       gl={{ antialias: false, powerPreference: "high-performance", toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
@@ -25,22 +23,13 @@ export default function CityStage({ onQuality, onReady }: { onQuality: (q: "high
       }}
     >
       <PerformanceMonitor
-        onDecline={() => {
-          setDpr(1);
-          onQuality("low");
-        }}
-        onIncline={() => {
-          setDpr(Math.min(1.5, window.devicePixelRatio));
-          onQuality("high");
-        }}
+        onDecline={() => onQuality("low")}
+        onIncline={() => onQuality("high")}
         ms={400}
         iterations={12}
         flipflops={2}
         bounds={() => [30, 60]}
-        onFallback={() => {
-          setDpr(1);
-          onQuality("low");
-        }}
+        onFallback={() => onQuality("low")}
       />
       <AdaptiveDpr />
       <Scene onReady={onReady} />
