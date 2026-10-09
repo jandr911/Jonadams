@@ -1,43 +1,34 @@
 import type { Metadata } from "next";
 import Room from "@/components/Room";
+import YouTubeEmbed from "@/components/YouTubeEmbed";
+import { VIDEOS, VISUALS } from "@/content/site";
 
 export const metadata: Metadata = { title: "Listen" };
-
-const slots = [
-  "YouTube embed: lead single",
-  "YouTube embed: latest release",
-  "YouTube embed: fan favorite",
-  "YouTube embed: live session",
-];
 
 export default function ListenPage() {
   return (
     <Room
-      title="LISTEN"
-      lead="Press play right here. Every play counts on the channel."
+      index="02"
+      title="Listen"
+      lead="Press play right here. Every play on this page counts on the channel."
+      accent="#ffb02e"
     >
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        {slots.map((s) => (
-          <div
-            key={s}
-            className="grid aspect-video place-items-center rounded-xl border-2 border-dashed border-[#3a3a58] bg-panel p-3 text-center text-sm tracking-wide text-[#6a6a8e]"
-          >
-            {s}
-          </div>
+      <div className="grid-2">
+        {VIDEOS.map((v, i) => (
+          <YouTubeEmbed key={v.title} slot={v} index={i} />
         ))}
       </div>
-      <h2
-        id="watch"
-        className="sign mb-2 mt-12 text-xl tracking-[4px] text-cyan md:text-2xl"
-      >
-        WATCH
-      </h2>
-      <p className="mb-6 max-w-[65ch] text-muted">
-        Visuals, behind-the-scenes, and everything in motion.
-      </p>
-      <div className="grid aspect-video max-w-2xl place-items-center rounded-xl border-2 border-dashed border-[#3a3a58] bg-panel p-3 text-center text-sm tracking-wide text-[#6a6a8e]">
-        YouTube embed: video playlist
-      </div>
+
+      <section id="watch" className="room__section">
+        <span className="eyebrow">District 03</span>
+        <h2 className="room__subtitle">Watch</h2>
+        <p className="room__lead">Visuals, behind the scenes, and everything in motion.</p>
+        <div className="grid-2">
+          {VISUALS.map((v, i) => (
+            <YouTubeEmbed key={v.title} slot={v} index={i} />
+          ))}
+        </div>
+      </section>
     </Room>
   );
 }

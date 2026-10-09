@@ -1,38 +1,41 @@
 import type { Metadata } from "next";
 import Room from "@/components/Room";
+import { CREATIVE_SLOTS, SITE } from "@/content/site";
 
 export const metadata: Metadata = { title: "The Creatives" };
-
-const spots = [
-  { name: "Featured musician", craft: "Music", note: "Spotlight slot: curated by Jonathan" },
-  { name: "Featured builder", craft: "Tech", note: "Spotlight slot: curated by Jonathan" },
-  { name: "Featured designer", craft: "Art", note: "Spotlight slot: curated by Jonathan" },
-];
 
 export default function CreativesPage() {
   return (
     <Room
-      title="THE CREATIVES"
-      lead="A curated wall for up-and-coming artists, builders, and makers. Want on the wall? Send your work by email and Jonathan picks the lineup."
+      index="05"
+      title="The Creatives"
+      lead="A curated wall for up-and-coming artists, builders, and makers from the city and beyond. Jonathan picks the lineup."
+      accent="#c9a6ff"
     >
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {spots.map((s) => (
-          <article
-            key={s.name}
-            className="rounded-xl border-2 border-[#3a3a58] bg-panel p-4"
-          >
-            <div
-              className="mb-3 h-28 rounded-lg bg-gradient-to-br from-[#241145] to-violet opacity-70"
-              aria-hidden
-            />
-            <strong className="sign tracking-[2px]">{s.name}</strong>
-            <span className="mt-1 block text-xs tracking-[2px] text-cyan">
-              {s.craft}
-            </span>
-            <span className="mt-2 block text-sm text-muted">{s.note}</span>
+      <div className="grid-3">
+        {CREATIVE_SLOTS.map((s, i) => (
+          <article key={s.name} className="creative-card">
+            <div className="creative-card__art" aria-hidden>
+              <span>{String(i + 1).padStart(2, "0")}</span>
+            </div>
+            <span className="eyebrow">{s.craft}</span>
+            <span className="creative-card__name">{s.name}</span>
           </article>
         ))}
       </div>
+      <section className="cta-panel">
+        <span className="eyebrow">Want on the wall?</span>
+        <p className="cta-panel__text">
+          Send your work by email. No uploads, no forms — a short note and a link is enough.
+        </p>
+        {SITE.submitEmail ? (
+          <a className="btn-solid" href={`mailto:${SITE.submitEmail}?subject=Feature%20me%20on%20The%20Creatives`}>
+            Email your work
+          </a>
+        ) : (
+          <span className="cta-panel__soon">Submissions open soon</span>
+        )}
+      </section>
     </Room>
   );
 }

@@ -1,0 +1,168 @@
+export const BLOCK = 20;
+export const ROAD = 7;
+export const PITCH = BLOCK + ROAD;
+export const COLS = 9;
+export const ROWS = 6;
+
+export const CITY_HALF_X = (COLS * PITCH) / 2;
+export const CITY_HALF_Z = (ROWS * PITCH) / 2;
+
+export const RIVER_NEAR = CITY_HALF_Z + 12;
+export const RIVER_FAR = RIVER_NEAR + 70;
+
+export const HOME_CAMERA = {
+  position: [0, 62, CITY_HALF_Z + 206] as [number, number, number],
+  target: [0, 28, -10] as [number, number, number],
+};
+
+export const INTRO_CAMERA = {
+  position: [-260, 200, CITY_HALF_Z + 440] as [number, number, number],
+  target: [0, 20, 0] as [number, number, number],
+};
+
+export function blockCenter(col: number, row: number): [number, number] {
+  return [
+    -CITY_HALF_X + PITCH / 2 + col * PITCH,
+    -CITY_HALF_Z + PITCH / 2 + row * PITCH,
+  ];
+}
+
+export const OUTER_ROWS = 8;
+export const OUTER_COLS = 6;
+export const OUTER_HALF_X = CITY_HALF_X + OUTER_COLS * PITCH;
+export const OUTER_MIN_Z = -CITY_HALF_Z - OUTER_ROWS * PITCH;
+
+export function allBlocks(): { c: number; r: number; outer: boolean }[] {
+  const out: { c: number; r: number; outer: boolean }[] = [];
+  for (let r = -OUTER_ROWS; r < ROWS; r++) {
+    for (let c = -OUTER_COLS; c < COLS + OUTER_COLS; c++) {
+      const outer = r < 0 || c < 0 || c >= COLS;
+      out.push({ c, r, outer });
+    }
+  }
+  return out;
+}
+
+export function outerRoadLinesX(): number[] {
+  const xs: number[] = [];
+  for (let c = -OUTER_COLS; c <= COLS + OUTER_COLS; c++) xs.push(-CITY_HALF_X + c * PITCH);
+  return xs;
+}
+
+export function outerRoadLinesZ(): number[] {
+  const zs: number[] = [];
+  for (let r = -OUTER_ROWS; r <= ROWS; r++) zs.push(-CITY_HALF_Z + r * PITCH);
+  return zs;
+}
+
+export const LIGHT_CYCLE = 14;
+
+export function lightIsGreen(axis: "x" | "z", ix: number, iz: number, time: number): boolean {
+  const cycle = (time % LIGHT_CYCLE) / LIGHT_CYCLE;
+  const phase = ((ix + iz) % 2) * 0.5 + (axis === "x" ? 0.5 : 0);
+  const c = (cycle + phase) % 1;
+  return c < 0.44;
+}
+
+export function lightIsAmber(axis: "x" | "z", ix: number, iz: number, time: number): boolean {
+  const cycle = (time % LIGHT_CYCLE) / LIGHT_CYCLE;
+  const phase = ((ix + iz) % 2) * 0.5 + (axis === "x" ? 0.5 : 0);
+  const c = (cycle + phase) % 1;
+  return c >= 0.44 && c < 0.5;
+}
+
+export function nearIntersection(v: number, half: number): boolean {
+  const m = (((v + half) % PITCH) + PITCH) % PITCH;
+  return Math.abs(m - PITCH / 2) < 4;
+}
+
+export function roadLinesX(): number[] {
+  const xs: number[] = [];
+  for (let c = 0; c <= COLS; c++) xs.push(-CITY_HALF_X + c * PITCH);
+  return xs;
+}
+
+export function roadLinesZ(): number[] {
+  const zs: number[] = [];
+  for (let r = 0; r <= ROWS; r++) zs.push(-CITY_HALF_Z + r * PITCH);
+  return zs;
+}
+
+export interface Destination {
+  id: string;
+  href: string;
+  label: string;
+  sub: string;
+  color: string;
+  block: [number, number];
+  offset: [number, number];
+  view: { from: [number, number, number]; at: [number, number, number] };
+  markerHeight: number;
+}
+
+export const DESTINATIONS: Destination[] = [
+  {
+    id: "club",
+    href: "/club",
+    label: "Club Adams",
+    sub: "Renaissance Center",
+    color: "#ff4fa3",
+    block: [5, 5],
+    offset: [0, 0],
+    view: { from: [16, 34, 66], at: [0, 30, 0] },
+    markerHeight: 78,
+  },
+  {
+    id: "listen",
+    href: "/listen",
+    label: "Listen",
+    sub: "Fox Theatre",
+    color: "#ffb02e",
+    block: [1, 5],
+    offset: [0, 0],
+    view: { from: [6, 20, 48], at: [0, 18, 0] },
+    markerHeight: 46,
+  },
+  {
+    id: "merch",
+    href: "/merch",
+    label: "Merch",
+    sub: "Rivertown Warehouse",
+    color: "#49d2f2",
+    block: [6, 5],
+    offset: [0, 0],
+    view: { from: [-8, 16, 44] , at: [0, 12, 0] },
+    markerHeight: 34,
+  },
+  {
+    id: "watch",
+    href: "/listen#watch",
+    label: "Watch",
+    sub: "Michigan Central",
+    color: "#49f2d6",
+    block: [0, 5],
+    offset: [0, 0],
+    view: { from: [10, 26, 58], at: [0, 24, 0] },
+    markerHeight: 56,
+  },
+  {
+    id: "creatives",
+    href: "/creatives",
+    label: "The Creatives",
+    sub: "Corktown Billboard",
+    color: "#c9a6ff",
+    block: [2, 4],
+    offset: [0, 0],
+    view: { from: [4, 22, 44], at: [0, 20, 0] },
+    markerHeight: 34,
+  },
+];
+
+export const STREETS_EW = ["Grand River Ave", "Michigan Ave", "Lafayette Blvd", "Fort St", "Congress St", "Larned St", "Jefferson Ave"];
+export const STREETS_NS = ["Third Ave", "Cass Ave", "Washington Blvd", "Griswold St", "Woodward Ave", "Brush St", "Beaubien St", "St Antoine St", "Rivard St", "Riopelle St"];
+export const WOODWARD_INDEX = 4;
+
+export function destinationPosition(d: Destination): [number, number] {
+  const [cx, cz] = blockCenter(d.block[0], d.block[1]);
+  return [cx + d.offset[0], cz + d.offset[1]];
+}

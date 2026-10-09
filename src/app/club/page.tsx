@@ -5,31 +5,31 @@ import Room from "@/components/Room";
 export const metadata: Metadata = { title: "Club Adams" };
 
 const walls = [
-  { href: "/listen", label: "THE SOUND", note: "Music, straight from the booth", tint: "from-[#123a44] to-cyan" },
-  { href: "/listen#watch", label: "THE SCREEN", note: "Videos and visuals", tint: "from-[#3b1360] to-pink" },
-  { href: "/creatives", label: "THE WALL", note: "Creatives on display", tint: "from-[#241145] to-violet" },
-  { href: "/merch", label: "THE RACK", note: "Wear the universe", tint: "from-[#4a2c08] to-amber" },
+  { href: "/listen", index: "02", label: "The Sound", note: "Music, straight from the booth", accent: "#49f2d6" },
+  { href: "/listen#watch", index: "03", label: "The Screen", note: "Videos and visuals", accent: "#ff4fa3" },
+  { href: "/creatives", index: "05", label: "The Wall", note: "Creatives on display", accent: "#c9a6ff" },
+  { href: "/merch", index: "04", label: "The Rack", note: "Wear the universe", accent: "#ffb02e" },
 ];
 
 export default function ClubPage() {
   return (
     <Room
-      title="CLUB ADAMS"
-      lead="You made it inside. Pick a wall and see where it takes you."
+      index="01"
+      title="Club Adams"
+      lead="You made it inside. Four walls, four ways deeper into the city."
+      accent="#ff4fa3"
     >
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      <div className="grid-2">
         {walls.map((w) => (
-          <Link
-            key={w.label}
-            href={w.href}
-            className="block rounded-xl border-2 border-[#3a3a58] bg-panel p-4 transition-colors hover:border-pink focus-visible:border-pink"
-          >
-            <div
-              className={`mb-3 h-32 rounded-lg bg-gradient-to-br ${w.tint} blur-[1.5px] saturate-125`}
-              aria-hidden
-            />
-            <strong className="sign tracking-[2px]">{w.label}</strong>
-            <span className="mt-1 block text-sm text-muted">{w.note}</span>
+          <Link key={w.label} href={w.href} className="wall-card" style={{ ["--accent" as string]: w.accent }}>
+            <div className="wall-card__art" aria-hidden>
+              <span className="wall-card__index">{w.index}</span>
+            </div>
+            <div className="wall-card__body">
+              <span className="wall-card__label">{w.label}</span>
+              <span className="wall-card__note">{w.note}</span>
+            </div>
+            <span className="wall-card__arrow" aria-hidden>→</span>
           </Link>
         ))}
       </div>
