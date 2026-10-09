@@ -299,6 +299,18 @@ function MarqueeBulbs({ width, position }: { width: number; position: [number, n
   );
 }
 
+const FOX_LINES = ["NOW PLAYING · JONATHAN ADAMS", "ONE NIGHT ONLY · DOORS 8PM", "SOLD OUT · SECOND SHOW ADDED", "ADAMS UNIVERSECITY · LIVE"];
+const FOX_LINE_MS = 4200;
+
+function FoxMarquee() {
+  const [line, setLine] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setLine((v) => (v + 1) % FOX_LINES.length), FOX_LINE_MS);
+    return () => clearInterval(id);
+  }, []);
+  return <NeonSign text={FOX_LINES[line]} color="#fff1c4" width={14} height={2.2} fontSize={0.9} position={[0, -1.9, 1.6]} glow={1.8} />;
+}
+
 function ListenTower() {
   const d = DESTINATIONS[1];
   const [x, z] = destinationPosition(d);
@@ -323,7 +335,7 @@ function ListenTower() {
           <meshStandardMaterial color="#b52c24" />
         </mesh>
         <MarqueeBulbs width={16.4} position={[0, -0.7, 2.4]} />
-        <NeonSign text="NOW PLAYING" color="#fff1c4" width={14} height={2.2} fontSize={1.5} position={[0, -1.9, 1.6]} glow={1.8} />
+        <FoxMarquee />
       </group>
       <mesh position={[0, 3.2, 8.3]}>
         <boxGeometry args={[6, 6, 0.4]} />

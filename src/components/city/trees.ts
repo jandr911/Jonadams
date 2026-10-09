@@ -15,9 +15,10 @@ const TURNING = ["#8a7a2c", "#8f6a2a", "#8a4a26", "#9a6230", "#7a5a24", "#6e6a2c
 const SPRUCE = ["#2f4a30", "#2a4034", "#35503a", "#3a4a2e"];
 const AUTUMN_SHARE = 0.3;
 
-export function crownColor(species: TreeSpecies, rand: () => number) {
-  if (species === "spruce") return new Color(pick(rand, SPRUCE));
-  return new Color(rand() < AUTUMN_SHARE ? pick(rand, TURNING) : pick(rand, GREENS));
+export function crownTint(species: TreeSpecies, rand: () => number): { tint: Color; autumn: boolean } {
+  if (species === "spruce") return { tint: new Color(pick(rand, SPRUCE)), autumn: false };
+  const autumn = rand() < AUTUMN_SHARE;
+  return { tint: new Color(pick(rand, autumn ? TURNING : GREENS)), autumn };
 }
 
 function shadeVertices(geo: BufferGeometry, rand: () => number, low: number, high: number) {
@@ -124,7 +125,13 @@ function crownFor(species: TreeSpecies, quality: CrownQuality, rand: () => numbe
     const r = 1.9;
     const y = 4.1;
     if (quality === "far") return lobe(r, 0, rand, 0, y, 0, 0.8);
-    const lobes = [lobe(r, detail, rand, 0, y, 0, 0.8), lobe(r * 0.64, detail, rand, r * 0.6, y + r * 0.18, -r * 0.35, 0.86), lobe(r * 0.6, detail, rand, -r * 0.55, y + r * 0.4, r * 0.4, 0.86)];
+    const lobes = [
+      lobe(r, detail, rand, 0, y, 0, 0.8),
+      lobe(r * 0.64, detail, rand, r * 0.6, y + r * 0.18, -r * 0.35, 0.86),
+      lobe(r * 0.6, detail, rand, -r * 0.55, y + r * 0.4, r * 0.4, 0.86),
+      lobe(r * 0.5, detail, rand, -r * 0.4, y - r * 0.2, -r * 0.6, 0.9),
+      lobe(r * 0.45, detail, rand, r * 0.3, y + r * 0.7, r * 0.5, 0.95),
+    ];
     if (quality === "near") lobes.push(lobe(r * 0.55, detail, rand, r * 0.1, y - r * 0.3, r * 0.7, 0.9));
     return merge(lobes);
   }
@@ -132,7 +139,7 @@ function crownFor(species: TreeSpecies, quality: CrownQuality, rand: () => numbe
     const r = 1.6;
     const y = 5.4;
     if (quality === "far") return lobe(r, 0, rand, 0, y, 0, 1.45);
-    return merge([lobe(r * 0.95, detail, rand, 0, y, 0, 1.3), lobe(r * 0.7, detail, rand, r * 0.1, y + r * 1.25, -r * 0.1, 1.1)]);
+    return merge([lobe(r * 0.95, detail, rand, 0, y, 0, 1.3), lobe(r * 0.7, detail, rand, r * 0.1, y + r * 1.25, -r * 0.1, 1.1), lobe(r * 0.5, detail, rand, -r * 0.6, y + r * 0.5, r * 0.3, 1.0)]);
   }
   if (species === "spruce") {
     if (quality === "far") return cone(1.4, 4.6, 0.9, rand);
@@ -206,14 +213,15 @@ export function setWindTime(seconds: number) {
 }
 
 export function createCrownMaterial() {
-  const mat = new MeshStandardMaterial({ color: "#ffffff", vertexColors: true, roughness: 1, flatShading: true });
+  const mat = new MeshStandardMaterial({ color: "#ffffff", vertexColors: true, roughness: 1 });
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uWindTime = WIND;
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nuniform float uWindTime;")
+      .replace("#include <common>", "#include <common>\nuniform float uWindTime;\nvarying vec3 vLeafPos;")
       .replace(
         "#include <begin_vertex>",
         `#include <begin_vertex>
+        vLeafPos = position;
         #ifdef USE_INSTANCING
         {
           vec4 anchor = modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
@@ -222,19 +230,40 @@ export function createCrownMaterial() {
           float reach = clamp(position.y * 0.18, 0.2, 1.4);
           transformed.x += sway * reach * 0.07;
           transformed.z += sway * reach * 0.04;
+          vLeafPos = (instanceMatrix * vec4(position, 1.0)).xyz;
         }
         #endif`,
       );
-    shader.fragmentShader = shader.fragmentShader.replace(
-      "#include <clipping_planes_fragment>",
-      `#include <clipping_planes_fragment>
-      {
-        float nearHash = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-        if (length(vViewPosition) < ${NEAR_FADE_START.toFixed(2)} + nearHash * ${NEAR_FADE_LENGTH.toFixed(2)}) discard;
-      }`,
-    );
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+        varying vec3 vLeafPos;
+        float leafHash(vec2 p) {
+          vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+          p3 += dot(p3, p3.yzx + 33.33);
+          return fract((p3.x + p3.y) * p3.z);
+        }`,
+      )
+      .replace(
+        "#include <clipping_planes_fragment>",
+        `#include <clipping_planes_fragment>
+        {
+          float nearHash = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+          if (length(vViewPosition) < ${NEAR_FADE_START.toFixed(2)} + nearHash * ${NEAR_FADE_LENGTH.toFixed(2)}) discard;
+        }`,
+      )
+      .replace(
+        "#include <normal_fragment_begin>",
+        `#include <normal_fragment_begin>
+        {
+          vec3 cell = floor(vLeafPos * 3.2);
+          vec3 leaf = vec3(leafHash(cell.xy + cell.z), leafHash(cell.yz + cell.x * 1.7), leafHash(cell.zx + cell.y * 2.3)) - 0.5;
+          normal = normalize(normal + leaf * 1.1);
+        }`,
+      );
   };
-  mat.customProgramCacheKey = () => "crown-wind-fade";
+  mat.customProgramCacheKey = () => "crown-wind-fade-leaf";
   return mat;
 }
 

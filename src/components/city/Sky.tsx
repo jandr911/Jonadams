@@ -11,8 +11,10 @@ import {
   Color,
   Float32BufferAttribute,
   Group,
+  InstancedMesh,
   Mesh,
   MeshBasicMaterial,
+  Object3D,
   Points,
   ShaderMaterial,
   Vector3,
@@ -40,6 +42,11 @@ const skyFrag = /* glsl */ `
   uniform float uNight;
   uniform vec3 uFog;
   varying vec3 vDir;
+  float hash(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+  }
   void main() {
     vec3 d = normalize(vDir);
     float h = d.y;
@@ -51,6 +58,16 @@ const skyFrag = /* glsl */ `
     float s = max(dot(d, normalize(uSunDir)), 0.0);
     float glow = pow(s, 64.0) * 1.4 + pow(s, 8.0) * 0.22 + pow(s, 2.0) * 0.04;
     col += uSunColor * glow * mix(0.35, 1.0, uNight) * (1.0 - uNight * 0.75) * (1.0 - haze * 0.5);
+    if (h >= 0.0 && h < 0.045) {
+      float az = atan(d.z, d.x);
+      float sil = 0.003 + hash(vec2(floor(az * 70.0), 1.0)) * 0.012 + hash(vec2(floor(az * 230.0), 2.0)) * 0.005;
+      float stack = step(0.985, hash(vec2(floor(az * 400.0), 3.0))) * 0.02;
+      float city = 1.0 - step(sil + stack, h);
+      vec3 silCol = uFog * mix(0.8, 0.6, uNight);
+      float lit = uNight * step(0.93, hash(vec2(floor(az * 900.0), floor(h * 900.0)))) * step(h, sil + stack - 0.002);
+      silCol = mix(silCol, vec3(1.0, 0.85, 0.6), lit);
+      col = mix(col, silCol, city * 0.85);
+    }
     gl_FragColor = vec4(col, 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -202,18 +219,65 @@ function SunAndMoon() {
   return (
     <group ref={group}>
       <mesh position={sunPos} visible={dayAmount > 0.03}>
-        <sphereGeometry args={[44, 24, 16]} />
-        <meshBasicMaterial color={new Color("#fff3b0").multiplyScalar(1.35)} toneMapped={false} />
+        <sphereGeometry args={[34, 24, 16]} />
+        <meshBasicMaterial color={new Color("#fff6d8").multiplyScalar(1.5)} toneMapped={false} fog={false} />
+      </mesh>
+      <mesh position={sunPos} visible={dayAmount > 0.03}>
+        <sphereGeometry args={[110, 24, 16]} />
+        <meshBasicMaterial color="#fff1c0" transparent opacity={0.22} blending={AdditiveBlending} depthWrite={false} toneMapped={false} fog={false} />
       </mesh>
       <mesh position={moonPos} visible={dn.night > 0.4}>
         <sphereGeometry args={[30, 24, 16]} />
-        <meshBasicMaterial color={new Color("#f4eed7").multiplyScalar(1.35)} toneMapped={false} />
+        <meshBasicMaterial color={new Color("#f4eed7").multiplyScalar(1.35)} toneMapped={false} fog={false} />
       </mesh>
       <mesh position={moonPos.clone().add(new Vector3(9, 6, 0))} visible={dn.night > 0.4}>
         <sphereGeometry args={[25, 24, 16]} />
-        <meshBasicMaterial color="#0a0620" />
+        <meshBasicMaterial color="#0a0620" fog={false} />
       </mesh>
     </group>
+  );
+}
+
+const HIGH_BIRDS = 36;
+const BIRD_GEOMETRY = (() => {
+  const geo = new BufferGeometry();
+  const verts = new Float32Array([-1.1, 0, 0.35, 0, 0, 0, -1.1, 0, -0.35, 1.1, 0, 0.35, 0, 0, 0, 1.1, 0, -0.35]);
+  geo.setAttribute("position", new Float32BufferAttribute(verts, 3));
+  geo.computeVertexNormals();
+  return geo;
+})();
+
+function HighBirds() {
+  const dn = useDayNight();
+  const ref = useRef<InstancedMesh>(null);
+  const dummy = useMemo(() => new Object3D(), []);
+  const flock = useMemo(() => {
+    const rand = mulberry32(44);
+    return Array.from({ length: HIGH_BIRDS }, () => ({ ox: range(rand, -60, 60), oy: range(rand, -10, 10), oz: range(rand, -40, 40), flap: rand() * 10, s: range(rand, 0.7, 1.3) }));
+  }, []);
+  useFrame(({ clock }) => {
+    const m = ref.current;
+    if (!m) return;
+    const t = clock.elapsedTime;
+    const a = t * 0.045;
+    const cx = Math.cos(a) * 520;
+    const cz = -200 + Math.sin(a) * 420;
+    for (let i = 0; i < flock.length; i++) {
+      const b = flock[i];
+      const flap = Math.sin(t * 7 + b.flap) * 0.6;
+      dummy.position.set(cx + b.ox, 150 + b.oy + Math.sin(t * 0.8 + b.flap) * 3, cz + b.oz);
+      dummy.rotation.set(0, -a + Math.PI / 2, flap);
+      dummy.scale.setScalar(b.s);
+      dummy.updateMatrix();
+      m.setMatrixAt(i, dummy.matrix);
+    }
+    m.instanceMatrix.needsUpdate = true;
+  });
+  if (dn.night > 0.8) return null;
+  return (
+    <instancedMesh ref={ref} name="high-birds" args={[BIRD_GEOMETRY, undefined, HIGH_BIRDS]} frustumCulled={false} userData={{ noReflect: true }}>
+      <meshBasicMaterial color="#2a2a30" side={DoubleSide} />
+    </instancedMesh>
   );
 }
 
@@ -221,10 +285,13 @@ const CLOUD_SPECS = (() => {
   const rand = mulberry32(21);
   const out: { x: number; y: number; z: number; w: number; seed: number; segments: number }[] = [];
   for (let i = 0; i < 6; i++) {
-    out.push({ x: range(rand, -500, 500), y: range(rand, 330, 380), z: range(rand, -650, -180), w: range(rand, 60, 110), seed: i * 7 + 1, segments: 20 });
+    out.push({ x: range(rand, -500, 500), y: range(rand, 330, 380), z: range(rand, -650, -180), w: range(rand, 90, 160), seed: i * 7 + 1, segments: 24 });
   }
   for (let i = 0; i < 2; i++) {
-    out.push({ x: range(rand, -300, 300), y: range(rand, 340, 390), z: range(rand, 200, 420), w: range(rand, 55, 90), seed: 100 + i * 3, segments: 16 });
+    out.push({ x: range(rand, -300, 300), y: range(rand, 340, 390), z: range(rand, 200, 420), w: range(rand, 80, 130), seed: 100 + i * 3, segments: 20 });
+  }
+  for (let i = 0; i < 4; i++) {
+    out.push({ x: range(rand, -900, 900), y: range(rand, 300, 330), z: range(rand, -1100, -700), w: range(rand, 140, 220), seed: 200 + i * 5, segments: 18 });
   }
   return out;
 })();
@@ -242,8 +309,8 @@ function Cumulus() {
     g.position.x = -((clock.elapsedTime * 0.7) % 500) + 250;
   });
   return (
-    <group ref={group}>
-      <Clouds material={MeshBasicMaterial} limit={200} frustumCulled={false}>
+    <group ref={group} name="cumulus">
+      <Clouds material={MeshBasicMaterial} limit={300} frustumCulled={false}>
         {CLOUD_SPECS.map((c, i) => (
           <Cloud
             key={i}
@@ -253,10 +320,10 @@ function Cumulus() {
             volume={c.w * 0.95}
             position={[c.x, c.y, c.z]}
             color={tint}
-            opacity={0.95 - dn.night * 0.35}
-            speed={0.08}
-            growth={10}
-            fade={60}
+            opacity={(0.78 - dn.night * 0.3) * (0.45 + dn.cloud * 0.55)}
+            speed={0.06}
+            growth={14}
+            fade={140}
           />
         ))}
       </Clouds>
@@ -350,8 +417,8 @@ function CloudCover() {
     const dusk = Math.max(0, 1 - Math.abs(dn.night - 0.5) * 2.4);
     m.uniforms.uTint.value.set("#e9ebee").lerp(new Color("#ffc39a"), dusk * 0.7).lerp(new Color("#3a3a6a"), dn.night);
     m.uniforms.uShade.value.set("#8d939e").lerp(new Color("#c06a5a"), dusk * 0.6).lerp(new Color("#13142c"), dn.night);
-    m.uniforms.uCoverage.value = 0.52 - (1 - dn.night) * 0.18;
-    m.uniforms.uAlpha.value = 0.85 - dn.night * 0.35;
+    m.uniforms.uCoverage.value = Math.min(0.9, Math.max(0.1, 0.64 - dn.cloud * 0.5 + dn.night * 0.18));
+    m.uniforms.uAlpha.value = (0.85 - dn.night * 0.35) * (0.5 + dn.cloud * 0.5);
     m.uniforms.uSunDir.value.set(...dn.sunDir);
   }, [dn]);
   useFrame(({ clock }) => {
@@ -376,6 +443,7 @@ export default function Sky() {
       <SunAndMoon />
       <CloudCover />
       <Cumulus />
+      <HighBirds />
     </group>
   );
 }

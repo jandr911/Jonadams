@@ -5,15 +5,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { CameraControls } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createCityAudio, type CityAudio } from "./CityAudio";
 import { CityContext, type CityApi } from "./CityContext";
 import { DayNightContext } from "./DayNightContext";
 import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
+import { useDetroitClock, useDetroitWeather, weatherLabel } from "./DetroitWeather";
 import { DESTINATIONS, homeCamera, type Destination } from "./layout";
 import Loader, { markVisited, useReturningVisitor } from "./Loader";
 
 const CityStage = dynamic(() => import("./CityStage"), { ssr: false });
 
 const PRESETS: TimePreset[] = ["auto", "day", "dusk", "night"];
+const OVERCAST_DEFAULT = 0.6;
+const DISTRICTS_HINT = "Five districts · Hover to preview · Click to fly in";
 
 function subscribeMinute(cb: () => void) {
   const id = setInterval(cb, 60_000);
@@ -181,7 +185,23 @@ export default function CityCanvas() {
     router.prefetch(hovered.href);
   }, [hovered, router]);
 
-  const dn = useMemo(() => computeDayNight(hour), [hour]);
+  const weather = useDetroitWeather();
+  const detroit = useDetroitClock();
+  const cloud = weather.kind === "ok" ? weather.cloud : OVERCAST_DEFAULT;
+  const dn = useMemo(() => computeDayNight(hour, cloud), [hour, cloud]);
+
+  const [sound, setSound] = useState(false);
+  const audio = useRef<CityAudio | null>(null);
+  const toggleSound = () => {
+    if (!audio.current) audio.current = createCityAudio();
+    if (sound) audio.current.stop();
+    else audio.current.start();
+    setSound(!sound);
+  };
+  useEffect(() => {
+    audio.current?.setNight(dn.night);
+  }, [dn.night]);
+  useEffect(() => () => audio.current?.dispose(), []);
 
   const flyTo = useCallback(
     async (d: Destination) => {
@@ -213,7 +233,7 @@ export default function CityCanvas() {
           <CityStage onQuality={setQuality} onReady={() => setStageUp(true)} />
 
           <nav aria-label="City districts" className="city-hud city-hud--districts">
-            <span className="districts__hint">Five districts · Hover to preview · Click to fly in</span>
+            <span className="districts__hint">{hovered ? hovered.blurb : DISTRICTS_HINT}</span>
             <div className="districts">
               <div ref={trackRef} className="districts__track">
               {DESTINATIONS.map((d, i) => (
@@ -244,6 +264,21 @@ export default function CityCanvas() {
               <span className="city-pill__dot" data-night={dn.night > 0.5} />
               <span>{preset === "auto" ? "Detroit time" : preset}</span>
               <small>{labelFor(hour)}</small>
+            </button>
+            {detroit && (
+              <div className="city-clock" aria-live="off">
+                <span className="city-clock__time">{detroit.time}</span>
+                <span className="city-clock__date">{detroit.date} · Detroit</span>
+                <span className="city-clock__weather">
+                  {weather.kind === "ok" && `${weather.tempF}°F · ${weatherLabel(weather.code)}`}
+                  {weather.kind === "loading" && "Reading the sky"}
+                  {weather.kind === "offline" && "Weather offline"}
+                </span>
+              </div>
+            )}
+            <button type="button" className="city-pill city-pill--sound" onClick={toggleSound} aria-pressed={sound} aria-label={sound ? "Turn city sound off" : "Turn city sound on"}>
+              <span className="city-pill__dot" />
+              <span>{sound ? "Sound on" : "Sound off"}</span>
             </button>
             <span className="city-hint city-hint--mouse">Drag to orbit · Shift-drag or arrows to move · Q/E up-down · Scroll to zoom anywhere</span>
             <span className="city-hint city-hint--touch">One finger to look around · Two fingers to move · Pinch to zoom</span>

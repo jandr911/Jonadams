@@ -1,12 +1,14 @@
 "use client";
 
+import { useFrame } from "@react-three/fiber";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Color, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
-import { useBaseBoxGeometry } from "./instancing";
+import { BufferGeometry, Color, Group, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, Object3D, PlaneGeometry, Texture } from "three";
+import { fillInstances, useBaseBoxGeometry } from "./instancing";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { useDayNight } from "./DayNightContext";
 import { AMBASSADOR_CLEAR_HALF, AMBASSADOR_RAMP_Z, AMBASSADOR_X, CITY_HALF_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR, ROAD } from "./layout";
 import { mulberry32, pick, range } from "./rng";
+import { makeConcreteTexture, makeLawnTexture, makeRoadTexture, makeShingleTexture } from "./textures";
 import TreeStand, { plantTrees, type TreePlace } from "./TreeStand";
 import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
 import { FLEET_COLORS, type VehicleKind } from "./vehicles";
@@ -15,6 +17,15 @@ const EXTENT = 1650;
 const LOT = 11;
 const STREET = 62;
 const RING = 400;
+const GROUND = 0.25;
+const PAD = STREET - 7;
+const DETAIL_REACH = 560;
+const LIGHT_REACH = 900;
+const WINDOW_SLOTS: [number, number, number, number][] = [
+  [-1.7, 1.6, 3.5, 0],
+  [1.7, 1.6, 3.5, 0],
+  [3.0, 1.6, -0.4, Math.PI / 2],
+];
 const HOUSE_COLORS = ["#8a4a3a", "#b07a5a", "#c9b48c", "#9a95a8", "#5a6a7a", "#7c6a5c", "#a3563f", "#e8e2d2", "#6e5a4a", "#3f4e66"];
 const ROOF_COLORS = ["#3a3230", "#4a3a38", "#2c3038", "#5a4a3a"];
 const MID_COLORS = ["#8a4a3a", "#a3563f", "#b89a7a", "#9c8468", "#5a6a7a", "#3f4e66", "#7c6a5c", "#1a2238", "#c9b48c"];
@@ -34,7 +45,23 @@ interface House {
   h: number;
   color: Color;
   roof: Color;
-  lit: boolean;
+  litMask: number;
+  detail: boolean;
+  porch: boolean;
+  chimney: boolean;
+  garage: boolean;
+  fence: boolean;
+}
+
+interface Placement {
+  x: number;
+  y: number;
+  z: number;
+  ry: number;
+  sx: number;
+  sy: number;
+  sz: number;
+  color?: Color;
 }
 
 interface MidLot {
@@ -178,14 +205,19 @@ function buildHouses(): {
           houses.push({
             x: hx,
             z: hz,
-            rot: row === 0 ? 0 : Math.PI,
+            rot: row === 0 ? Math.PI : 0,
             s: range(rand, 0.85, 1.2),
             h: range(rand, 3.4, 5.4),
             color: new Color(pick(rand, HOUSE_COLORS)),
             roof: new Color(pick(rand, ROOF_COLORS)),
-            lit: rand() < 0.45,
+            litMask: rand() < 0.45 ? 1 + Math.floor(rand() * 7) : 0,
+            detail: Math.hypot(hx, hz - CITY_HALF_Z) < DETAIL_REACH,
+            porch: rand() < 0.55,
+            chimney: rand() < 0.6,
+            garage: rand() < 0.35,
+            fence: rand() < 0.35,
           });
-          if (rand() < 0.5) trees.push({ x: hx + (rand() - 0.5) * 6, z: hz + (row === 0 ? 7.5 : -7.5) + (rand() - 0.5) * 3, s: range(rand, 0.8, 1.4) });
+          if (rand() < 0.5) trees.push({ x: hx + (rand() - 0.5) * 6, z: hz + (row === 0 ? -6.5 : 6.5) + (rand() - 0.5) * 2, s: range(rand, 0.8, 1.4) });
         }
       }
     }
@@ -218,92 +250,243 @@ function Banks({ banks }: { banks: Bank[] }) {
   );
 }
 
-function Houses({ houses, pads }: { houses: House[]; pads: { x: number; z: number }[] }) {
+function local(h: House, lx: number, ly: number, lz: number, ry: number, sx: number, sy: number, sz: number, color?: Color): Placement {
+  const c = Math.cos(h.rot);
+  const s = Math.sin(h.rot);
+  return { x: h.x + lx * c + lz * s, y: GROUND + ly, z: h.z - lx * s + lz * c, ry: h.rot + ry, sx, sy, sz, color };
+}
+
+const TRIM = {
+  darkWindow: new Color("#1b2230"),
+  chimney: new Color("#6e4a3a"),
+  porch: new Color("#8a8070"),
+  post: new Color("#e8e2d2"),
+  garageDoor: new Color("#d8d2c4"),
+  drive: new Color("#6f6f7a"),
+  fence: new Color("#8a7a60"),
+  doors: [new Color("#5a2a22"), new Color("#1d2a4a"), new Color("#2f4a3a"), new Color("#14101c"), new Color("#c8102e")],
+};
+
+function placeHouseParts(houses: House[]) {
+  const body: Placement[] = [];
+  const roof: Placement[] = [];
+  const lit: Placement[] = [];
+  const trim: Placement[] = [];
+  const yard: Placement[] = [];
+  for (const h of houses) {
+    const s = h.s;
+    body.push(local(h, 0, h.h / 2 - 0.1, 0, 0, s, h.h, s, h.color));
+    roof.push(local(h, 0, h.h - 0.1 + 1.4 * s, 0, Math.PI / 4, s, s, s, h.roof));
+    yard.push(local(h, 0, 0.01, 0, 0, 1, 1, 1));
+    WINDOW_SLOTS.forEach(([lx, ly, lz, ry], k) => {
+      if (h.litMask & (1 << k)) lit.push(local(h, lx * s, ly, lz * s, ry, s, 1, 1));
+      else if (h.detail) trim.push(local(h, lx * s, ly, lz * s, ry, 1.5 * s, 1.1, 0.15, TRIM.darkWindow));
+    });
+    if (!h.detail) continue;
+    trim.push(local(h, 0, 1.05, 3.52 * s, 0, 1.0, 2.1, 0.14, TRIM.doors[Math.abs(Math.floor(h.x * 7 + h.z * 3)) % TRIM.doors.length]));
+    if (h.chimney) trim.push(local(h, 1.8 * s, h.h - 0.1 + 1.34 * s + 0.6, 0, 0, 0.6, 2.0, 0.6, TRIM.chimney));
+    if (h.porch) {
+      trim.push(local(h, 0, 0.15, 4.3 * s, 0, 3.2 * s, 0.3, 1.6, TRIM.porch));
+      trim.push(local(h, 0, 2.55, 4.3 * s, 0, 3.6 * s, 0.14, 1.9, TRIM.porch));
+      trim.push(local(h, -1.5 * s, 1.4, 5.0 * s, 0, 0.16, 2.3, 0.16, TRIM.post));
+      trim.push(local(h, 1.5 * s, 1.4, 5.0 * s, 0, 0.16, 2.3, 0.16, TRIM.post));
+    }
+    if (h.garage) {
+      const gx = 3 * s + 1.9;
+      body.push(local(h, gx, 1.3, 0.8 * s, 0, 3.6 / 6, 2.6, 4.2 / 7, h.color));
+      trim.push(local(h, gx, 1.05, 0.8 * s + 2.12, 0, 3.0, 2.1, 0.1, TRIM.garageDoor));
+      trim.push(local(h, gx, 0.02, 0.8 * s + 2.1 + 2.3, 0, 3.0, 0.05, 4.6, TRIM.drive));
+    }
+    if (h.fence) trim.push(local(h, 0, 0.4, -5.8 * s, 0, 10, 0.8, 0.08, TRIM.fence));
+  }
+  return { body, roof, lit, trim, yard };
+}
+
+const YARD_GEOMETRY = new PlaneGeometry(LOT, 26).rotateX(-Math.PI / 2);
+const HIDE_CHECK_FRAMES = 8;
+
+function HideAbove({ y, children }: { y: number; children: React.ReactNode }) {
+  const ref = useRef<Group>(null);
+  const frame = useRef(0);
+  useFrame(({ camera }) => {
+    frame.current += 1;
+    if (frame.current % HIDE_CHECK_FRAMES !== 0 || !ref.current) return;
+    ref.current.visible = camera.position.y < y;
+  });
+  return <group ref={ref}>{children}</group>;
+}
+
+function Parts({ items, children, geometry, castShadow = false }: { items: Placement[]; children?: React.ReactNode; geometry?: BufferGeometry; castShadow?: boolean }) {
+  const ref = useRef<InstancedMesh>(null);
+  useEffect(() => {
+    const m = ref.current;
+    if (!m) return;
+    const dummy = new Object3D();
+    fillInstances(m, dummy, items.length, (i, d) => {
+      const it = items[i];
+      d.position.set(it.x, it.y, it.z);
+      d.rotation.y = it.ry;
+      d.scale.set(it.sx, it.sy, it.sz);
+    });
+    items.forEach((it, i) => it.color && m.setColorAt(i, it.color));
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  }, [items]);
+  if (items.length === 0) return null;
+  return (
+    <instancedMesh ref={ref} args={[geometry, undefined, items.length]} castShadow={castShadow}>
+      {children}
+    </instancedMesh>
+  );
+}
+
+interface SuburbTextures {
+  shingles: Texture;
+  lawn: Texture;
+  concrete: Texture;
+}
+
+function useSuburbTextures(): SuburbTextures {
+  const textures = useMemo(() => {
+    const shingles = makeShingleTexture();
+    shingles.repeat.set(3, 2);
+    const lawn = makeLawnTexture();
+    lawn.repeat.set(2, 4.5);
+    const concrete = makeConcreteTexture();
+    concrete.repeat.set(PAD / 4, PAD / 4);
+    return { shingles, lawn, concrete };
+  }, []);
+  useEffect(() => () => {
+    textures.shingles.dispose();
+    textures.lawn.dispose();
+    textures.concrete.dispose();
+  }, [textures]);
+  return textures;
+}
+
+function Houses({ houses, pads, textures }: { houses: House[]; pads: { x: number; z: number }[]; textures: SuburbTextures }) {
   const dn = useDayNight();
-  const bodies = useRef<InstancedMesh>(null);
-  const roofs = useRef<InstancedMesh>(null);
-  const windows = useRef<InstancedMesh>(null);
-  const yards = useRef<InstancedMesh>(null);
   const padMesh = useRef<InstancedMesh>(null);
   const winMat = useRef<MeshStandardMaterial>(null);
-  const litHouses = useMemo(() => houses.filter((h) => h.lit), [houses]);
+  const parts = useMemo(() => placeHouseParts(houses), [houses]);
+  const { shingles, lawn, concrete } = textures;
   useEffect(() => {
     const dummy = new Object3D();
-    const b = bodies.current;
-    const r = roofs.current;
-    const w = windows.current;
-    const y = yards.current;
-    const p = padMesh.current;
-    if (!b || !r || !w || !y || !p) return;
-    houses.forEach((h, i) => {
-      dummy.position.set(h.x, h.h / 2 - 0.1, h.z);
-      dummy.rotation.set(0, h.rot, 0);
-      dummy.scale.set(h.s, h.h, h.s);
-      dummy.updateMatrix();
-      b.setMatrixAt(i, dummy.matrix);
-      b.setColorAt(i, h.color);
-      dummy.position.set(h.x, h.h - 0.1 + 1.4 * h.s, h.z);
-      dummy.rotation.set(0, h.rot + Math.PI / 4, 0);
-      dummy.scale.set(h.s, h.s, h.s);
-      dummy.updateMatrix();
-      r.setMatrixAt(i, dummy.matrix);
-      r.setColorAt(i, h.roof);
+    fillInstances(padMesh.current, dummy, pads.length, (i, d) => {
+      d.position.set(pads[i].x, 0, pads[i].z);
     });
-    litHouses.forEach((h, i) => {
-      dummy.position.set(h.x, 1.6, h.z);
-      dummy.rotation.set(0, h.rot, 0);
-      dummy.scale.set(h.s, 1, 1);
-      dummy.translateZ(3.6 * h.s);
-      dummy.updateMatrix();
-      w.setMatrixAt(i, dummy.matrix);
-    });
-    houses.forEach((h, i) => {
-      dummy.position.set(h.x, -0.02, h.z);
-      dummy.rotation.set(0, h.rot, 0);
-      dummy.scale.set(1, 1, 1);
-      dummy.updateMatrix();
-      y.setMatrixAt(i, dummy.matrix);
-    });
-    pads.forEach((pd, i) => {
-      dummy.position.set(pd.x, -0.05, pd.z);
-      dummy.rotation.set(0, 0, 0);
-      dummy.scale.set(1, 1, 1);
-      dummy.updateMatrix();
-      p.setMatrixAt(i, dummy.matrix);
-    });
-    b.instanceMatrix.needsUpdate = true;
-    r.instanceMatrix.needsUpdate = true;
-    w.instanceMatrix.needsUpdate = true;
-    y.instanceMatrix.needsUpdate = true;
-    p.instanceMatrix.needsUpdate = true;
-    if (b.instanceColor) b.instanceColor.needsUpdate = true;
-    if (r.instanceColor) r.instanceColor.needsUpdate = true;
-  }, [houses, litHouses, pads]);
+  }, [pads]);
   useEffect(() => {
     if (winMat.current) winMat.current.emissiveIntensity = 0.1 + dn.night * 2.2;
   }, [dn]);
   return (
-    <group>
-      <instancedMesh ref={bodies} args={[undefined, undefined, houses.length]}>
+    <group name="houses">
+      <instancedMesh ref={padMesh} args={[undefined, undefined, pads.length]} receiveShadow>
+        <boxGeometry args={[PAD, GROUND * 2, PAD]} />
+        <meshStandardMaterial color="#5e5c6c" map={concrete} roughness={1} />
+      </instancedMesh>
+      <Parts items={parts.yard} geometry={YARD_GEOMETRY}>
+        <meshStandardMaterial color="#ffffff" map={lawn} roughness={1} />
+      </Parts>
+      <Parts items={parts.body}>
         <boxGeometry args={[6, 1, 7]} />
         <meshStandardMaterial color="#ffffff" roughness={0.95} />
-      </instancedMesh>
-      <instancedMesh ref={roofs} args={[undefined, undefined, houses.length]}>
+      </Parts>
+      <Parts items={parts.roof}>
         <coneGeometry args={[4.9, 2.8, 4]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.95} flatShading />
-      </instancedMesh>
-      <instancedMesh ref={windows} args={[undefined, undefined, litHouses.length]}>
-        <boxGeometry args={[2.2, 1.1, 0.15]} />
+        <meshStandardMaterial color="#ffffff" map={shingles} roughness={0.95} flatShading />
+      </Parts>
+      <Parts items={parts.lit}>
+        <boxGeometry args={[1.5, 1.1, 0.15]} />
         <meshStandardMaterial ref={winMat} color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={2} toneMapped={false} />
+      </Parts>
+      <HideAbove y={170}>
+        <Parts items={parts.trim}>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color="#ffffff" roughness={0.85} />
+        </Parts>
+      </HideAbove>
+    </group>
+  );
+}
+
+function SuburbLights({ pads }: { pads: { x: number; z: number }[] }) {
+  const dn = useDayNight();
+  const poles = useRef<InstancedMesh>(null);
+  const heads = useRef<InstancedMesh>(null);
+  const headMat = useRef<MeshStandardMaterial>(null);
+  const spots = useMemo(() => {
+    const out: { x: number; z: number }[] = [];
+    const e = PAD / 2 - 0.7;
+    for (const p of pads) {
+      if (Math.hypot(p.x, p.z - CITY_HALF_Z) > LIGHT_REACH) continue;
+      out.push({ x: p.x - e, z: p.z - e });
+      out.push({ x: p.x + e, z: p.z + e });
+    }
+    return out;
+  }, [pads]);
+  useEffect(() => {
+    const dummy = new Object3D();
+    fillInstances(poles.current, dummy, spots.length, (i, d) => d.position.set(spots[i].x, GROUND + 3.2, spots[i].z));
+    fillInstances(heads.current, dummy, spots.length, (i, d) => d.position.set(spots[i].x, GROUND + 6.3, spots[i].z));
+  }, [spots]);
+  useEffect(() => {
+    if (headMat.current) headMat.current.emissiveIntensity = 0.1 + dn.night * 1.6;
+  }, [dn]);
+  return (
+    <group name="suburb-lights">
+      <instancedMesh ref={poles} args={[undefined, undefined, spots.length]}>
+        <cylinderGeometry args={[0.1, 0.14, 6.4, 4, 1, true]} />
+        <meshStandardMaterial color="#5a5a78" roughness={0.6} metalness={0.5} />
       </instancedMesh>
-      <instancedMesh ref={yards} args={[undefined, undefined, houses.length]}>
-        <boxGeometry args={[10, 0.06, 12]} />
-        <meshStandardMaterial color="#3f6a42" roughness={1} />
+      <instancedMesh ref={heads} args={[undefined, undefined, spots.length]}>
+        <sphereGeometry args={[0.34, 5, 3]} />
+        <meshStandardMaterial ref={headMat} color="#ffd27a" emissive="#ffc96a" emissiveIntensity={1.5} toneMapped={false} />
       </instancedMesh>
-      <instancedMesh ref={padMesh} args={[undefined, undefined, pads.length]}>
-        <boxGeometry args={[STREET - 7, 0.08, STREET - 7]} />
-        <meshStandardMaterial color="#4f515c" roughness={1} />
-      </instancedMesh>
+    </group>
+  );
+}
+
+interface ParkingSlot {
+  x: number;
+  z: number;
+  rot: number;
+}
+
+function buildRingParking(pads: { x: number; z: number }[]): { slots: ParkingSlot[]; items: FleetItem[] } {
+  const rand = mulberry32(8080);
+  const kinds: VehicleKind[] = ["sedan", "sedan", "suv", "pickup", "van", "taxi"];
+  const slots: ParkingSlot[] = [];
+  const items: FleetItem[] = [];
+  for (const p of pads) {
+    if (!nearDowntown(p.x, p.z) || rand() < 0.8) continue;
+    const side = rand() < 0.5 ? -1 : 1;
+    const n = 1;
+    for (let k = 0; k < n; k++) {
+      slots.push({ x: p.x + side * (PAD / 2 + 1.7), z: p.z + range(rand, -PAD / 2 + 4, PAD / 2 - 4), rot: side < 0 ? 0 : Math.PI });
+      items.push({ kind: pick(rand, kinds), color: new Color(pick(rand, FLEET_COLORS)) });
+    }
+  }
+  return { slots, items };
+}
+
+function RingParking({ pads }: { pads: { x: number; z: number }[] }) {
+  const [world] = useState(() => buildRingParking(pads));
+  const slots = world.slots;
+  const pose = useCallback<PoseFn>(
+    (i, out) => {
+      const sl = slots[i];
+      out.x = sl.x;
+      out.y = 0;
+      out.z = sl.z;
+      out.yaw = sl.rot;
+      out.spin = 0;
+    },
+    [slots],
+  );
+  if (slots.length === 0) return null;
+  return (
+    <group name="ring-parking">
+      <VehicleFleet items={world.items} pose={pose} pools={false} />
     </group>
   );
 }
@@ -343,39 +526,41 @@ function SuburbTrees({ trees }: { trees: TreePlace[] }) {
       ),
     [trees],
   );
-  return <TreeStand trees={specs} quality="far" seed={23} />;
+  return <TreeStand trees={specs} quality="far" seed={23} groundY={GROUND} />;
 }
 
 function SuburbStreets() {
   const ref = useRef<InstancedMesh>(null);
+  const road = useMemo(() => {
+    const t = makeRoadTexture();
+    t.repeat.set(1, STREET / 14);
+    return t;
+  }, []);
+  useEffect(() => () => road.dispose(), [road]);
   const items = useMemo(() => {
-    const out: { x: number; z: number; rot: number; len: number }[] = [];
+    const out: { x: number; z: number; rot: number }[] = [];
     const northEnd = CITY_HALF_Z - 8;
     const southStart = RIVER_FAR + 14;
     for (let v = -EXTENT; v <= EXTENT; v += STREET) {
-      out.push({ x: v, z: (-EXTENT + northEnd) / 2, rot: 0, len: northEnd + EXTENT });
-      out.push({ x: v, z: (southStart + EXTENT) / 2, rot: 0, len: EXTENT - southStart });
-      if (!isRiver(v)) out.push({ x: 0, z: v, rot: Math.PI / 2, len: EXTENT * 2 });
+      for (let s = -EXTENT; s < EXTENT; s += STREET) {
+        const mid = s + STREET / 2;
+        if (mid < northEnd || mid > southStart) out.push({ x: v, z: mid, rot: 0 });
+        if (!isRiver(v)) out.push({ x: mid, z: v, rot: Math.PI / 2 });
+      }
     }
     return out;
   }, []);
   useEffect(() => {
     const dummy = new Object3D();
-    const m = ref.current;
-    if (!m) return;
-    items.forEach((it, i) => {
-      dummy.position.set(it.x, -0.06, it.z);
-      dummy.rotation.set(0, it.rot, 0);
-      dummy.scale.set(1, 1, it.len);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
+    fillInstances(ref.current, dummy, items.length, (i, d) => {
+      d.position.set(items[i].x, -0.06, items[i].z);
+      d.rotation.y = items[i].rot;
     });
-    m.instanceMatrix.needsUpdate = true;
   }, [items]);
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, items.length]} receiveShadow>
-      <boxGeometry args={[7, 0.1, 1]} />
-      <meshStandardMaterial color="#2c2c38" roughness={1} />
+    <instancedMesh ref={ref} name="suburb-streets" args={[undefined, undefined, items.length]} receiveShadow>
+      <boxGeometry args={[7, 0.1, STREET]} />
+      <meshStandardMaterial color="#8a8a94" map={road} roughness={1} />
     </instancedMesh>
   );
 }
@@ -502,6 +687,40 @@ function WindsorShore() {
   );
 }
 
+const RIPRAP_STEP = 4.8;
+
+function Riprap() {
+  const ref = useRef<InstancedMesh>(null);
+  const stones = useMemo(() => {
+    const rand = mulberry32(606);
+    const out: { x: number; y: number; z: number; s: number; ry: number }[] = [];
+    for (let x = -EXTENT; x < EXTENT; x += RIPRAP_STEP) {
+      if (Math.abs(x) < CITY_HALF_X + 40) {
+        out.push({ x: x + (rand() - 0.5) * 2, y: -0.4 + rand() * 0.3, z: RIVER_FAR - 0.5 - rand() * 2.2, s: range(rand, 0.6, 1.3), ry: rand() * 6.28 });
+        continue;
+      }
+      out.push({ x: x + (rand() - 0.5) * 2, y: -0.4 + rand() * 0.3, z: RIVER_NEAR + 0.5 + rand() * 2.2, s: range(rand, 0.6, 1.3), ry: rand() * 6.28 });
+      out.push({ x: x + (rand() - 0.5) * 2, y: -0.4 + rand() * 0.3, z: RIVER_FAR - 0.5 - rand() * 2.2, s: range(rand, 0.6, 1.3), ry: rand() * 6.28 });
+    }
+    return out;
+  }, []);
+  useEffect(() => {
+    const dummy = new Object3D();
+    fillInstances(ref.current, dummy, stones.length, (i, d) => {
+      const st = stones[i];
+      d.position.set(st.x, st.y, st.z);
+      d.rotation.set(st.ry * 0.3, st.ry, 0);
+      d.scale.setScalar(st.s);
+    });
+  }, [stones]);
+  return (
+    <instancedMesh ref={ref} name="riprap" args={[undefined, undefined, stones.length]}>
+      <dodecahedronGeometry args={[0.9, 0]} />
+      <meshStandardMaterial color="#6d6a66" roughness={1} flatShading />
+    </instancedMesh>
+  );
+}
+
 function Riverbank() {
   return (
     <group>
@@ -513,11 +732,14 @@ function Riverbank() {
         <boxGeometry args={[7000, 1.2, 4]} />
         <meshStandardMaterial color="#2f2a4a" roughness={1} />
       </mesh>
+      <HideAbove y={230}>
+        <Riprap />
+      </HideAbove>
     </group>
   );
 }
 
-const TILES_PER_SIDE = 4;
+const TILES_PER_SIDE = 3;
 
 interface Tile {
   houses: House[];
@@ -544,6 +766,7 @@ function tileWorld(world: ReturnType<typeof buildHouses>): Tile[] {
 export default function Suburbs() {
   const world = useMemo(() => buildHouses(), []);
   const tiles = useMemo(() => tileWorld(world), [world]);
+  const textures = useSuburbTextures();
   return (
     <group>
       <WindsorShore />
@@ -552,10 +775,14 @@ export default function Suburbs() {
       {tiles.map((t, i) => (
         <Fragment key={i}>
           {t.banks.length > 0 && <Banks banks={t.banks} />}
-          {t.houses.length > 0 && <Houses houses={t.houses} pads={t.pads} />}
+          {t.pads.length > 0 && <Houses houses={t.houses} pads={t.pads} textures={textures} />}
           {t.trees.length > 0 && <SuburbTrees trees={t.trees} />}
         </Fragment>
       ))}
+      <HideAbove y={190}>
+        <SuburbLights pads={world.pads} />
+        <RingParking pads={world.pads} />
+      </HideAbove>
       <MidRise lots={world.midrise} />
       <Freeway />
     </group>

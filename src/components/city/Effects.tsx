@@ -15,8 +15,8 @@ export default function Effects() {
   useEffect(() => {
     const day = 1 - dn.night;
     if (bloom.current) bloom.current.intensity = dn.bloom;
-    if (hueSat.current) hueSat.current.saturation = -0.08 - day * 0.14;
-    if (tone.current) tone.current.contrast = 0.1 - day * 0.04;
+    if (hueSat.current) hueSat.current.saturation = -0.08 - day * 0.1;
+    if (tone.current) tone.current.contrast = 0.1 + day * 0.08;
   }, [dn, quality]);
   if (quality === "low") return null;
   return (

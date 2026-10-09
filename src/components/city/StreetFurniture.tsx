@@ -8,15 +8,20 @@ import { labelTexture } from "./labels";
 import { BLOCK, COLS, ROWS, blockCenter, outerRoadLinesX, outerRoadLinesZ } from "./layout";
 import { mulberry32, pick, range } from "./rng";
 
-type Kind = "hydrant" | "bin" | "bench" | "rack" | "bike" | "paper" | "mailbox" | "cone";
+type Kind = "hydrant" | "bin" | "bench" | "rack" | "bike" | "paper" | "mailbox" | "cone" | "manhole" | "drain" | "ramp";
 
 interface Item {
   kind: Kind;
   x: number;
   z: number;
   rot: number;
+  y?: number;
+  tilt?: number;
   color?: Color;
 }
+
+const RAMP_LENGTH = 1.4;
+const CURB_HEIGHT = 0.4;
 
 function nonIdx<T extends BufferGeometry>(g: T) {
   return g.toNonIndexed();
@@ -122,10 +127,33 @@ function coneGeometry() {
   return mergeGeometries([c, base])!;
 }
 
+function manholeGeometry() {
+  const lid = nonIdx(new CylinderGeometry(0.45, 0.45, 0.05, 14));
+  lid.translate(0, 0.025, 0);
+  const rim = nonIdx(new CylinderGeometry(0.52, 0.52, 0.03, 14));
+  rim.translate(0, 0.015, 0);
+  return mergeGeometries([lid, rim])!;
+}
+function drainGeometry() {
+  const frame = nonIdx(new BoxGeometry(0.9, 0.05, 0.42));
+  frame.translate(0, 0.025, 0);
+  const bars = [-0.3, -0.1, 0.1, 0.3].map((x) => {
+    const b = nonIdx(new BoxGeometry(0.06, 0.08, 0.34));
+    b.translate(x, 0.04, 0);
+    return b;
+  });
+  return mergeGeometries([frame, ...bars])!;
+}
+function rampGeometry() {
+  const r = nonIdx(new BoxGeometry(1.6, CURB_HEIGHT, RAMP_LENGTH));
+  return r;
+}
+
 function buildItems(): Item[] {
   const rand = mulberry32(2024);
   const out: Item[] = [];
   const e = BLOCK / 2 + 0.9;
+  const padEdge = BLOCK / 2 + 1.2;
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const [bx, bz] = blockCenter(c, r);
@@ -153,6 +181,24 @@ function buildItems(): Item[] {
         }
         if (rand() < 0.35) place("paper", range(rand, -8, 8), new Color(pick(rand, ["#2a3a7a", "#c8102e", "#ffb02e", "#3f8a6a"])));
         if (rand() < 0.15) place("mailbox", range(rand, -8, 8));
+        const nx = -Math.sin(rot);
+        const nz = Math.cos(rot);
+        const offRoad = (t: number, dist: number): [number, number] => {
+          const [x, z] = along(t);
+          return [x + nx * dist, z + nz * dist];
+        };
+        if (rand() < 0.5) {
+          const [x, z] = offRoad(range(rand, -7, 7), BLOCK / 2 + 3.5 - e);
+          out.push({ kind: "manhole", x, z, rot, y: 0 });
+        }
+        if (rand() < 0.6) {
+          const [x, z] = offRoad(range(rand, -8, 8), padEdge + 0.45 - e);
+          out.push({ kind: "drain", x, z, rot, y: 0 });
+        }
+        for (const t of [-8.9, 8.9]) {
+          const [x, z] = offRoad(t, padEdge - e);
+          out.push({ kind: "ramp", x, z, rot, y: CURB_HEIGHT / 2, tilt: Math.atan(CURB_HEIGHT / RAMP_LENGTH) });
+        }
       }
     }
   }
@@ -216,13 +262,13 @@ function BusShelter({ position, rotation }: { position: [number, number, number]
   );
 }
 
-const KINDS: Kind[] = ["hydrant", "bin", "bench", "rack", "bike", "paper", "mailbox", "cone"];
+const KINDS: Kind[] = ["hydrant", "bin", "bench", "rack", "bike", "paper", "mailbox", "cone", "manhole", "drain", "ramp"];
 
 export default function StreetFurniture() {
   const [items] = useState(() => buildItems());
   const refs = useRef(new Map<Kind, InstancedMesh>());
   const geos = useMemo<Record<Kind, BufferGeometry>>(
-    () => ({ hydrant: hydrantGeometry(), bin: binGeometry(), bench: benchGeometry(), rack: rackGeometry(), bike: bikeGeometry(), paper: paperGeometry(), mailbox: mailboxGeometry(), cone: coneGeometry() }),
+    () => ({ hydrant: hydrantGeometry(), bin: binGeometry(), bench: benchGeometry(), rack: rackGeometry(), bike: bikeGeometry(), paper: paperGeometry(), mailbox: mailboxGeometry(), cone: coneGeometry(), manhole: manholeGeometry(), drain: drainGeometry(), ramp: rampGeometry() }),
     [],
   );
   const counts = useMemo(() => {
@@ -232,14 +278,15 @@ export default function StreetFurniture() {
   }, [items]);
   useEffect(() => {
     const d = new Object3D();
+    d.rotation.order = "YXZ";
     const idx = {} as Record<Kind, number>;
     for (const k of KINDS) idx[k] = 0;
     for (const it of items) {
       const m = refs.current.get(it.kind);
       if (!m) continue;
       const i = idx[it.kind]++;
-      d.position.set(it.x, 0.4, it.z);
-      d.rotation.set(0, it.rot + (it.kind === "bike" ? Math.PI / 2 : 0), 0);
+      d.position.set(it.x, it.y ?? CURB_HEIGHT, it.z);
+      d.rotation.set(it.tilt ?? 0, it.rot + (it.kind === "bike" ? Math.PI / 2 : 0), 0);
       d.updateMatrix();
       m.setMatrixAt(i, d.matrix);
       if (it.color) m.setColorAt(i, it.color);
@@ -249,7 +296,7 @@ export default function StreetFurniture() {
       if (m.instanceColor) m.instanceColor.needsUpdate = true;
     }
   }, [items]);
-  const colors: Record<Kind, string> = { hydrant: "#c8102e", bin: "#ffffff", bench: "#5a4636", rack: "#8a8f9c", bike: "#ffffff", paper: "#ffffff", mailbox: "#2a3a7a", cone: "#ff7a1a" };
+  const colors: Record<Kind, string> = { hydrant: "#c8102e", bin: "#ffffff", bench: "#5a4636", rack: "#8a8f9c", bike: "#ffffff", paper: "#ffffff", mailbox: "#2a3a7a", cone: "#ff7a1a", manhole: "#3a3a40", drain: "#2a2a30", ramp: "#8a84a0" };
   const xs = outerRoadLinesX();
   const zs = outerRoadLinesZ();
   const shelters: { position: [number, number, number]; rotation: number }[] = [
@@ -269,7 +316,7 @@ export default function StreetFurniture() {
           args={[geos[k], undefined, Math.max(1, counts[k])]}
           frustumCulled={false}
         >
-          <meshStandardMaterial color={colors[k]} roughness={k === "rack" || k === "bike" ? 0.35 : 0.8} metalness={k === "rack" || k === "bike" ? 0.7 : 0.1} />
+          <meshStandardMaterial color={colors[k]} roughness={k === "rack" || k === "bike" ? 0.35 : 0.8} metalness={k === "rack" || k === "bike" || k === "manhole" ? 0.7 : 0.1} />
         </instancedMesh>
       ))}
       {shelters.map((s, i) => (

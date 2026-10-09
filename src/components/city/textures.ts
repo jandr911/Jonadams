@@ -61,6 +61,61 @@ export function makeConcreteTexture() {
   return t;
 }
 
+function repeating(c: HTMLCanvasElement) {
+  const t = new CanvasTexture(c);
+  t.wrapS = RepeatWrapping;
+  t.wrapT = RepeatWrapping;
+  t.colorSpace = SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+export function makeRoadTexture() {
+  const { c, ctx } = noiseCanvas(256, [66, 66, 74], 44, 303);
+  ctx.fillStyle = "rgba(22,22,28,0.28)";
+  ctx.fillRect(44, 0, 34, 256);
+  ctx.fillRect(178, 0, 34, 256);
+  ctx.fillStyle = "rgba(222,222,232,0.78)";
+  ctx.fillRect(7, 0, 3, 256);
+  ctx.fillRect(246, 0, 3, 256);
+  ctx.fillStyle = "rgba(230,217,138,0.88)";
+  for (let y = 0; y < 256; y += 128) ctx.fillRect(126, y + 26, 4, 62);
+  return repeating(c);
+}
+
+export function makeShingleTexture() {
+  const { c, ctx, rand } = noiseCanvas(128, [168, 160, 150], 26, 404);
+  for (let row = 0, y = 0; y < 128; y += 12, row++) {
+    const offset = (row % 2) * 10;
+    for (let x = -20; x < 128; x += 20) {
+      ctx.fillStyle = `rgba(0,0,0,${0.08 + rand() * 0.22})`;
+      ctx.fillRect(x + offset, y, 19, 11);
+      ctx.fillStyle = "rgba(255,255,255,0.14)";
+      ctx.fillRect(x + offset, y, 19, 1);
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.fillRect(x + offset + 19, y, 1, 11);
+    }
+  }
+  return repeating(c);
+}
+
+export function makeLawnTexture() {
+  const { c, ctx, rand } = noiseCanvas(128, [64, 104, 62], 46, 505);
+  ctx.globalAlpha = 0.35;
+  for (let i = 0; i < 18; i++) {
+    const x = rand() * 128;
+    const y = rand() * 128;
+    const r = 8 + rand() * 22;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, "rgba(128,112,52,1)");
+    g.addColorStop(1, "rgba(128,112,52,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 128, 128);
+  }
+  ctx.globalAlpha = 1;
+  return repeating(c);
+}
+
 export function makeShadowBlobTexture() {
   const size = 128;
   const c = document.createElement("canvas");

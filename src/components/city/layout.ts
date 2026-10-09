@@ -111,6 +111,7 @@ export interface Destination {
   href: string;
   label: string;
   sub: string;
+  blurb: string;
   color: string;
   accent: string;
   block: [number, number];
@@ -125,6 +126,7 @@ export const DESTINATIONS: Destination[] = [
     href: "/club",
     label: "Club Adams",
     sub: "Renaissance Center",
+    blurb: "The front door: four walls, four ways deeper in",
     color: "#ff4fa3",
     accent: "var(--pink)",
     block: [5, 5],
@@ -137,6 +139,7 @@ export const DESTINATIONS: Destination[] = [
     href: "/listen",
     label: "Listen",
     sub: "Fox Theatre",
+    blurb: "Singles, the latest release and a live session",
     color: "#ffb02e",
     accent: "var(--amber)",
     block: [1, 5],
@@ -149,6 +152,7 @@ export const DESTINATIONS: Destination[] = [
     href: "/listen#watch",
     label: "Watch",
     sub: "Michigan Central",
+    blurb: "Official videos and behind the scenes",
     color: "#49f2d6",
     accent: "var(--cyan)",
     block: [0, 5],
@@ -161,6 +165,7 @@ export const DESTINATIONS: Destination[] = [
     href: "/merch",
     label: "Merch",
     sub: "Rivertown Warehouse",
+    blurb: "Tees, hoodies, caps and numbered prints",
     color: "#49d2f2",
     accent: "var(--blue)",
     block: [6, 5],
@@ -173,6 +178,7 @@ export const DESTINATIONS: Destination[] = [
     href: "/creatives",
     label: "The Creatives",
     sub: "Corktown Billboard",
+    blurb: "A curated wall of Detroit makers, picked by Jonathan",
     color: "#c9a6ff",
     accent: "var(--violet)",
     block: [2, 4],

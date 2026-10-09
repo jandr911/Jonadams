@@ -45,11 +45,12 @@ const STAGES: [number, string][] = [
 ];
 const BARS = [0.55, 0.9, 0.7, 1, 0.6, 0.85, 0.5];
 
-const SKYLINE = [
-  [0, 46, 22], [26, 30, 40], [60, 24, 58], [88, 40, 34], [132, 18, 92], [154, 26, 70], [184, 34, 48],
-  [222, 20, 118], [246, 28, 86], [278, 44, 62], [326, 16, 140], [346, 30, 104], [380, 24, 76], [408, 38, 54],
-  [450, 20, 96], [474, 32, 128], [510, 26, 66], [540, 48, 40], [592, 18, 82], [614, 30, 112], [648, 24, 58],
-  [676, 40, 36], [720, 22, 100], [746, 34, 72], [784, 28, 48], [816, 44, 30], [864, 20, 64], [888, 36, 44], [928, 72, 24],
+const DETROIT_SKYLINE_FROM_WINDSOR = [
+  [18, 7, 74], [62, 7, 74], [40, 30, 14], [100, 52, 46], [112, 28, 56], [160, 20, 14], [186, 26, 18], [218, 30, 22],
+  [254, 22, 30], [284, 18, 40], [306, 14, 92], [310, 6, 100], [330, 12, 84], [350, 24, 36], [380, 22, 90], [386, 10, 96],
+  [410, 18, 46], [432, 24, 100], [440, 8, 112], [466, 20, 58], [490, 28, 108], [492, 6, 122], [512, 6, 122],
+  [528, 20, 82], [556, 18, 86], [582, 26, 44], [612, 24, 96], [640, 30, 136], [668, 24, 96], [596, 20, 104], [688, 20, 104],
+  [722, 34, 26], [760, 26, 30], [792, 40, 18], [838, 30, 22], [874, 24, 16], [904, 5, 28], [920, 46, 12], [972, 28, 16],
 ];
 
 function buildWindows() {
@@ -57,9 +58,10 @@ function buildWindows() {
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const colors = ["var(--gold-2)", "var(--gold-2)", "var(--gold-2)", "var(--cyan)", "var(--pink)", "var(--amber)"];
   const out: { x: number; y: number; c: string; d: number }[] = [];
-  for (const [x, w, h] of SKYLINE) {
+  for (const [x, w, h] of DETROIT_SKYLINE_FROM_WINDSOR) {
     const cols = Math.max(1, Math.floor(w / 6));
     const rows = Math.max(1, Math.floor(h / 8));
+    if (w < 8) continue;
     for (let i = 0; i < cols; i++) {
       for (let j = 0; j < rows; j++) {
         if (rnd() > 0.28) continue;
@@ -91,7 +93,7 @@ function Stars() {
 function Skyline({ mirror = false }: { mirror?: boolean }) {
   return (
     <svg className={mirror ? "loader__skyline loader__skyline--mirror" : "loader__skyline"} viewBox="0 0 1000 160" preserveAspectRatio="xMidYMax slice" aria-hidden>
-      {SKYLINE.map(([x, w, h], i) => (
+      {DETROIT_SKYLINE_FROM_WINDSOR.map(([x, w, h], i) => (
         <rect key={i} x={x} y={160 - h} width={w} height={h} />
       ))}
       {WINDOWS.map((p, i) => (
