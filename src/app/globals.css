@@ -14,6 +14,7 @@
   --pink: #ff4fa3;
   --amber: #ffb02e;
   --violet: #c9a6ff;
+  --blue: #49d2f2;
   --accent: var(--gold);
   --header-h: 64px;
 }
@@ -29,6 +30,7 @@
   --color-pink: var(--pink);
   --color-amber: var(--amber);
   --color-violet: var(--violet);
+  --color-blue: var(--blue);
   --font-serif: var(--font-serif);
   --font-body: var(--font-body);
 }

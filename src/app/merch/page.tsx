@@ -10,7 +10,7 @@ export default function MerchPage() {
       index="04"
       title="Merch"
       lead="The rack is being stocked. Drop 01 arrives with the next single."
-      accent="#49d2f2"
+      accent="var(--blue)"
     >
       <div className="grid-4">
         {MERCH.map((m, i) => (
