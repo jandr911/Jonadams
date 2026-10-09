@@ -37,7 +37,7 @@ const MID_COLORS = ["#8a4a3a", "#a3563f", "#b89a7a", "#9c8468", "#5a6a7a", "#3f4
 const LOFT_COLORS = ["#8a4a3a", "#a3563f", "#7c6a5c", "#6e5a4a", "#9c8468", "#5a6a7a", "#c9b48c"];
 const SHED_COLORS = ["#9a95a8", "#7c6a5c", "#5a6a7a"];
 const LAWN = new Color("#3f6a42");
-const PATH = new Color("#5d5680");
+const PATH = new Color("#77736b");
 const RIVERWALK_HALF = CITY_HALF_X + 40;
 const DOWNTOWN_MARGIN = 24;
 const LOFT_REACH = 900;
@@ -519,7 +519,7 @@ function Houses({ houses, pads, textures }: { houses: House[]; pads: { x: number
     <group name="houses">
       <instancedMesh ref={padMesh} args={[undefined, undefined, pads.length]} receiveShadow>
         <boxGeometry args={[PAD, GROUND * 2, PAD]} />
-        <meshStandardMaterial color="#5e5c6c" map={concrete} roughness={1} />
+        <meshStandardMaterial color="#63615c" map={concrete} roughness={1} />
       </instancedMesh>
       <Parts items={parts.yard} geometry={YARD_GEOMETRY}>
         <meshStandardMaterial color="#ffffff" map={lawn} roughness={1} />
@@ -573,7 +573,7 @@ function SuburbLights({ pads }: { pads: { x: number; z: number }[] }) {
     <group name="suburb-lights">
       <instancedMesh ref={poles} args={[undefined, undefined, spots.length]}>
         <cylinderGeometry args={[0.1, 0.14, 6.4, 4, 1, true]} />
-        <meshStandardMaterial color="#5a5a78" roughness={0.6} metalness={0.5} />
+        <meshStandardMaterial color="#4d4f4f" roughness={0.6} metalness={0.5} />
       </instancedMesh>
       <instancedMesh ref={heads} args={[undefined, undefined, spots.length]}>
         <sphereGeometry args={[0.34, 5, 3]} />
@@ -804,7 +804,7 @@ function Freeway() {
       ))}
       <instancedMesh ref={pylons} args={[undefined, undefined, pylonCount]}>
         <boxGeometry args={[3, FREEWAY_Y, 2]} />
-        <meshStandardMaterial color="#4a4a58" roughness={1} />
+        <meshStandardMaterial color="#4c4b48" roughness={1} />
       </instancedMesh>
       <instancedMesh ref={lamps} args={[undefined, undefined, pylonCount]}>
         <sphereGeometry args={[0.4, 8, 6]} />
@@ -863,11 +863,11 @@ function Riverbank() {
     <group>
       <mesh position={[0, 0.3, RIVER_FAR + 2]}>
         <boxGeometry args={[7000, 1.2, 4]} />
-        <meshStandardMaterial color="#2f2a4a" roughness={1} />
+        <meshStandardMaterial color="#3a3833" roughness={1} />
       </mesh>
       <mesh position={[0, 0.3, RIVER_NEAR - 2]}>
         <boxGeometry args={[7000, 1.2, 4]} />
-        <meshStandardMaterial color="#2f2a4a" roughness={1} />
+        <meshStandardMaterial color="#3a3833" roughness={1} />
       </mesh>
       <HideAbove y={230}>
         <Riprap />
