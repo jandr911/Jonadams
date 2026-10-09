@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { CameraControls } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { createCityAudio, type CityAudio } from "./CityAudio";
 import { CityContext, type CityApi } from "./CityContext";
 import { DayNightContext } from "./DayNightContext";
 import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
@@ -190,18 +189,6 @@ export default function CityCanvas() {
   const cloud = weather.kind === "ok" ? weather.cloud : OVERCAST_DEFAULT;
   const dn = useMemo(() => computeDayNight(hour, cloud), [hour, cloud]);
 
-  const [sound, setSound] = useState(false);
-  const audio = useRef<CityAudio | null>(null);
-  const toggleSound = () => {
-    if (!audio.current) audio.current = createCityAudio();
-    if (sound) audio.current.stop();
-    else audio.current.start();
-    setSound(!sound);
-  };
-  useEffect(() => {
-    audio.current?.setNight(dn.night);
-  }, [dn.night]);
-  useEffect(() => () => audio.current?.dispose(), []);
 
   const flyTo = useCallback(
     async (d: Destination) => {
@@ -276,10 +263,6 @@ export default function CityCanvas() {
                 </span>
               </div>
             )}
-            <button type="button" className="city-pill city-pill--sound" onClick={toggleSound} aria-pressed={sound} aria-label={sound ? "Turn city sound off" : "Turn city sound on"}>
-              <span className="city-pill__dot" />
-              <span>{sound ? "Sound on" : "Sound off"}</span>
-            </button>
             <span className="city-geo">Downtown Detroit · 42.33° N, 83.05° W</span>
           </div>
 
