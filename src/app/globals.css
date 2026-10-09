@@ -14,6 +14,7 @@
   --pink: #ff4fa3;
   --amber: #ffb02e;
   --violet: #c9a6ff;
+  --blue: #49d2f2;
   --accent: var(--gold);
   --header-h: 64px;
 }
@@ -29,6 +30,7 @@
   --color-pink: var(--pink);
   --color-amber: var(--amber);
   --color-violet: var(--violet);
+  --color-blue: var(--blue);
   --font-serif: var(--font-serif);
   --font-body: var(--font-body);
 }
@@ -716,6 +718,32 @@ body {
 }
 .loader.is-done .loader__corner {
   opacity: 0;
+}
+.loader--quick {
+  transition: opacity 0.45s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), filter 0.45s ease;
+}
+.loader--quick .loader__center,
+.loader--quick .loader__skyline,
+.loader--quick .loader__water,
+.loader--quick .loader__horizon,
+.loader--quick .loader__frame,
+.loader--quick .loader__corner {
+  transition-duration: 0.45s;
+}
+.loader--quick .loader__stars,
+.loader--quick .loader__horizon,
+.loader--quick .loader__frame,
+.loader--quick .loader__eyebrow,
+.loader--quick .loader__caps,
+.loader--quick .loader__eq,
+.loader--quick .loader__meter,
+.loader--quick .loader__skyline:not(.loader__skyline--mirror) {
+  animation-duration: 0.5s;
+  animation-delay: 0s;
+}
+.loader--quick .loader__title span,
+.loader--quick .loader__title span:last-child {
+  animation-duration: 0.6s, 7s;
 }
 .loader__glow {
   position: absolute;

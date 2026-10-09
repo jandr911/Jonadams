@@ -3,17 +3,23 @@
 import { CameraControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
-import { Box3, Vector3 } from "three";
+import { Box3, PerspectiveCamera, Vector3 } from "three";
 import { useCity } from "./CityContext";
-import { HOME_CAMERA, INTRO_CAMERA, destinationPosition, type Destination } from "./layout";
+import { INTRO_CAMERA, destinationPosition, homeCamera, type Destination } from "./layout";
 
 const EYE_FLOOR = 3.2;
+
+function applyFov(cam: PerspectiveCamera, fov: number) {
+  cam.fov = fov;
+  cam.updateProjectionMatrix();
+}
 const MAX_POLAR = 1.56;
 
 export default function CameraRig() {
   const ref = useRef<CameraControls>(null);
   const { flyRef, camRef, reducedMotion, navigating } = useCity();
   const size = useThree((s) => s.size);
+  const aspect = size.width / size.height;
   const keys = useRef(new Set<string>());
   const tmpTarget = useRef(new Vector3());
 
@@ -73,7 +79,8 @@ export default function CameraRig() {
       if (k.has("-") || k.has("_")) c.dolly(-step, false);
       if (k.has("r")) {
         k.delete("r");
-        c.setLookAt(...HOME_CAMERA.position, ...HOME_CAMERA.target, !reducedMotion);
+        const home = homeCamera(aspect);
+        c.setLookAt(...home.position, ...home.target, !reducedMotion);
       }
       return;
     }
@@ -82,15 +89,16 @@ export default function CameraRig() {
   });
 
   useEffect(() => {
+    const cam = ref.current?.camera;
+    if (cam instanceof PerspectiveCamera) applyFov(cam, homeCamera(aspect).fov);
+  }, [aspect]);
+
+  useEffect(() => {
     const c = ref.current;
     if (!c) return;
     c.setBoundary(new Box3(new Vector3(-620, EYE_FLOOR, -720), new Vector3(620, 270, 470)));
     c.boundaryEnclosesCamera = true;
-    const portrait = size.width < size.height;
-    const home = {
-      position: [HOME_CAMERA.position[0], HOME_CAMERA.position[1] + (portrait ? 40 : 0), HOME_CAMERA.position[2] + (portrait ? 190 : 0)] as [number, number, number],
-      target: HOME_CAMERA.target,
-    };
+    const home = homeCamera(aspect);
     c.setLookAt(...INTRO_CAMERA.position, ...INTRO_CAMERA.target, false);
     const run = async () => {
       if (reducedMotion) {

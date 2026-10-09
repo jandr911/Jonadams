@@ -1,3 +1,5 @@
+import { useEffect, useMemo } from "react";
+import { BoxGeometry } from "three";
 import type { InstancedMesh, Object3D } from "three";
 
 export function fillInstances(mesh: InstancedMesh | null, dummy: Object3D, count: number, place: (i: number, d: Object3D) => void) {
@@ -12,4 +14,14 @@ export function fillInstances(mesh: InstancedMesh | null, dummy: Object3D, count
   }
   mesh.instanceMatrix.needsUpdate = true;
   mesh.computeBoundingSphere();
+}
+
+export function baseBoxGeometry() {
+  return new BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+}
+
+export function useBaseBoxGeometry() {
+  const geo = useMemo(() => baseBoxGeometry(), []);
+  useEffect(() => () => geo.dispose(), [geo]);
+  return geo;
 }

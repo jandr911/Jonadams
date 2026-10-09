@@ -2,12 +2,7 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Color,
-  InstancedMesh,
-  MeshStandardMaterial,
-  Object3D,
-} from "three";
+import { BoxGeometry, CapsuleGeometry, Color, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
 import { useDayNight } from "./DayNightContext";
 import MacArthurBridge from "./MacArthurBridge";
 import {
@@ -102,9 +97,9 @@ function buildParked() {
   const items: FleetItem[] = [];
   const colors = ["#f4f1ea", "#1d1d3f", "#c8102e", "#2a3a7a", "#9a95a8", "#d6b56e", "#3f3f4f", "#4a2c3a", "#2f6ea8", "#7a8c3a"];
   const kinds: VehicleKind[] = ["sedan", "sedan", "sedan", "suv", "suv", "pickup", "van"];
-  for (const { c, r } of allBlocks()) {
+  for (const { c, r, outer } of allBlocks()) {
     const [bx, bz] = blockCenter(c, r);
-    const n = 2 + Math.floor(rand() * 4);
+    const n = outer ? 1 + Math.floor(rand() * 2) : 2 + Math.floor(rand() * 4);
     for (let k = 0; k < n; k++) {
       const side = rand() < 0.5 ? 1 : -1;
       const t = range(rand, -BLOCK / 2 + 3, BLOCK / 2 - 3);
@@ -176,6 +171,10 @@ function StreetBanners() {
   );
 }
 
+const GULL_BODY = new CapsuleGeometry(0.14, 0.7, 3, 6).rotateX(Math.PI / 2);
+const GULL_WING_LEFT = new BoxGeometry(1.2, 0.04, 0.42).translate(-0.65, 0, 0);
+const GULL_WING_RIGHT = new BoxGeometry(1.2, 0.04, 0.42).translate(0.65, 0, 0);
+
 function Gulls() {
   const body = useRef<InstancedMesh>(null);
   const wingL = useRef<InstancedMesh>(null);
@@ -222,16 +221,13 @@ function Gulls() {
   });
   return (
     <group>
-      <instancedMesh ref={body} args={[undefined, undefined, flock.length]} frustumCulled={false}>
-        <capsuleGeometry args={[0.14, 0.7, 3, 6]} onUpdate={(g) => g.rotateX(Math.PI / 2)} />
+      <instancedMesh ref={body} args={[GULL_BODY, undefined, flock.length]} frustumCulled={false}>
         <meshStandardMaterial color="#f4f1ea" />
       </instancedMesh>
-      <instancedMesh ref={wingL} args={[undefined, undefined, flock.length]} frustumCulled={false}>
-        <boxGeometry args={[1.2, 0.04, 0.42]} onUpdate={(g) => g.translate(-0.65, 0, 0)} />
+      <instancedMesh ref={wingL} args={[GULL_WING_LEFT, undefined, flock.length]} frustumCulled={false}>
         <meshStandardMaterial color="#e8e2d2" side={2} />
       </instancedMesh>
-      <instancedMesh ref={wingR} args={[undefined, undefined, flock.length]} frustumCulled={false}>
-        <boxGeometry args={[1.2, 0.04, 0.42]} onUpdate={(g) => g.translate(0.65, 0, 0)} />
+      <instancedMesh ref={wingR} args={[GULL_WING_RIGHT, undefined, flock.length]} frustumCulled={false}>
         <meshStandardMaterial color="#e8e2d2" side={2} />
       </instancedMesh>
     </group>
@@ -424,7 +420,7 @@ function SatelliteDishes() {
   }, [items, dummy]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
-      <sphereGeometry args={[0.55, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2.4]} />
+      <sphereGeometry args={[0.55, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2.4]} />
       <meshStandardMaterial color="#d8d8e0" roughness={0.5} metalness={0.3} side={2} />
     </instancedMesh>
   );

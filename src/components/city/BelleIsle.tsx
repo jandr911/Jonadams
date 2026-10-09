@@ -6,6 +6,7 @@ import { useDayNight } from "./DayNightContext";
 import { fillInstances } from "./instancing";
 import { RIVER_NEAR } from "./layout";
 import { mulberry32, range } from "./rng";
+import { CROWN_OLIVE, TRUNK_COLOR, useCrownGeometry } from "./trees";
 
 const X = 340;
 const Z = RIVER_NEAR + 23;
@@ -222,6 +223,7 @@ export default function BelleIsle() {
   );
   const trunks = useRef<InstancedMesh>(null);
   const crowns = useRef<InstancedMesh>(null);
+  const crownGeo = useCrownGeometry(3.2, 1879);
   const path = useRef<InstancedMesh>(null);
   const posts = useRef<InstancedMesh>(null);
   const globes = useRef<InstancedMesh>(null);
@@ -236,6 +238,7 @@ export default function BelleIsle() {
     fillInstances(crowns.current, dummy, trees.length, (i, d) => {
       const t = trees[i];
       d.position.set(t.x, 6 * t.s, t.z);
+      d.rotation.y = i * 1.7;
       d.scale.set(t.s, t.s, t.s);
     });
     fillInstances(path.current, dummy, loop.length, (i, d) => {
@@ -280,11 +283,10 @@ export default function BelleIsle() {
       </instancedMesh>
       <instancedMesh ref={trunks} args={[undefined, undefined, trees.length]}>
         <cylinderGeometry args={[0.25, 0.4, 4.4, 6]} />
-        <meshStandardMaterial color="#4a2e2a" roughness={1} />
+        <meshStandardMaterial color={TRUNK_COLOR} roughness={1} />
       </instancedMesh>
-      <instancedMesh ref={crowns} args={[undefined, undefined, trees.length]}>
-        <icosahedronGeometry args={[3.2, 0]} />
-        <meshStandardMaterial color="#2f7a50" roughness={0.9} flatShading />
+      <instancedMesh ref={crowns} args={[crownGeo, undefined, trees.length]}>
+        <meshStandardMaterial color={CROWN_OLIVE} roughness={1} />
       </instancedMesh>
       <instancedMesh ref={posts} args={[undefined, undefined, lampCount]} material={m.dark}>
         <cylinderGeometry args={[0.08, 0.12, 3.6, 6]} />

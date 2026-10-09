@@ -11,7 +11,7 @@ export default function ListenPage() {
       index="02"
       title="Listen"
       lead="Press play right here. Every play on this page counts on the channel."
-      accent="#ffb02e"
+      accent="var(--amber)"
     >
       <div className="grid-2">
         {VIDEOS.map((v, i) => (

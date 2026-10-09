@@ -1,10 +1,43 @@
 "use client";
 
 import { useProgress } from "@react-three/drei";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { SITE } from "@/content/site";
 
+const VISITED_KEY = "city-visited";
+
+function readVisited() {
+  try {
+    return sessionStorage.getItem(VISITED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function createVisitedStore() {
+  let cached: boolean | null = null;
+  return {
+    subscribe: () => () => {},
+    getSnapshot: () => (cached ??= readVisited()),
+    getServerSnapshot: () => false,
+  };
+}
+
+export function useReturningVisitor() {
+  const [store] = useState(createVisitedStore);
+  return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
+}
+
+export function markVisited() {
+  try {
+    sessionStorage.setItem(VISITED_KEY, "1");
+  } catch {
+    return;
+  }
+}
+
 const RAMP_MS = 2800;
+const QUICK_RAMP_MS = 700;
 const STAGES: [number, string][] = [
   [30, "Lighting the skyline"],
   [62, "Warming up the neon"],
@@ -68,7 +101,7 @@ function Skyline({ mirror = false }: { mirror?: boolean }) {
   );
 }
 
-export default function Loader({ ready }: { ready: boolean }) {
+export default function Loader({ ready, returning }: { ready: boolean; returning: boolean }) {
   const { progress: assets } = useProgress();
   const [shown, setShown] = useState(0);
   const [done, setDone] = useState(false);
@@ -82,9 +115,10 @@ export default function Loader({ ready }: { ready: boolean }) {
 
   useEffect(() => {
     start.current = performance.now();
+    const rampMs = returning ? QUICK_RAMP_MS : RAMP_MS;
     let raf = 0;
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start.current) / RAMP_MS);
+      const t = Math.min(1, (now - start.current) / rampMs);
       const ramp = (1 - Math.pow(1 - t, 3)) * 88;
       const target = ready ? 100 : Math.max(ramp, assetsRef.current * 0.88);
       const ease = ready ? 0.3 : 0.12;
@@ -93,24 +127,30 @@ export default function Loader({ ready }: { ready: boolean }) {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [ready]);
+  }, [ready, returning]);
 
   useEffect(() => {
     if (!ready) return;
-    const a = setTimeout(() => setDone(true), 500);
-    const b = setTimeout(() => setGone(true), 2100);
+    const a = setTimeout(() => setDone(true), returning ? 120 : 500);
+    const b = setTimeout(() => setGone(true), returning ? 900 : 2100);
     return () => {
       clearTimeout(a);
       clearTimeout(b);
     };
-  }, [ready]);
+  }, [ready, returning]);
 
   if (gone) return null;
   const pct = Math.round(shown);
-  const stage = ready ? "Welcome to the city" : STAGES.find(([max]) => pct < max)?.[1] ?? "Opening the doors";
+  const welcome = returning ? "Welcome back" : "Welcome to the city";
+  const stage = ready ? welcome : STAGES.find(([max]) => pct < max)?.[1] ?? "Opening the doors";
 
   return (
-    <div className={`loader ${done ? "is-done" : ""}`} role="status" aria-live="polite" aria-label={`Loading, ${pct} percent`}>
+    <div
+      className={`loader ${returning ? "loader--quick" : ""} ${done ? "is-done" : ""}`}
+      role="status"
+      aria-live="polite"
+      aria-label={`Loading, ${pct} percent`}
+    >
       <div className="loader__glow" />
       <Stars />
       <div className="loader__beam loader__beam--a" />

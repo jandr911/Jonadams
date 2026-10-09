@@ -10,7 +10,7 @@ export default function CreativesPage() {
       index="05"
       title="The Creatives"
       lead="A curated wall for up-and-coming artists, builders, and makers from the city and beyond. Jonathan picks the lineup."
-      accent="#c9a6ff"
+      accent="var(--violet)"
     >
       <div className="grid-3">
         {CREATIVE_SLOTS.map((s, i) => (

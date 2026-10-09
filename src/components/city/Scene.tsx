@@ -8,6 +8,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import Aircraft from "./Aircraft";
 import Buildings from "./Buildings";
 import CameraRig from "./CameraRig";
+import DetailCull from "./DetailCull";
 import Details from "./Details";
 import Suburbs from "./Suburbs";
 import { useDayNight } from "./DayNightContext";
@@ -116,6 +117,7 @@ export default function Scene({ onReady }: { onReady: () => void }) {
       <CameraRig />
       <Effects />
       <ShadowThrottle />
+      <DetailCull />
     </>
   );
 }

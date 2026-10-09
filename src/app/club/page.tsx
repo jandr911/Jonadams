@@ -5,10 +5,10 @@ import Room from "@/components/Room";
 export const metadata: Metadata = { title: "Club Adams" };
 
 const walls = [
-  { href: "/listen", index: "02", label: "The Sound", note: "Music, straight from the booth", accent: "#49f2d6" },
-  { href: "/listen#watch", index: "03", label: "The Screen", note: "Videos and visuals", accent: "#ff4fa3" },
-  { href: "/creatives", index: "05", label: "The Wall", note: "Creatives on display", accent: "#c9a6ff" },
-  { href: "/merch", index: "04", label: "The Rack", note: "Wear the universe", accent: "#ffb02e" },
+  { href: "/listen", index: "02", label: "The Sound", note: "Music, straight from the booth", accent: "var(--cyan)" },
+  { href: "/listen#watch", index: "03", label: "The Screen", note: "Videos and visuals", accent: "var(--pink)" },
+  { href: "/creatives", index: "05", label: "The Wall", note: "Creatives on display", accent: "var(--violet)" },
+  { href: "/merch", index: "04", label: "The Rack", note: "Wear the universe", accent: "var(--amber)" },
 ];
 
 export default function ClubPage() {
@@ -17,7 +17,7 @@ export default function ClubPage() {
       index="01"
       title="Club Adams"
       lead="You made it inside. Four walls, four ways deeper into the city."
-      accent="#ff4fa3"
+      accent="var(--pink)"
     >
       <div className="grid-2">
         {walls.map((w) => (

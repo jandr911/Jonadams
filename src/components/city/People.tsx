@@ -532,7 +532,7 @@ export default function People() {
     [],
   );
   const geo = useMemo(
-    () => ({ box: new BoxGeometry(1, 1, 1), sphere: new SphereGeometry(1, 10, 8), eyes: eyesGeometry(), headphones: headphoneGeometry() }) as Record<string, BufferGeometry>,
+    () => ({ box: new BoxGeometry(1, 1, 1), sphere: new SphereGeometry(1, 7, 5), eyes: eyesGeometry(), headphones: headphoneGeometry() }) as Record<string, BufferGeometry>,
     [],
   );
   const scratch = useRef<Scratch>({ pos: new Vector3(), q: new Quaternion(), sc: new Vector3(), M: new Matrix4(), T: new Matrix4(), R: new Matrix4(), J: new Matrix4(), out: new Matrix4(), zero: new Matrix4().makeScale(0, 0, 0), frame: 0 });

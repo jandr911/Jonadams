@@ -8,8 +8,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { CityContext, type CityApi } from "./CityContext";
 import { DayNightContext } from "./DayNightContext";
 import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
-import { DESTINATIONS, HOME_CAMERA, type Destination } from "./layout";
-import Loader from "./Loader";
+import { DESTINATIONS, homeCamera, type Destination } from "./layout";
+import Loader, { markVisited, useReturningVisitor } from "./Loader";
 
 const CityStage = dynamic(() => import("./CityStage"), { ssr: false });
 
@@ -101,7 +101,12 @@ function NavPad({ camRef, reducedMotion }: { camRef: React.MutableRefObject<Came
           className="city-pad__btn city-pad__btn--home"
           aria-label="Reset view (R)"
           title="Reset view (R)"
-          onClick={() => camRef.current?.setLookAt(...HOME_CAMERA.position, ...HOME_CAMERA.target, !reducedMotion)}
+          onClick={() => {
+            const c = camRef.current;
+            if (!c) return;
+            const home = homeCamera("aspect" in c.camera ? c.camera.aspect : 1);
+            c.setLookAt(...home.position, ...home.target, !reducedMotion);
+          }}
         >
           ⌂
         </button>
@@ -124,6 +129,7 @@ export default function CityCanvas() {
   const router = useRouter();
   const clock = useSyncExternalStore(subscribeMinute, clockSnapshot, serverClockSnapshot);
   const reducedMotion = useSyncExternalStore(subscribeMotion, motionSnapshot, () => false);
+  const returning = useReturningVisitor();
   const [urlPreset, autoHour] = clock.split("|") as [TimePreset, string];
   const [override, setOverride] = useState<TimePreset | null>(null);
   const preset = override ?? urlPreset;
@@ -139,6 +145,7 @@ export default function CityCanvas() {
   const flyRef = useRef<((d: Destination) => Promise<void>) | null>(null);
   const camRef = useRef<CameraControls | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+  const prefetched = useRef(new Set<string>());
 
   useEffect(() => {
     const el = trackRef.current;
@@ -160,9 +167,19 @@ export default function CityCanvas() {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setMinWait(true), 2400);
+    const t = setTimeout(() => setMinWait(true), returning ? 0 : 2400);
     return () => clearTimeout(t);
-  }, []);
+  }, [returning]);
+
+  useEffect(() => {
+    if (ready) markVisited();
+  }, [ready]);
+
+  useEffect(() => {
+    if (!hovered || prefetched.current.has(hovered.href)) return;
+    prefetched.current.add(hovered.href);
+    router.prefetch(hovered.href);
+  }, [hovered, router]);
 
   const dn = useMemo(() => computeDayNight(hour), [hour]);
 
@@ -172,7 +189,9 @@ export default function CityCanvas() {
       setNavigating(true);
       setHovered(null);
       router.prefetch(d.href);
-      await flyRef.current?.(d);
+      const flight = flyRef.current?.(d) ?? Promise.resolve();
+      const settle = new Promise<void>((r) => setTimeout(r, reducedMotion ? 0 : 1500));
+      await Promise.race([flight, settle]);
       setFade(true);
       await new Promise((r) => setTimeout(r, reducedMotion ? 0 : 420));
       router.push(d.href);
@@ -236,7 +255,7 @@ export default function CityCanvas() {
           </div>
 
           <div className={`city-fade ${fade ? "is-on" : ""}`} aria-hidden />
-          <Loader ready={ready} />
+          <Loader ready={ready} returning={returning} />
         </div>
       </CityContext.Provider>
     </DayNightContext.Provider>

@@ -19,6 +19,17 @@ export const HOME_CAMERA = {
   target: [0, 28, -10] as [number, number, number],
 };
 
+export const HOME_FOV = 40;
+export const PORTRAIT_HOME_CAMERA = {
+  position: [0, 50, CITY_HALF_Z + 150] as [number, number, number],
+  target: [0, 22, -10] as [number, number, number],
+};
+export const PORTRAIT_FOV = 56;
+
+export function homeCamera(aspect: number) {
+  return aspect < 1 ? { ...PORTRAIT_HOME_CAMERA, fov: PORTRAIT_FOV } : { ...HOME_CAMERA, fov: HOME_FOV };
+}
+
 export const INTRO_CAMERA = {
   position: [-260, 200, CITY_HALF_Z + 440] as [number, number, number],
   target: [0, 20, 0] as [number, number, number],

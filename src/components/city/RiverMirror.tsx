@@ -6,6 +6,7 @@ import {
   Color,
   HalfFloatType,
   LinearFilter,
+  LinearMipmapLinearFilter,
   Matrix4,
   Mesh,
   PerspectiveCamera,
@@ -60,10 +61,13 @@ const frag = /* glsl */ `
     vec2 p = vWorld.xz * 0.12;
     float n1 = vnoise(p + vec2(uTime * 0.25, uTime * 0.11));
     float n2 = vnoise(p * 2.3 - vec2(uTime * 0.17, uTime * 0.21));
-    vec2 ripple = (vec2(n1, n2) - 0.5) * 0.018;
+    float far = smoothstep(30.0, 420.0, length(cameraPosition - vWorld));
     vec4 uv = vMirror;
-    uv.xy += ripple * uv.w;
-    vec3 refl = texture2DProj(uMirror, uv).rgb;
+    uv.x += (n1 - 0.5) * 0.009 * uv.w;
+    uv.y += (n2 - 0.5) * (0.010 + far * 0.012) * uv.w;
+    vec3 refl = texture2DProj(uMirror, uv, far * 0.5).rgb;
+    refl = refl / (1.0 + refl * 0.45);
+    refl = mix(vec3(dot(refl, vec3(0.3, 0.59, 0.11))), refl, 0.7);
 
     vec3 v = normalize(cameraPosition - vWorld);
     vec3 n = normalize(vec3((n1 - 0.5) * 0.25, 1.0, (n2 - 0.5) * 0.25));
@@ -71,14 +75,17 @@ const frag = /* glsl */ `
     vec3 hv = normalize(normalize(uSunDir) + v);
     float spec = pow(max(dot(n, hv), 0.0), 120.0);
 
-    vec3 col = mix(uColor, refl * uStrength, 0.42 + 0.45 * fres);
-    col += uSunColor * spec * 0.9;
+    vec3 col = mix(uColor, refl * uStrength, 0.34 + 0.42 * fres);
+    col += uSunColor * spec * 0.6;
     gl_FragColor = vec4(col, 1.0);
     #include <fog_fragment>
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }
 `;
+
+const MIRROR_SCALE = 0.4;
+const MIRROR_EVERY = 3;
 
 export default function RiverMirror({
   width,
@@ -99,10 +106,11 @@ export default function RiverMirror({
 
   const rt = useMemo(
     () =>
-      new WebGLRenderTarget(Math.max(256, Math.floor(size.width * 0.5)), Math.max(144, Math.floor(size.height * 0.5)), {
+      new WebGLRenderTarget(Math.max(256, Math.floor(size.width * MIRROR_SCALE)), Math.max(144, Math.floor(size.height * MIRROR_SCALE)), {
         type: HalfFloatType,
-        minFilter: LinearFilter,
+        minFilter: LinearMipmapLinearFilter,
         magFilter: LinearFilter,
+        generateMipmaps: true,
         depthBuffer: true,
       }),
     [size.width, size.height],
@@ -134,8 +142,8 @@ export default function RiverMirror({
   useEffect(() => {
     const m = mesh.current?.material as ShaderMaterial | undefined;
     if (!m) return;
-    m.uniforms.uColor.value.set("#2d6aa8").lerp(new Color("#0e1436"), dn.night);
-    m.uniforms.uStrength.value = 0.85 + dn.night * 0.15;
+    m.uniforms.uColor.value.set("#39454b").lerp(new Color("#0e1436"), dn.night);
+    m.uniforms.uStrength.value = 0.8 + dn.night * 0.2;
     m.uniforms.uSunDir.value.set(...dn.sunDir);
     m.uniforms.uSunColor.value.copy(dn.sunColor).multiplyScalar(0.25 + (1 - dn.night) * 0.75);
   }, [dn]);
@@ -147,7 +155,7 @@ export default function RiverMirror({
     if (!m) return;
     (m.material as ShaderMaterial).uniforms.uTime.value = clock.elapsedTime;
     frame.current += 1;
-    if (frame.current % 2 !== 0) return;
+    if (frame.current % MIRROR_EVERY !== 0) return;
     if (!scratch.current) scratch.current = makeMirrorScratch();
     renderMirror(gl, scene, camera as PerspectiveCamera, m, rt, scratch.current);
   }, -1);

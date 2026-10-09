@@ -11,6 +11,7 @@ import {
   Vector3,
 } from "three";
 import { useDayNight } from "./DayNightContext";
+import { fillInstances } from "./instancing";
 import { roadLinesX, roadLinesZ } from "./layout";
 import { enableReflection } from "./layers";
 
@@ -57,6 +58,46 @@ function Pylons({ curve }: { curve: CatmullRomCurve3 }) {
       <cylinderGeometry args={[0.55, 0.8, TRACK_Y - 0.6, 10]} />
       <meshStandardMaterial color="#4a4a68" roughness={0.8} />
     </instancedMesh>
+  );
+}
+
+const GUIDEWAY_SEGMENTS = 160;
+
+function Guideway({ curve }: { curve: CatmullRomCurve3 }) {
+  const joints = useRef<InstancedMesh>(null);
+  const walkway = useRef<InstancedMesh>(null);
+  const dummy = useMemo(() => new Object3D(), []);
+  const segLen = useMemo(() => curve.getLength() / GUIDEWAY_SEGMENTS, [curve]);
+  useEffect(() => {
+    const p = new Vector3();
+    const t = new Vector3();
+    fillInstances(joints.current, dummy, GUIDEWAY_SEGMENTS, (i, d) => {
+      const u = i / GUIDEWAY_SEGMENTS;
+      curve.getPointAt(u, p);
+      curve.getTangentAt(u, t);
+      d.position.copy(p);
+      d.rotation.y = Math.atan2(t.x, t.z);
+    });
+    fillInstances(walkway.current, dummy, GUIDEWAY_SEGMENTS, (i, d) => {
+      const u = (i + 0.5) / GUIDEWAY_SEGMENTS;
+      curve.getPointAt(u, p);
+      curve.getTangentAt(u, t);
+      d.position.set(p.x + t.z * 1.08, p.y + 0.5, p.z - t.x * 1.08);
+      d.rotation.y = Math.atan2(t.x, t.z);
+      d.scale.z = segLen * 1.06;
+    });
+  }, [curve, dummy, segLen]);
+  return (
+    <group>
+      <instancedMesh ref={joints} args={[undefined, undefined, GUIDEWAY_SEGMENTS]}>
+        <boxGeometry args={[1.9, 1.7, 0.5]} />
+        <meshStandardMaterial color="#6a6a72" roughness={1} />
+      </instancedMesh>
+      <instancedMesh ref={walkway} args={[undefined, undefined, GUIDEWAY_SEGMENTS]}>
+        <boxGeometry args={[0.7, 0.1, 1]} />
+        <meshStandardMaterial color="#8a8a90" roughness={1} />
+      </instancedMesh>
+    </group>
   );
 }
 
@@ -272,6 +313,7 @@ export default function PeopleMover() {
         <tubeGeometry args={[curve, 320, 0.16, 6, true]} />
         <meshStandardMaterial color="#bfc2d8" roughness={0.3} metalness={0.6} />
       </mesh>
+      <Guideway curve={curve} />
       <Pylons curve={curve} />
       <Train curve={curve} />
     </group>

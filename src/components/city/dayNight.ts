@@ -22,13 +22,13 @@ export interface DayNight {
 }
 
 const DAY = {
-  zenith: new Color("#3a66a4"),
-  horizon: new Color("#9eb0c4"),
-  ground: new Color("#c9b9a6"),
-  fog: new Color("#aeb9c6"),
-  sun: new Color("#fff0d6"),
-  hemiSky: new Color("#9fb3c8"),
-  hemiGround: new Color("#4b3a4a"),
+  zenith: new Color("#6e7d8e"),
+  horizon: new Color("#b9bfc6"),
+  ground: new Color("#aaa8a4"),
+  fog: new Color("#b4b9bf"),
+  sun: new Color("#ecebe6"),
+  hemiSky: new Color("#b3b8bd"),
+  hemiGround: new Color("#4a4745"),
 };
 
 const DUSK = {
@@ -96,8 +96,8 @@ export function computeDayNight(hour: number): DayNight {
     sky: { zenith: mix3("zenith"), horizon: mix3("horizon"), ground: mix3("ground") },
     fog: mix3("fog"),
     sunColor: mix3("sun"),
-    sunIntensity: 0.25 + dayAmount * 1.9,
-    ambient: 0.3 + dayAmount * 0.45,
+    sunIntensity: 0.25 + dayAmount * 1.15,
+    ambient: 0.3 + dayAmount * 0.55,
     hemiSky: mix3("hemiSky"),
     hemiGround: mix3("hemiGround"),
     bloom: 0.35 + night * 0.9,
