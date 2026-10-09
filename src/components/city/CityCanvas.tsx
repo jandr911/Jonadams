@@ -101,7 +101,12 @@ function NavPad({ camRef, reducedMotion }: { camRef: React.MutableRefObject<Came
           className="city-pad__btn city-pad__btn--home"
           aria-label="Reset view (R)"
           title="Reset view (R)"
-          onClick={() => camRef.current?.setLookAt(...HOME_CAMERA.position, ...HOME_CAMERA.target, !reducedMotion)}
+          onClick={() => {
+            const c = camRef.current;
+            if (!c) return;
+            const home = homeCamera("aspect" in c.camera ? c.camera.aspect : 1);
+            c.setLookAt(...home.position, ...home.target, !reducedMotion);
+          }}
         >
           ⌂
         </button>
