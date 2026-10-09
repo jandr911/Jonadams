@@ -1,20 +1,9 @@
 "use client";
 
-import { Float, Html, Text } from "@react-three/drei";
+import { Html, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  AdditiveBlending,
-  Color,
-  ExtrudeGeometry,
-  Group,
-  InstancedMesh,
-  Mesh,
-  MeshBasicMaterial,
-  MeshStandardMaterial,
-  Object3D,
-  Shape,
-} from "three";
+import { AdditiveBlending, Color, CylinderGeometry, Group, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
 import AmbassadorBridge from "./AmbassadorBridge";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
@@ -27,10 +16,16 @@ import {
 } from "./layout";
 import NeonSign, { DISPLAY_FONT, SCRIPT_FONT } from "./NeonSign";
 import { useWindowMaterial } from "./useWindowMaterial";
+import { baseBoxGeometry } from "./instancing";
 import { enableReflection } from "./layers";
 import type { WindowMaterialOptions } from "./windowMaterial";
 
 const PAD = 0.4;
+
+const BASE_BOX = baseBoxGeometry();
+const BASE_CYLINDER = new CylinderGeometry(1, 1, 1, 28, 1).translate(0, 0.5, 0);
+const FOUNTAIN_PLUME = new CylinderGeometry(0.6, 1.6, 9.5, 10).translate(0, 4.75, 0);
+const JET_PLUME = new CylinderGeometry(0.4, 1.2, 7, 10).translate(0, 3.5, 0);
 
 function WindowedBox({
   w,
@@ -49,9 +44,7 @@ function WindowedBox({
 }) {
   const mat = useWindowMaterial({ ...opts, glow });
   return (
-    <mesh material={mat} position={position} rotation={rotation} scale={[w, h, d]}>
-      <boxGeometry args={[1, 1, 1]} onUpdate={(g) => g.translate(0, 0.5, 0)} />
-    </mesh>
+    <mesh material={mat} geometry={BASE_BOX} position={position} rotation={rotation} scale={[w, h, d]} />
   );
 }
 
@@ -63,9 +56,7 @@ function WindowedCylinder({
 }: WindowMaterialOptions & { r: number; h: number; position?: [number, number, number] }) {
   const mat = useWindowMaterial({ ...opts, cylindrical: true, glow: opts.glow ?? 0.3 });
   return (
-    <mesh material={mat} position={position} scale={[r, h, r]}>
-      <cylinderGeometry args={[1, 1, 1, 28, 1]} onUpdate={(g) => g.translate(0, 0.5, 0)} />
-    </mesh>
+    <mesh material={mat} geometry={BASE_CYLINDER} position={position} scale={[r, h, r]} />
   );
 }
 
@@ -594,8 +585,7 @@ function HartPlaza() {
           <torusGeometry args={[4.2, 0.9, 10, 32]} />
           <meshStandardMaterial color="#d8d8ee" metalness={0.8} roughness={0.25} />
         </mesh>
-        <mesh ref={water} position={[0, 0.4, 0]}>
-          <cylinderGeometry args={[0.6, 1.6, 9.5, 10]} onUpdate={(g) => g.translate(0, 4.75, 0)} />
+        <mesh ref={water} geometry={FOUNTAIN_PLUME} position={[0, 0.4, 0]}>
           <meshStandardMaterial color="#aef3ff" emissive="#49f2d6" emissiveIntensity={1.2} transparent opacity={0.55} toneMapped={false} />
         </mesh>
         <mesh position={[0, 0.5, 0]}>
@@ -687,8 +677,7 @@ function CampusMartius() {
         <cylinderGeometry args={[4, 4, 0.4, 24]} />
         <meshStandardMaterial color="#2a4a6a" emissive="#1f6b8a" emissiveIntensity={0.3} />
       </mesh>
-      <mesh ref={jet} position={[0, 0.6, 0]}>
-        <cylinderGeometry args={[0.4, 1.2, 7, 10]} onUpdate={(g) => g.translate(0, 3.5, 0)} />
+      <mesh ref={jet} geometry={JET_PLUME} position={[0, 0.6, 0]}>
         <meshStandardMaterial color="#aef3ff" emissive="#49f2d6" emissiveIntensity={1.2} transparent opacity={0.55} toneMapped={false} />
       </mesh>
       {[0, 1, 2, 3, 4, 5].map((i) => {

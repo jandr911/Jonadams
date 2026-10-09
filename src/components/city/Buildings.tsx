@@ -28,6 +28,7 @@ import {
 import { mulberry32, pick, range } from "./rng";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { makeShadowBlobTexture } from "./textures";
+import { useBaseBoxGeometry } from "./instancing";
 import { enableReflection } from "./layers";
 import type { Group } from "three";
 
@@ -207,6 +208,7 @@ function buildLots(): { city: Lot[]; outskirts: Lot[]; windsor: Lot[] } {
 
 function InstancedLots({ lots, winSize }: { lots: Lot[]; winSize?: [number, number] }) {
   const mat = useWindowMaterial({ winSize, glow: 0.1 });
+  const lotGeometry = useBaseBoxGeometry();
   const ref = useRef<InstancedMesh>(null);
   const dummy = useMemo(() => new Object3D(), []);
   const seeds = useMemo(() => new Float32Array(lots.map((l) => l.seed)), [lots]);
@@ -225,9 +227,7 @@ function InstancedLots({ lots, winSize }: { lots: Lot[]; winSize?: [number, numb
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }, [lots, seeds, dummy]);
   return (
-    <instancedMesh ref={ref} args={[undefined, mat, lots.length]} castShadow receiveShadow>
-      <boxGeometry args={[1, 1, 1]} onUpdate={(g) => g.translate(0, 0.5, 0)} />
-    </instancedMesh>
+    <instancedMesh ref={ref} args={[lotGeometry, mat, lots.length]} castShadow receiveShadow />
   );
 }
 

@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Color, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
+import { useBaseBoxGeometry } from "./instancing";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { useDayNight } from "./DayNightContext";
 import { AMBASSADOR_CLEAR_HALF, AMBASSADOR_RAMP_Z, AMBASSADOR_X, CITY_HALF_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR, ROAD } from "./layout";
 import { mulberry32, pick, range } from "./rng";
+import { CROWN_PINE, TRUNK_COLOR, useCrownGeometry } from "./trees";
 import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
 import { FLEET_COLORS, type VehicleKind } from "./vehicles";
 
@@ -308,6 +310,7 @@ function Houses({ houses, pads }: { houses: House[]; pads: { x: number; z: numbe
 
 function MidRise({ lots }: { lots: MidLot[] }) {
   const mat = useWindowMaterial({ winSize: [2, 2.4], glow: 0.08 });
+  const lotGeometry = useBaseBoxGeometry();
   const ref = useRef<InstancedMesh>(null);
   const seeds = useMemo(() => new Float32Array(lots.map((l) => l.seed)), [lots]);
   useEffect(() => {
@@ -326,15 +329,14 @@ function MidRise({ lots }: { lots: MidLot[] }) {
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }, [lots, seeds]);
   return (
-    <instancedMesh ref={ref} args={[undefined, mat, lots.length]}>
-      <boxGeometry args={[1, 1, 1]} onUpdate={(g) => g.translate(0, 0.5, 0)} />
-    </instancedMesh>
+    <instancedMesh ref={ref} args={[lotGeometry, mat, lots.length]} />
   );
 }
 
 function SuburbTrees({ trees }: { trees: { x: number; z: number; s: number }[] }) {
   const trunks = useRef<InstancedMesh>(null);
   const crowns = useRef<InstancedMesh>(null);
+  const crownGeo = useCrownGeometry(2.1, 23, "far");
   useEffect(() => {
     const dummy = new Object3D();
     const t = trunks.current;

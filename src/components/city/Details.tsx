@@ -2,12 +2,7 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Color,
-  InstancedMesh,
-  MeshStandardMaterial,
-  Object3D,
-} from "three";
+import { BoxGeometry, CapsuleGeometry, Color, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
 import { useDayNight } from "./DayNightContext";
 import MacArthurBridge from "./MacArthurBridge";
 import {
@@ -176,6 +171,10 @@ function StreetBanners() {
   );
 }
 
+const GULL_BODY = new CapsuleGeometry(0.14, 0.7, 3, 6).rotateX(Math.PI / 2);
+const GULL_WING_LEFT = new BoxGeometry(1.2, 0.04, 0.42).translate(-0.65, 0, 0);
+const GULL_WING_RIGHT = new BoxGeometry(1.2, 0.04, 0.42).translate(0.65, 0, 0);
+
 function Gulls() {
   const body = useRef<InstancedMesh>(null);
   const wingL = useRef<InstancedMesh>(null);
@@ -222,16 +221,13 @@ function Gulls() {
   });
   return (
     <group>
-      <instancedMesh ref={body} args={[undefined, undefined, flock.length]} frustumCulled={false}>
-        <capsuleGeometry args={[0.14, 0.7, 3, 6]} onUpdate={(g) => g.rotateX(Math.PI / 2)} />
+      <instancedMesh ref={body} args={[GULL_BODY, undefined, flock.length]} frustumCulled={false}>
         <meshStandardMaterial color="#f4f1ea" />
       </instancedMesh>
-      <instancedMesh ref={wingL} args={[undefined, undefined, flock.length]} frustumCulled={false}>
-        <boxGeometry args={[1.2, 0.04, 0.42]} onUpdate={(g) => g.translate(-0.65, 0, 0)} />
+      <instancedMesh ref={wingL} args={[GULL_WING_LEFT, undefined, flock.length]} frustumCulled={false}>
         <meshStandardMaterial color="#e8e2d2" side={2} />
       </instancedMesh>
-      <instancedMesh ref={wingR} args={[undefined, undefined, flock.length]} frustumCulled={false}>
-        <boxGeometry args={[1.2, 0.04, 0.42]} onUpdate={(g) => g.translate(0.65, 0, 0)} />
+      <instancedMesh ref={wingR} args={[GULL_WING_RIGHT, undefined, flock.length]} frustumCulled={false}>
         <meshStandardMaterial color="#e8e2d2" side={2} />
       </instancedMesh>
     </group>
