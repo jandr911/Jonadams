@@ -23,7 +23,6 @@ import type { WindowMaterialOptions } from "./windowMaterial";
 const PAD = 0.4;
 
 const BASE_BOX = baseBoxGeometry();
-const BASE_CYLINDER = new CylinderGeometry(1, 1, 1, 28, 1).translate(0, 0.5, 0);
 const FOUNTAIN_PLUME = new CylinderGeometry(0.6, 1.6, 9.5, 10).translate(0, 4.75, 0);
 const JET_PLUME = new CylinderGeometry(0.4, 1.2, 7, 10).translate(0, 3.5, 0);
 
@@ -45,18 +44,6 @@ function WindowedBox({
   const mat = useWindowMaterial({ ...opts, glow });
   return (
     <mesh material={mat} geometry={BASE_BOX} position={position} rotation={rotation} scale={[w, h, d]} />
-  );
-}
-
-function WindowedCylinder({
-  r,
-  h,
-  position = [0, 0, 0],
-  ...opts
-}: WindowMaterialOptions & { r: number; h: number; position?: [number, number, number] }) {
-  const mat = useWindowMaterial({ ...opts, cylindrical: true, glow: opts.glow ?? 0.3 });
-  return (
-    <mesh material={mat} geometry={BASE_CYLINDER} position={position} scale={[r, h, r]} />
   );
 }
 
@@ -168,98 +155,199 @@ function Landmark({
   );
 }
 
-function PinkStrip({ position, rotation }: { position: [number, number, number]; rotation: number }) {
+const CLUB_TOWER_HEIGHT = 70;
+const CLUB_WING_HEIGHT = 54;
+const CLUB_PODIUM_HEIGHT = 8;
+const CLUB_TOWER = new CylinderGeometry(0.72, 1, 1, 40, 1).translate(0, 0.5, 0);
+const CLUB_RING_COUNT = 9;
+const CLUB_BAR_HEIGHTS = [0.55, 0.9, 0.7, 1, 0.6];
+const CLUB_BAR_MAX = 9;
+const CLUB_BAR_STEP_FRAMES = 14;
+const GOLD = "#d6b56e";
+const GOLD_LIGHT = "#f3dfae";
+
+function TaperedGlassTower({ scale, position = [0, 0, 0], seed, glow = 0.18 }: { scale: [number, number, number]; position?: [number, number, number]; seed: number; glow?: number }) {
+  const mat = useWindowMaterial({ color: "#0b0d16", cylindrical: true, seed, winSize: [1.6, 2.0], litDensity: 0.55, cool: "#f3dfae", warm: "#ffd9a0", glow });
+  return <mesh material={mat} geometry={CLUB_TOWER} position={position} scale={scale} />;
+}
+
+function ClubLightRings() {
   const dn = useDayNight();
   const mat = useRef<MeshStandardMaterial>(null);
+  const ref = useRef<InstancedMesh>(null);
   useEffect(() => {
-    if (mat.current) mat.current.emissiveIntensity = 0.25 + dn.night * 1.4;
-  }, [dn]);
+    const dummy = new Object3D();
+    fillInstances(ref.current, dummy, CLUB_RING_COUNT, (i, d) => {
+      const t = (i + 1) / (CLUB_RING_COUNT + 1);
+      const r = 1 - 0.28 * t;
+      d.position.set(0, CLUB_PODIUM_HEIGHT + t * CLUB_TOWER_HEIGHT, 0);
+      d.rotation.x = Math.PI / 2;
+      d.scale.set(9.6 * r, 7.2 * r, 1);
+    });
+  }, []);
+  useFrame(({ clock }) => {
+    if (!mat.current) return;
+    const pulse = 0.5 + 0.5 * Math.sin(clock.elapsedTime * 2.1);
+    mat.current.emissiveIntensity = dn.night * (1.2 + pulse * 2.4);
+  });
   return (
-    <mesh position={position} rotation={[0, rotation, 0]}>
-      <boxGeometry args={[0.5, 64, 0.5]} />
-      <meshStandardMaterial ref={mat} color="#b0607f" emissive="#ff8ac2" emissiveIntensity={1.6} toneMapped={false} />
-    </mesh>
+    <instancedMesh ref={ref} args={[undefined, undefined, CLUB_RING_COUNT]}>
+      <torusGeometry args={[1, 0.09, 6, 48]} />
+      <meshStandardMaterial ref={mat} color="#7a2a52" emissive="#ff4fa3" emissiveIntensity={0} toneMapped={false} />
+    </instancedMesh>
   );
 }
 
-function BlueCrown({ position, r }: { position: [number, number, number]; r: number }) {
+function ClubCrownBars() {
   const dn = useDayNight();
-  const mat = useRef<MeshStandardMaterial>(null);
+  const [mat] = useState(() => new MeshStandardMaterial({ color: GOLD, emissive: GOLD_LIGHT, emissiveIntensity: 0.15, metalness: 0.6, roughness: 0.35, toneMapped: false }));
+  const bars = useRef<(Mesh | null)[]>([]);
+  const frame = useRef(0);
+  useEffect(() => () => mat.dispose(), [mat]);
   useEffect(() => {
-    if (mat.current) mat.current.emissiveIntensity = 0.6 + dn.night * 3.4;
+    setEmissiveIntensity(mat, 0.15 + dn.night * 1.8);
+  }, [dn, mat]);
+  useFrame(({ clock }) => {
+    frame.current += 1;
+    if (frame.current % CLUB_BAR_STEP_FRAMES !== 0) return;
+    const t = clock.elapsedTime;
+    bars.current.forEach((b, i) => {
+      if (!b) return;
+      const k = 0.35 + 0.65 * Math.abs(Math.sin(t * (0.9 + i * 0.23) + i));
+      b.scale.y = CLUB_BAR_MAX * CLUB_BAR_HEIGHTS[i] * k;
+    });
+  });
+  return (
+    <group position={[0, CLUB_PODIUM_HEIGHT + CLUB_TOWER_HEIGHT, 0]}>
+      {CLUB_BAR_HEIGHTS.map((h, i) => (
+        <mesh
+          key={i}
+          ref={(el) => {
+            bars.current[i] = el;
+          }}
+          position={[-4 + i * 2, 0, -2.2]}
+          scale={[1.1, CLUB_BAR_MAX * h, 1.1]}
+          geometry={BASE_BOX}
+          material={mat}
+        />
+      ))}
+    </group>
+  );
+}
+
+function ClubEntrance() {
+  const dn = useDayNight();
+  const glowMat = useRef<MeshStandardMaterial>(null);
+  useEffect(() => {
+    if (glowMat.current) glowMat.current.emissiveIntensity = 0.2 + dn.night * 1.6;
   }, [dn]);
   return (
-    <mesh position={position} rotation={[Math.PI / 2, 0, 0]}>
-      <torusGeometry args={[r, 0.28, 8, 48]} />
-      <meshStandardMaterial ref={mat} color="#4aa8ff" emissive="#3d8dff" emissiveIntensity={3} toneMapped={false} />
-    </mesh>
+    <group position={[0, 0, 11.5]}>
+      <mesh position={[0, 0.06, 0.2]}>
+        <boxGeometry args={[8, 0.12, 1.6]} />
+        <meshStandardMaterial color="#8a8a98" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.18, -0.5]}>
+        <boxGeometry args={[8, 0.12, 1.2]} />
+        <meshStandardMaterial color="#8a8a98" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.31, 2.8]}>
+        <boxGeometry args={[3.2, 0.05, 7]} />
+        <meshStandardMaterial color="#c8102e" roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 0.2, -1.2]}>
+        <boxGeometry args={[5.4, 3.4, 0.3]} />
+        <meshStandardMaterial color="#14101c" roughness={0.3} metalness={0.4} />
+      </mesh>
+      <mesh position={[0, 6.1, 2.4]}>
+        <boxGeometry args={[14, 0.5, 5]} />
+        <meshStandardMaterial color="#14101c" roughness={0.6} />
+      </mesh>
+      <mesh position={[0, 5.82, 2.4]}>
+        <boxGeometry args={[13.4, 0.06, 4.4]} />
+        <meshStandardMaterial ref={glowMat} color="#fff6d8" emissive={GOLD_LIGHT} emissiveIntensity={0.2} toneMapped={false} />
+      </mesh>
+      {[-6.6, 6.6].map((x) => (
+        <mesh key={x} position={[x, 3, 4.6]}>
+          <cylinderGeometry args={[0.14, 0.14, 6.1, 8]} />
+          <meshStandardMaterial color={GOLD} metalness={0.7} roughness={0.3} />
+        </mesh>
+      ))}
+      <MarqueeBulbs width={13.6} position={[0, 6.1, 5.0]} />
+      <NeonSign text="Club Adams" color="#ff8ac2" width={12} height={3.2} fontSize={2.2} position={[0, 8.2, 2.4]} backing="#2a0a33" glow={2.2} font={SCRIPT_FONT} />
+    </group>
   );
 }
 
 function ClubAdams() {
   const d = DESTINATIONS[0];
   const [x, z] = destinationPosition(d);
-  const dish = useRef<Group>(null);
-  useFrame(({ clock }) => {
-    if (dish.current) dish.current.rotation.y = clock.elapsedTime * 0.4;
-  });
+  const dn = useDayNight();
+  const rimMat = useRef<MeshStandardMaterial>(null);
+  const deckY = CLUB_PODIUM_HEIGHT + CLUB_TOWER_HEIGHT;
+  useEffect(() => {
+    if (rimMat.current) rimMat.current.emissiveIntensity = 0.1 + dn.night * 1.4;
+  }, [dn]);
   return (
     <Hotspot dest={d} position={[x, PAD, z]}>
-      <WindowedBox w={21} h={6} d={21} color="#2b2f45" winSize={[2.4, 2.2]} seed={3} />
-      <WindowedCylinder r={7.2} h={66} color="#2e3a5c" winSize={[1.5, 1.9]} seed={4} litDensity={0.7} cool="#dff4ff" glow={0.22} />
+      <mesh position={[0, 0.6, 0]}>
+        <boxGeometry args={[23, 1.2, 23]} />
+        <meshStandardMaterial color="#1b1b26" roughness={0.9} />
+      </mesh>
+      <WindowedBox w={22} h={CLUB_PODIUM_HEIGHT} d={22} color="#0b0d16" winSize={[3.2, 3.6]} seed={3} glow={0.15} />
       {[
-        [-8.2, -8.2],
-        [8.2, -8.2],
-        [-8.2, 8.2],
-        [8.2, 8.2],
+        [-11, -11],
+        [11, -11],
+        [-11, 11],
+        [11, 11],
       ].map(([ox, oz], i) => (
-        <WindowedCylinder key={i} r={4.1} h={44} position={[ox, 0, oz]} color="#33405f" winSize={[1.4, 1.9]} seed={10 + i} cool="#dff4ff" glow={0.2} litDensity={0.62} />
+        <mesh key={i} position={[ox, CLUB_PODIUM_HEIGHT / 2, oz]}>
+          <boxGeometry args={[0.6, CLUB_PODIUM_HEIGHT, 0.6]} />
+          <meshStandardMaterial color={GOLD} metalness={0.7} roughness={0.3} />
+        </mesh>
       ))}
+      <mesh position={[0, CLUB_PODIUM_HEIGHT + 0.3, 0]}>
+        <boxGeometry args={[22.6, 0.6, 22.6]} />
+        <meshStandardMaterial color={GOLD} metalness={0.6} roughness={0.4} />
+      </mesh>
+      <TaperedGlassTower scale={[9.6, CLUB_TOWER_HEIGHT, 7.2]} position={[0, CLUB_PODIUM_HEIGHT, 0]} seed={4} />
+      <TaperedGlassTower scale={[5.2, CLUB_WING_HEIGHT, 4.6]} position={[5.8, CLUB_PODIUM_HEIGHT, -4.2]} seed={11} glow={0.14} />
       {[0, 1, 2, 3].map((i) => {
         const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
         return (
-          <PinkStrip key={i} position={[Math.cos(a) * 7.3, 33, Math.sin(a) * 7.3]} rotation={-a} />
+          <mesh key={i} position={[Math.cos(a) * 8.1, CLUB_PODIUM_HEIGHT + CLUB_TOWER_HEIGHT / 2, Math.sin(a) * 6.1]} rotation={[0, -a, 0]}>
+            <boxGeometry args={[0.5, CLUB_TOWER_HEIGHT, 0.9]} />
+            <meshStandardMaterial color={GOLD} metalness={0.7} roughness={0.3} />
+          </mesh>
         );
       })}
-      <mesh position={[0, 66.6, 0]}>
-        <cylinderGeometry args={[7.6, 7.6, 1.2, 28]} />
-        <meshStandardMaterial color="#1b2238" roughness={0.6} />
+      <ClubLightRings />
+      <mesh position={[0, deckY + 0.4, 0]} scale={[9.2, 1, 7]}>
+        <cylinderGeometry args={[1, 1, 0.8, 40]} />
+        <meshStandardMaterial color="#14101c" roughness={0.7} />
       </mesh>
-      <BlueCrown position={[0, 65.2, 0]} r={7.5} />
-      <BlueCrown position={[0, 62.4, 0]} r={7.5} />
-      {[
-        [-8.2, -8.2],
-        [8.2, -8.2],
-        [-8.2, 8.2],
-        [8.2, 8.2],
-      ].map(([ox, oz], i) => (
-        <BlueCrown key={i} position={[ox, 43.6, oz]} r={4.3} />
-      ))}
-      <mesh position={[0, 0.6, 0]}>
-        <boxGeometry args={[23, 1.2, 23]} />
-        <meshStandardMaterial color="#2b2f45" />
+      <mesh position={[0, deckY + 1.3, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[9.2, 7, 1]}>
+        <torusGeometry args={[1, 0.035, 6, 56]} />
+        <meshStandardMaterial ref={rimMat} color={GOLD} emissive={GOLD_LIGHT} emissiveIntensity={0.1} toneMapped={false} />
       </mesh>
-      <NeonSign text="CLUB ADAMS" color="#49f2d6" width={17} height={4.4} fontSize={2.9} position={[0, 70.4, 0]} blink="marquee" doubleSided depth={1} />
-      <mesh position={[0, 73.4, 0]}>
+      <mesh position={[0, deckY + 1.5, 0]} scale={[9.1, 1, 6.9]}>
+        <cylinderGeometry args={[1, 1, 1.4, 40, 1, true]} />
+        <meshStandardMaterial color="#9fd8ff" roughness={0.05} metalness={0.3} transparent opacity={0.3} side={2} />
+      </mesh>
+      <mesh position={[0, deckY + 1.6, -4]}>
+        <boxGeometry args={[6, 1.6, 2.2]} />
+        <meshStandardMaterial color="#1d1d3f" roughness={0.6} />
+      </mesh>
+      <ClubCrownBars />
+      <NeonSign text="Club Adams" color={GOLD_LIGHT} width={18} height={4.6} fontSize={3.4} position={[0, deckY + 6.4, 0]} backing="#07060f" glow={1.5} font={SCRIPT_FONT} doubleSided depth={1} />
+      <mesh position={[0, deckY + 9.9, 0]}>
         <cylinderGeometry args={[0.25, 0.25, 2.4, 6]} />
         <meshStandardMaterial color="#1d1d3f" />
       </mesh>
-      <Beacon position={[0, 74.8, 0]} />
-      <NeonSign text="Club Adams" color="#ff8ac2" width={16} height={5} fontSize={3.1} position={[0, 3.4, 10.9]} backing="#2a0a33" glow={2.2} font={SCRIPT_FONT} />
-      <group position={[8.2, 44.4, -8.2]}>
-        <mesh position={[0, 3, 0]}>
-          <cylinderGeometry args={[0.3, 0.4, 6, 6]} />
-          <meshStandardMaterial color="#1d1d3f" />
-        </mesh>
-        <group ref={dish} position={[0, 6.2, 0]}>
-          <mesh rotation={[-0.6, 0, 0]} position={[0, 0.6, 0.8]}>
-            <sphereGeometry args={[2.6, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2.6]} />
-            <meshStandardMaterial color="#f4f4fa" roughness={0.4} side={2} />
-          </mesh>
-        </group>
-        <Beacon position={[0, 8.6, 0]} size={0.4} rate={0.8} />
-      </group>
-      <SearchBeams position={[-8.2, 44.6, 8.2]} color="#ff4fa3" />
+      <Beacon position={[0, deckY + 11.3, 0]} />
+      <SearchBeams position={[-5, deckY + 1.2, 4]} color="#ff4fa3" />
+      <SearchBeams position={[5, deckY + 1.2, -2]} color={GOLD} />
+      <ClubEntrance />
     </Hotspot>
   );
 }

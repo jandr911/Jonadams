@@ -125,7 +125,7 @@ export const DESTINATIONS: Destination[] = [
     id: "club",
     href: "/club",
     label: "Club Adams",
-    sub: "Renaissance Center",
+    sub: "Riverfront Tower",
     blurb: "The front door: four walls, four ways deeper in",
     color: "#ff4fa3",
     accent: "var(--pink)",
