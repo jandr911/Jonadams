@@ -6,7 +6,7 @@ export const SITE = {
   submitEmail: "",
   bookingEmail: "",
   pressEmail: "",
-  joinHref: "#join-list",
+  joinHref: "/listen#join-list",
 };
 
 export interface SiteLink {
