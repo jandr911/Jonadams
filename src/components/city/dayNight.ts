@@ -100,7 +100,7 @@ export function computeDayNight(hour: number): DayNight {
     ambient: 0.3 + dayAmount * 0.55,
     hemiSky: mix3("hemiSky"),
     hemiGround: mix3("hemiGround"),
-    bloom: 0.35 + night * 0.9,
+    bloom: 0.3 + night * 0.5,
     starAlpha: smooth(0.55, 1, night),
   };
 }

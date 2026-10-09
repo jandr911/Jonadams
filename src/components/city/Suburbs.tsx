@@ -482,7 +482,7 @@ function Freeway() {
     l.instanceMatrix.needsUpdate = true;
   }, [pylonCount]);
   useEffect(() => {
-    if (lampMat.current) lampMat.current.emissiveIntensity = 0.2 + dn.night * 2.6;
+    if (lampMat.current) lampMat.current.emissiveIntensity = 0.2 + dn.night * 1.3;
   }, [dn]);
   const len = FREEWAY_Z1 - FREEWAY_Z0;
   const mid = (FREEWAY_Z0 + FREEWAY_Z1) / 2;

@@ -22,10 +22,10 @@ export default function Effects() {
   return (
     <EffectComposer multisampling={0}>
       <SMAA />
-      <Bloom ref={bloom} mipmapBlur luminanceThreshold={0.92} luminanceSmoothing={0.25} intensity={0.35} radius={0.72} />
+      <Bloom ref={bloom} mipmapBlur luminanceThreshold={1} luminanceSmoothing={0.2} intensity={0.3} radius={0.5} />
       <HueSaturation ref={hueSat} saturation={-0.08} />
       <BrightnessContrast ref={tone} brightness={-0.02} contrast={0.1} />
-      <Noise premultiply blendFunction={BlendFunction.SOFT_LIGHT} opacity={0.14} />
+      <Noise blendFunction={BlendFunction.SOFT_LIGHT} opacity={0.1} />
       <Vignette eskil={false} offset={0.16} darkness={0.66} />
     </EffectComposer>
   );

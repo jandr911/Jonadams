@@ -202,7 +202,7 @@ function Streetlights() {
   }, [items, dummy]);
   useEffect(() => {
     if (!headMat.current) return;
-    headMat.current.emissiveIntensity = 0.1 + dn.night * 2.4;
+    headMat.current.emissiveIntensity = 0.1 + dn.night * 1.2;
     headMat.current.color.set(new Color("#ffffff").lerp(new Color("#ffd27a"), dn.night));
   }, [dn]);
   return (
