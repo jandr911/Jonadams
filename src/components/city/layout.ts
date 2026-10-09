@@ -112,6 +112,7 @@ export interface Destination {
   label: string;
   sub: string;
   color: string;
+  accent: string;
   block: [number, number];
   offset: [number, number];
   view: { from: [number, number, number]; at: [number, number, number] };
@@ -125,6 +126,7 @@ export const DESTINATIONS: Destination[] = [
     label: "Club Adams",
     sub: "Renaissance Center",
     color: "#ff4fa3",
+    accent: "var(--pink)",
     block: [5, 5],
     offset: [0, 0],
     view: { from: [16, 34, 66], at: [0, 30, 0] },
@@ -136,21 +138,11 @@ export const DESTINATIONS: Destination[] = [
     label: "Listen",
     sub: "Fox Theatre",
     color: "#ffb02e",
+    accent: "var(--amber)",
     block: [1, 5],
     offset: [0, 0],
     view: { from: [6, 20, 48], at: [0, 18, 0] },
     markerHeight: 46,
-  },
-  {
-    id: "merch",
-    href: "/merch",
-    label: "Merch",
-    sub: "Rivertown Warehouse",
-    color: "#49d2f2",
-    block: [6, 5],
-    offset: [0, 0],
-    view: { from: [-8, 16, 44] , at: [0, 12, 0] },
-    markerHeight: 34,
   },
   {
     id: "watch",
@@ -158,10 +150,23 @@ export const DESTINATIONS: Destination[] = [
     label: "Watch",
     sub: "Michigan Central",
     color: "#49f2d6",
+    accent: "var(--cyan)",
     block: [0, 5],
     offset: [0, 0],
     view: { from: [10, 26, 58], at: [0, 24, 0] },
     markerHeight: 56,
+  },
+  {
+    id: "merch",
+    href: "/merch",
+    label: "Merch",
+    sub: "Rivertown Warehouse",
+    color: "#49d2f2",
+    accent: "var(--blue)",
+    block: [6, 5],
+    offset: [0, 0],
+    view: { from: [-8, 16, 44] , at: [0, 12, 0] },
+    markerHeight: 34,
   },
   {
     id: "creatives",
@@ -169,6 +174,7 @@ export const DESTINATIONS: Destination[] = [
     label: "The Creatives",
     sub: "Corktown Billboard",
     color: "#c9a6ff",
+    accent: "var(--violet)",
     block: [2, 4],
     offset: [0, 0],
     view: { from: [4, 22, 44], at: [0, 20, 0] },
