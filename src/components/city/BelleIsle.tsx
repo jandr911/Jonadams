@@ -6,7 +6,7 @@ import { useDayNight } from "./DayNightContext";
 import { fillInstances } from "./instancing";
 import { RIVER_NEAR } from "./layout";
 import { mulberry32, range } from "./rng";
-import { CROWN_OLIVE, TRUNK_COLOR, useCrownGeometry, useCrownMaterial } from "./trees";
+import TreeStand, { plantTrees } from "./TreeStand";
 
 const X = 340;
 const Z = RIVER_NEAR + 23;
@@ -221,27 +221,21 @@ export default function BelleIsle() {
     },
     [m],
   );
-  const trunks = useRef<InstancedMesh>(null);
-  const crowns = useRef<InstancedMesh>(null);
-  const crownGeo = useCrownGeometry(3.2, 1879);
-  const crownMat = useCrownMaterial(CROWN_OLIVE);
+  const specs = useMemo(
+    () =>
+      plantTrees(
+        mulberry32(1880),
+        trees.map((t) => ({ ...t, s: t.s * 1.6 })),
+        { shade: 0.5, spruce: 0.35, elm: 0.15 },
+      ),
+    [trees],
+  );
   const path = useRef<InstancedMesh>(null);
   const posts = useRef<InstancedMesh>(null);
   const globes = useRef<InstancedMesh>(null);
   const lampCount = Math.floor(LOOP_SEGMENTS / LAMP_EVERY);
 
   useEffect(() => {
-    fillInstances(trunks.current, dummy, trees.length, (i, d) => {
-      const t = trees[i];
-      d.position.set(t.x, 2.2 * t.s, t.z);
-      d.scale.set(t.s, t.s, t.s);
-    });
-    fillInstances(crowns.current, dummy, trees.length, (i, d) => {
-      const t = trees[i];
-      d.position.set(t.x, 6 * t.s, t.z);
-      d.rotation.y = i * 1.7;
-      d.scale.set(t.s, t.s, t.s);
-    });
     fillInstances(path.current, dummy, loop.length, (i, d) => {
       const s = loop[i];
       d.position.set(s.x, 0.36, s.z);
@@ -282,11 +276,7 @@ export default function BelleIsle() {
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={PATH} roughness={1} />
       </instancedMesh>
-      <instancedMesh ref={trunks} args={[undefined, undefined, trees.length]}>
-        <cylinderGeometry args={[0.25, 0.4, 4.4, 6]} />
-        <meshStandardMaterial color={TRUNK_COLOR} roughness={1} />
-      </instancedMesh>
-      <instancedMesh ref={crowns} args={[crownGeo, crownMat, trees.length]} />
+      <TreeStand trees={specs} quality="near" seed={1879} />
       <instancedMesh ref={posts} args={[undefined, undefined, lampCount]} material={m.dark}>
         <cylinderGeometry args={[0.08, 0.12, 3.6, 6]} />
       </instancedMesh>

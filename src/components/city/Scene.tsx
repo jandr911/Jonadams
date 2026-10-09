@@ -20,6 +20,7 @@ import PeopleMover from "./PeopleMover";
 import Roads from "./Roads";
 import Sky from "./Sky";
 import Traffic from "./Traffic";
+import { TreeWind } from "./TreeStand";
 import Watercraft from "./Watercraft";
 
 function applyEnvironment(scene: ThreeScene, tex: Texture | null) {
@@ -110,6 +111,7 @@ export default function Scene({ onReady }: { onReady: () => void }) {
         <Watercraft />
         <Details />
         <Suburbs />
+        <TreeWind />
         <Preload all />
         <FirstFrames onReady={onReady} />
       </Suspense>
