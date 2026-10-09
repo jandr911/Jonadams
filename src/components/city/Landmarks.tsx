@@ -16,7 +16,7 @@ import {
 } from "./layout";
 import NeonSign, { DISPLAY_FONT, SCRIPT_FONT } from "./NeonSign";
 import { useWindowMaterial } from "./useWindowMaterial";
-import { baseBoxGeometry } from "./instancing";
+import { baseBoxGeometry, fillInstances } from "./instancing";
 import { enableReflection } from "./layers";
 import type { WindowMaterialOptions } from "./windowMaterial";
 
@@ -416,39 +416,133 @@ function MerchWarehouse() {
   );
 }
 
+const MC_ARCH_X = [-8, 0, 8];
+const MC_COLUMN_X = [-12.6, -3.8, 3.8, 12.6].flatMap((cx) => [cx - 0.7, cx + 0.7]);
+const MC_FRONT = 10;
+type Box = { x: number; y: number; z: number; sx: number; sy: number; sz: number };
+const MC_TRIM: Box[] = [
+  ...MC_ARCH_X.flatMap((ax) => [-1, 1].map((s) => ({ x: ax + s * 3.1, y: 5.2, z: MC_FRONT + 0.15, sx: 0.6, sy: 6.6, sz: 0.5 }))),
+  ...MC_ARCH_X.map((ax) => ({ x: ax, y: 11.5, z: MC_FRONT + 0.2, sx: 0.8, sy: 1.1, sz: 0.5 })),
+  ...MC_COLUMN_X.flatMap((cx) => [
+    { x: cx, y: 0.25, z: MC_FRONT + 0.6, sx: 1.2, sy: 0.5, sz: 1.2 },
+    { x: cx, y: 10.35, z: MC_FRONT + 0.6, sx: 1.1, sy: 0.5, sz: 1.1 },
+  ]),
+  { x: 0, y: 11.7, z: MC_FRONT + 0.6, sx: 27.4, sy: 2.2, sz: 1.3 },
+];
+const MC_MUNTINS: Box[] = MC_ARCH_X.flatMap((ax) => [
+  { x: ax, y: 5.2, z: MC_FRONT + 0.12, sx: 0.12, sy: 6.6, sz: 0.3 },
+  { x: ax, y: 4.2, z: MC_FRONT + 0.12, sx: 5.4, sy: 0.12, sz: 0.3 },
+  { x: ax, y: 7.2, z: MC_FRONT + 0.12, sx: 5.4, sy: 0.12, sz: 0.3 },
+]);
+const MC_BALUSTER_COUNT = 25;
+
+function setEmissiveIntensity(mat: MeshStandardMaterial, value: number) {
+  mat.emissiveIntensity = value;
+}
+const MC_PILASTER_X = [-11.4, -6.8, -2.3, 2.3, 6.8, 11.4];
+
 function MichiganCentral() {
   const d = DESTINATIONS[3];
   const [x, z] = destinationPosition(d);
+  const dn = useDayNight();
+  const glass = useMemo(() => new MeshStandardMaterial({ color: "#1b2a3a", emissive: "#ffd9a0", emissiveIntensity: 0.2, roughness: 0.2, metalness: 0.3 }), []);
+  const trim = useRef<InstancedMesh>(null);
+  const muntins = useRef<InstancedMesh>(null);
+  const columns = useRef<InstancedMesh>(null);
+  const balusters = useRef<InstancedMesh>(null);
+  const pilasters = useRef<InstancedMesh>(null);
+  useEffect(() => () => glass.dispose(), [glass]);
+  useEffect(() => {
+    setEmissiveIntensity(glass, 0.08 + dn.night * 0.9);
+  }, [dn, glass]);
+  useEffect(() => {
+    const dummy = new Object3D();
+    const box = (list: Box[]) => (i: number, o: Object3D) => {
+      const b = list[i];
+      o.position.set(b.x, b.y, b.z);
+      o.scale.set(b.sx, b.sy, b.sz);
+    };
+    fillInstances(trim.current, dummy, MC_TRIM.length, box(MC_TRIM));
+    fillInstances(muntins.current, dummy, MC_MUNTINS.length, box(MC_MUNTINS));
+    fillInstances(columns.current, dummy, MC_COLUMN_X.length, (i, o) => o.position.set(MC_COLUMN_X[i], 5.3, MC_FRONT + 0.6));
+    fillInstances(balusters.current, dummy, MC_BALUSTER_COUNT, (i, o) => o.position.set(-12 + i, 14.2, MC_FRONT - 0.4));
+    fillInstances(pilasters.current, dummy, MC_PILASTER_X.length, (i, o) => {
+      o.position.set(MC_PILASTER_X[i], 29, 2.2);
+      o.scale.set(0.7, 44, 0.5);
+    });
+  }, []);
   return (
     <Hotspot dest={d} position={[x, PAD, z]}>
-      <WindowedBox w={22} h={11} d={16} color="#b89a7a" winSize={[2, 2.6]} seed={61} />
-      {[-7, 0, 7].map((ax) => (
+      <WindowedBox w={26} h={13} d={12} position={[0, 0, 4]} color="#c9b48c" winSize={[2, 2.4]} seed={61} storefront={false} />
+      {MC_ARCH_X.map((ax) => (
         <group key={ax}>
-          <mesh position={[ax, 5, 8.1]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[2.6, 2.6, 0.4, 16, 1, false, 0, Math.PI]} />
-            <meshStandardMaterial color="#1b1424" emissive="#ffd9a0" emissiveIntensity={0.25} />
+          <mesh position={[ax, 8.5, MC_FRONT + 0.1]} rotation={[Math.PI / 2, 0, 0]} material={glass}>
+            <cylinderGeometry args={[2.7, 2.7, 0.4, 18, 1, false, 0, Math.PI]} />
           </mesh>
-          <mesh position={[ax, 2.4, 8.1]}>
-            <boxGeometry args={[5.2, 5.2, 0.4]} />
-            <meshStandardMaterial color="#1b1424" emissive="#ffd9a0" emissiveIntensity={0.25} />
+          <mesh position={[ax, 5.2, MC_FRONT + 0.1]} material={glass}>
+            <boxGeometry args={[5.4, 6.6, 0.4]} />
+          </mesh>
+          <mesh position={[ax, 8.5, MC_FRONT + 0.3]}>
+            <torusGeometry args={[3.0, 0.32, 8, 24, Math.PI]} />
+            <meshStandardMaterial color="#d8c9a8" roughness={0.9} />
           </mesh>
         </group>
       ))}
-      <WindowedBox w={15} h={40} d={12} position={[0, 11, -1]} color="#c9b48c" winSize={[1.9, 2.4]} seed={62} />
-      <mesh position={[0, 51.6, -1]}>
-        <boxGeometry args={[16.4, 1.4, 13.4]} />
+      <instancedMesh ref={trim} args={[undefined, undefined, MC_TRIM.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#d8c9a8" roughness={0.9} />
+      </instancedMesh>
+      <instancedMesh ref={muntins} args={[undefined, undefined, MC_MUNTINS.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#1a1a22" roughness={0.6} />
+      </instancedMesh>
+      <instancedMesh ref={columns} args={[undefined, undefined, MC_COLUMN_X.length]} castShadow>
+        <cylinderGeometry args={[0.42, 0.46, 9.6, 10]} />
+        <meshStandardMaterial color="#d2c3a2" roughness={0.9} />
+      </instancedMesh>
+      <mesh position={[0, 13.4, 4]} castShadow>
+        <boxGeometry args={[27.4, 1.2, 13.4]} />
+        <meshStandardMaterial color="#b9a88c" roughness={0.9} />
+      </mesh>
+      <instancedMesh ref={balusters} args={[undefined, undefined, MC_BALUSTER_COUNT]}>
+        <cylinderGeometry args={[0.14, 0.18, 0.9, 6]} />
+        <meshStandardMaterial color="#d2c3a2" roughness={0.9} />
+      </instancedMesh>
+      <mesh position={[0, 14.75, MC_FRONT - 0.4]}>
+        <boxGeometry args={[25, 0.25, 0.5]} />
+        <meshStandardMaterial color="#d2c3a2" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 14.9, MC_FRONT - 0.7]}>
+        <boxGeometry args={[9, 1.9, 1]} />
+        <meshStandardMaterial color="#c9b48c" roughness={0.9} />
+      </mesh>
+      <Text font={DISPLAY_FONT} fontSize={1.05} letterSpacing={0.12} color="#fff2dc" anchorX="center" anchorY="middle" position={[0, 14.9, MC_FRONT + 0.12]} material-toneMapped={false}>
+        MICHIGAN CENTRAL
+      </Text>
+      <mesh position={[0, 3.5, -4]}>
+        <boxGeometry args={[24.6, 7, 12.6]} />
+        <meshStandardMaterial color="#a08c6c" roughness={1} />
+      </mesh>
+      <WindowedBox w={24} h={52} d={12} position={[0, 0, -4]} color="#bca98a" winSize={[1.7, 2.3]} seed={62} storefront={false} />
+      <instancedMesh ref={pilasters} args={[undefined, undefined, MC_PILASTER_X.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#a8977c" roughness={0.95} />
+      </instancedMesh>
+      <mesh position={[0, 52.4, -4]} castShadow>
+        <boxGeometry args={[25.8, 1.6, 13.8]} />
         <meshStandardMaterial color="#8a7050" />
       </mesh>
-      {[-5, 5].map((ax) => (
-        <mesh key={ax} position={[ax, 53.4, -1]}>
+      <mesh position={[0, 53.7, -4]}>
+        <boxGeometry args={[24.6, 1.2, 12.6]} />
+        <meshStandardMaterial color="#a08c6c" />
+      </mesh>
+      {[-9, 9].map((ax) => (
+        <mesh key={ax} position={[ax, 55.3, -4]}>
           <boxGeometry args={[2.2, 2.4, 2.2]} />
           <meshStandardMaterial color="#8a7050" />
         </mesh>
       ))}
-      <Text font={DISPLAY_FONT} fontSize={1.7} letterSpacing={0.1} color="#fff2dc" anchorX="center" anchorY="middle" position={[0, 9.4, 8.3]} material-toneMapped={false}>
-        MICHIGAN CENTRAL
-      </Text>
-      <NeonSign text="WATCH" color="#49f2d6" width={5.2} height={22} fontSize={3.6} vertical position={[0, 30, 5.2]} blink="slow" backing="#0b1424" />
+      <NeonSign text="WATCH" color="#49f2d6" width={5.2} height={22} fontSize={3.6} vertical position={[0, 31, 2.35]} blink="slow" backing="#0b1424" />
     </Hotspot>
   );
 }
