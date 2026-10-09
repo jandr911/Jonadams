@@ -38,6 +38,7 @@ const skyFrag = /* glsl */ `
   uniform vec3 uSunDir;
   uniform vec3 uSunColor;
   uniform float uNight;
+  uniform vec3 uFog;
   varying vec3 vDir;
   void main() {
     vec3 d = normalize(vDir);
@@ -45,9 +46,11 @@ const skyFrag = /* glsl */ `
     vec3 col = h > 0.0
       ? mix(uHorizon, uZenith, pow(h, 0.5))
       : mix(uHorizon, uGround, pow(-h, 0.5));
+    float haze = 1.0 - smoothstep(0.0, 0.16, h);
+    col = mix(col, uFog, haze * 0.95);
     float s = max(dot(d, normalize(uSunDir)), 0.0);
     float glow = pow(s, 64.0) * 1.4 + pow(s, 8.0) * 0.22 + pow(s, 2.0) * 0.04;
-    col += uSunColor * glow * mix(0.35, 1.0, uNight) * (1.0 - uNight * 0.75);
+    col += uSunColor * glow * mix(0.35, 1.0, uNight) * (1.0 - uNight * 0.75) * (1.0 - haze * 0.5);
     gl_FragColor = vec4(col, 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -95,6 +98,7 @@ function Dome() {
           uSunDir: { value: new Vector3() },
           uSunColor: { value: new Color() },
           uNight: { value: 1 },
+          uFog: { value: new Color() },
         },
       }),
     [],
@@ -109,6 +113,7 @@ function Dome() {
     m.uniforms.uSunDir.value.set(...dn.sunDir);
     m.uniforms.uSunColor.value.copy(dn.sunColor);
     m.uniforms.uNight.value = dn.night;
+    m.uniforms.uFog.value.copy(dn.fog);
   }, [dn]);
   const camera = useThree((s) => s.camera);
   useFrame(() => {
