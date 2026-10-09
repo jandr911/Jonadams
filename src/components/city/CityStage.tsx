@@ -6,7 +6,7 @@ import { useState } from "react";
 import { ACESFilmicToneMapping } from "three";
 import Scene from "./Scene";
 
-export default function CityStage({ onQuality }: { onQuality: (q: "high" | "low") => void }) {
+export default function CityStage({ onQuality, onReady }: { onQuality: (q: "high" | "low") => void; onReady: () => void }) {
   const [dpr, setDpr] = useState(1);
   return (
     <Canvas
@@ -16,9 +16,11 @@ export default function CityStage({ onQuality }: { onQuality: (q: "high" | "low"
       gl={{ antialias: false, powerPreference: "high-performance", toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
       style={{ position: "absolute", inset: 0 }}
       aria-hidden
-      onCreated={({ gl }) => {
+      onCreated={({ gl, scene }) => {
         if (process.env.NODE_ENV !== "production") {
-          (window as unknown as { __cityGL?: typeof gl }).__cityGL = gl;
+          const w = window as unknown as { __cityGL?: typeof gl; __cityScene?: typeof scene };
+          w.__cityGL = gl;
+          w.__cityScene = scene;
         }
       }}
     >
@@ -28,7 +30,7 @@ export default function CityStage({ onQuality }: { onQuality: (q: "high" | "low"
           onQuality("low");
         }}
         onIncline={() => {
-          setDpr(Math.min(1.25, window.devicePixelRatio));
+          setDpr(Math.min(1.5, window.devicePixelRatio));
           onQuality("high");
         }}
         ms={400}
@@ -41,7 +43,7 @@ export default function CityStage({ onQuality }: { onQuality: (q: "high" | "low"
         }}
       />
       <AdaptiveDpr />
-      <Scene />
+      <Scene onReady={onReady} />
     </Canvas>
   );
 }

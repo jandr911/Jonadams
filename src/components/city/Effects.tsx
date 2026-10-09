@@ -21,7 +21,7 @@ export default function Effects() {
       />
       <HueSaturation saturation={-0.08} />
       <BrightnessContrast brightness={-0.02} contrast={0.1} />
-      <Noise premultiply blendFunction={BlendFunction.SOFT_LIGHT} opacity={0.26} />
+      <Noise premultiply blendFunction={BlendFunction.SOFT_LIGHT} opacity={0.14} />
       <Vignette eskil={false} offset={0.16} darkness={0.66} />
     </EffectComposer>
   );

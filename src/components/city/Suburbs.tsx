@@ -1,12 +1,13 @@
 "use client";
 
-import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Color, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { useDayNight } from "./DayNightContext";
 import { CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR } from "./layout";
 import { mulberry32, pick, range } from "./rng";
+import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
+import type { VehicleKind } from "./vehicles";
 
 const EXTENT = 1650;
 const LOT = 11;
@@ -328,30 +329,67 @@ const FREEWAY_Z0 = -EXTENT;
 const FREEWAY_Z1 = CITY_HALF_Z - 10;
 const FREEWAY_Y = 7;
 
+interface FreewayCar {
+  lane: number;
+  z: number;
+  speed: number;
+  spin: number;
+}
+interface FreewayFleet {
+  cars: FreewayCar[];
+  items: FleetItem[];
+  last: number;
+}
+
+function buildFreewayFleet(): FreewayFleet {
+  const rand = mulberry32(75);
+  const kinds: VehicleKind[] = ["sedan", "sedan", "sedan", "suv", "suv", "pickup", "van", "bus", "police"];
+  const cars: FreewayCar[] = [];
+  const items: FleetItem[] = [];
+  for (let i = 0; i < 90; i++) {
+    const kind = pick(rand, kinds);
+    cars.push({ lane: pick(rand, [-5.2, -2.6, 2.6, 5.2]), z: range(rand, FREEWAY_Z0, FREEWAY_Z1), speed: kind === "bus" ? range(rand, 15, 19) : range(rand, 18, 28), spin: rand() * 6 });
+    items.push({
+      kind,
+      color: new Color(kind === "police" ? "#f4f1ea" : pick(rand, ["#f4f1ea", "#1d1d3f", "#c8102e", "#2a3a7a", "#9a95a8", "#d6b56e", "#3f3f4f", "#2f6ea8"])),
+    });
+  }
+  return { cars, items, last: -1 };
+}
+
+function poseFreewayCar(f: FreewayFleet, i: number, out: VehiclePose, time: number) {
+  if (i === 0) {
+    const dt = f.last < 0 ? 0 : Math.min(time - f.last, 0.05);
+    f.last = time;
+    for (const c of f.cars) {
+      const dir = c.lane > 0 ? 1 : -1;
+      c.z += c.speed * dt * dir;
+      c.spin += (c.speed * dt) / 0.4;
+      if (c.z > FREEWAY_Z1) c.z = FREEWAY_Z0;
+      if (c.z < FREEWAY_Z0) c.z = FREEWAY_Z1;
+    }
+  }
+  const c = f.cars[i];
+  out.x = FREEWAY_X + c.lane;
+  out.y = FREEWAY_Y + 0.5;
+  out.z = c.z;
+  out.yaw = c.lane > 0 ? 0 : Math.PI;
+  out.spin = c.spin;
+}
+
 function Freeway() {
   const dn = useDayNight();
   const pylons = useRef<InstancedMesh>(null);
-  const cars = useRef<InstancedMesh>(null);
-  const lights = useRef<InstancedMesh>(null);
-  const lightMat = useRef<MeshStandardMaterial>(null);
   const lamps = useRef<InstancedMesh>(null);
   const lampMat = useRef<MeshStandardMaterial>(null);
-  const fleet = useMemo(() => {
-    const rand = mulberry32(75);
-    return Array.from({ length: 90 }, () => ({
-      lane: pick(rand, [-5.2, -2.6, 2.6, 5.2]),
-      z: range(rand, FREEWAY_Z0, FREEWAY_Z1),
-      speed: range(rand, 18, 28),
-      color: new Color(pick(rand, ["#f4f1ea", "#1d1d3f", "#c8102e", "#2a3a7a", "#9a95a8", "#d6b56e"])),
-    }));
-  }, []);
+  const [fleet] = useState(() => buildFreewayFleet());
+  const pose = useCallback<PoseFn>((i, out, time) => poseFreewayCar(fleet, i, out, time), [fleet]);
   const pylonCount = Math.floor((FREEWAY_Z1 - FREEWAY_Z0) / 40);
   useEffect(() => {
     const dummy = new Object3D();
     const p = pylons.current;
     const l = lamps.current;
-    const c = cars.current;
-    if (!p || !l || !c) return;
+    if (!p || !l) return;
     for (let i = 0; i < pylonCount; i++) {
       const z = FREEWAY_Z0 + i * 40;
       dummy.position.set(FREEWAY_X, FREEWAY_Y / 2 - 0.5, z);
@@ -362,37 +400,12 @@ function Freeway() {
       dummy.updateMatrix();
       l.setMatrixAt(i, dummy.matrix);
     }
-    fleet.forEach((f, i) => c.setColorAt(i, f.color));
     p.instanceMatrix.needsUpdate = true;
     l.instanceMatrix.needsUpdate = true;
-    if (c.instanceColor) c.instanceColor.needsUpdate = true;
-  }, [fleet, pylonCount]);
+  }, [pylonCount]);
   useEffect(() => {
-    if (lightMat.current) lightMat.current.emissiveIntensity = 0.3 + dn.night * 3;
     if (lampMat.current) lampMat.current.emissiveIntensity = 0.2 + dn.night * 2.6;
   }, [dn]);
-  const dummy = useMemo(() => new Object3D(), []);
-  useFrame((_, dt) => {
-    const c = cars.current;
-    const lg = lights.current;
-    if (!c || !lg) return;
-    const step = Math.min(dt, 0.05);
-    fleet.forEach((f, i) => {
-      const dir = f.lane > 0 ? 1 : -1;
-      f.z += f.speed * step * dir;
-      if (f.z > FREEWAY_Z1) f.z = FREEWAY_Z0;
-      if (f.z < FREEWAY_Z0) f.z = FREEWAY_Z1;
-      dummy.position.set(FREEWAY_X + f.lane, FREEWAY_Y + 0.9, f.z);
-      dummy.rotation.set(0, 0, 0);
-      dummy.updateMatrix();
-      c.setMatrixAt(i, dummy.matrix);
-      dummy.position.set(FREEWAY_X + f.lane, FREEWAY_Y + 0.9, f.z + dir * 2.1);
-      dummy.updateMatrix();
-      lg.setMatrixAt(i, dummy.matrix);
-    });
-    c.instanceMatrix.needsUpdate = true;
-    lg.instanceMatrix.needsUpdate = true;
-  });
   const len = FREEWAY_Z1 - FREEWAY_Z0;
   const mid = (FREEWAY_Z0 + FREEWAY_Z1) / 2;
   return (
@@ -419,14 +432,7 @@ function Freeway() {
         <sphereGeometry args={[0.4, 8, 6]} />
         <meshStandardMaterial ref={lampMat} color="#ffd27a" emissive="#ffc96a" emissiveIntensity={2} toneMapped={false} />
       </instancedMesh>
-      <instancedMesh ref={cars} args={[undefined, undefined, fleet.length]}>
-        <boxGeometry args={[1.9, 1.2, 4.2]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.4} metalness={0.3} />
-      </instancedMesh>
-      <instancedMesh ref={lights} args={[undefined, undefined, fleet.length]}>
-        <boxGeometry args={[1.7, 0.25, 0.12]} />
-        <meshStandardMaterial ref={lightMat} color="#fff6d8" emissive="#fff2c0" emissiveIntensity={3} toneMapped={false} />
-      </instancedMesh>
+      <VehicleFleet items={fleet.items} pose={pose} dynamic />
     </group>
   );
 }

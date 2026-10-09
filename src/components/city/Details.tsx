@@ -1,11 +1,10 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CatmullRomCurve3,
   Color,
-  Group,
   InstancedMesh,
   MeshStandardMaterial,
   Object3D,
@@ -29,93 +28,11 @@ import {
 } from "./layout";
 import NeonSign from "./NeonSign";
 import { RESERVED_BLOCKS } from "./Buildings";
+import People from "./People";
+import StreetFurniture from "./StreetFurniture";
+import VehicleFleet, { type FleetItem, type PoseFn } from "./VehicleFleet";
+import type { VehicleKind } from "./vehicles";
 import { mulberry32, pick, range } from "./rng";
-
-const PEOPLE_COLORS = ["#f4f1ea", "#d6b56e", "#c8102e", "#2a3a7a", "#1d1d3f", "#ff4fa3", "#49d2f2", "#3f8a6a"];
-
-interface Walker {
-  x: number;
-  z: number;
-  axis: "x" | "z";
-  dir: 1 | -1;
-  speed: number;
-  len: number;
-  start: number;
-  phase: number;
-}
-
-function Pedestrians() {
-  const ref = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
-  const walkers = useMemo<Walker[]>(() => {
-    const rand = mulberry32(313);
-    const out: Walker[] = [];
-    for (const { c, r, outer } of allBlocks()) {
-      {
-        const [bx, bz] = blockCenter(c, r);
-        const n = (outer ? 1 : 3) + Math.floor(rand() * (outer ? 2 : 4));
-        for (let k = 0; k < n; k++) {
-          const side = Math.floor(rand() * 4);
-          const e = BLOCK / 2 + 1.5;
-          const axis: "x" | "z" = side < 2 ? "x" : "z";
-          const fixed = side === 0 ? bz + e : side === 1 ? bz - e : side === 2 ? bx + e : bx - e;
-          out.push({
-            x: axis === "x" ? bx : fixed,
-            z: axis === "x" ? fixed : bz,
-            axis,
-            dir: rand() < 0.5 ? 1 : -1,
-            speed: range(rand, 0.9, 1.6),
-            len: BLOCK - 2,
-            start: rand(),
-            phase: rand() * 10,
-          });
-        }
-      }
-    }
-    for (let i = 0; i < 60; i++) {
-      out.push({
-        x: range(rand, -CITY_HALF_X - 30, CITY_HALF_X + 30),
-        z: CITY_HALF_Z + 5 + rand() * 5,
-        axis: "x",
-        dir: rand() < 0.5 ? 1 : -1,
-        speed: range(rand, 0.8, 1.4),
-        len: 60,
-        start: rand(),
-        phase: rand() * 10,
-      });
-    }
-    return out;
-  }, []);
-  useEffect(() => {
-    const m = ref.current;
-    if (!m) return;
-    const rand = mulberry32(99);
-    walkers.forEach((_, i) => m.setColorAt(i, new Color(pick(rand, PEOPLE_COLORS))));
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
-  }, [walkers]);
-  useFrame(({ clock }) => {
-    const m = ref.current;
-    if (!m) return;
-    const t = clock.elapsedTime;
-    walkers.forEach((w, i) => {
-      const u = ((w.start + (t * w.speed * w.dir) / w.len) % 1 + 1) % 1;
-      const along = (u - 0.5) * w.len;
-      const x = w.axis === "x" ? w.x + along : w.x;
-      const z = w.axis === "x" ? w.z : w.z + along;
-      dummy.position.set(x, 0.4 + 0.75 + Math.abs(Math.sin(t * 6 + w.phase)) * 0.06, z);
-      dummy.rotation.set(0, w.axis === "x" ? (w.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : w.dir > 0 ? 0 : Math.PI, 0);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
-    });
-    m.instanceMatrix.needsUpdate = true;
-  });
-  return (
-    <instancedMesh ref={ref} args={[undefined, undefined, walkers.length]}>
-      <capsuleGeometry args={[0.28, 1, 3, 6]} />
-      <meshStandardMaterial color="#ffffff" roughness={0.8} />
-    </instancedMesh>
-  );
-}
 
 function TrafficLights() {
   const poles = useRef<InstancedMesh>(null);
@@ -180,86 +97,46 @@ function TrafficLights() {
   );
 }
 
-function ParkedCars() {
-  const bodies = useRef<InstancedMesh>(null);
-  const cabins = useRef<InstancedMesh>(null);
-  const wheels = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
-  const cars = useMemo(() => {
-    const rand = mulberry32(42);
-    const out: { x: number; z: number; rot: number; color: Color }[] = [];
-    const colors = ["#f4f1ea", "#1d1d3f", "#c8102e", "#2a3a7a", "#9a95a8", "#d6b56e", "#3f3f4f"];
-    for (const { c, r } of allBlocks()) {
-      {
-        const [bx, bz] = blockCenter(c, r);
-        const n = 2 + Math.floor(rand() * 4);
-        for (let k = 0; k < n; k++) {
-          const side = rand() < 0.5 ? 1 : -1;
-          const t = range(rand, -BLOCK / 2 + 3, BLOCK / 2 - 3);
-          const vertical = rand() < 0.5;
-          const e = BLOCK / 2 + ROAD_EDGE;
-          out.push({
-            x: vertical ? bx + side * e : bx + t,
-            z: vertical ? bz + t : bz + side * e,
-            rot: vertical ? 0 : Math.PI / 2,
-            color: new Color(pick(rand, colors)),
-          });
-        }
-      }
-    }
-    return out;
-  }, []);
-  useEffect(() => {
-    const b = bodies.current;
-    const cb = cabins.current;
-    const w = wheels.current;
-    if (!b || !cb || !w) return;
-    cars.forEach((c, i) => {
-      dummy.position.set(c.x, 0.4 + 0.75, c.z);
-      dummy.rotation.set(0, c.rot, 0);
-      dummy.scale.set(1, 1, 1);
-      dummy.updateMatrix();
-      b.setMatrixAt(i, dummy.matrix);
-      b.setColorAt(i, c.color);
-      dummy.position.set(c.x, 0.4 + 1.3, c.z);
-      dummy.updateMatrix();
-      cb.setMatrixAt(i, dummy.matrix);
-      [
-        [-1, 1.3],
-        [1, 1.3],
-        [-1, -1.3],
-        [1, -1.3],
-      ].forEach(([sx, sz], k) => {
-        dummy.position.set(c.x, 0.4 + 0.42, c.z);
-        dummy.rotation.set(0, c.rot, 0);
-        dummy.translateX(sx * 0.95);
-        dummy.translateZ(sz);
-        dummy.rotateY(Math.PI / 2);
-        dummy.updateMatrix();
-        w.setMatrixAt(i * 4 + k, dummy.matrix);
+function buildParked() {
+  const rand = mulberry32(42);
+  const slots: { x: number; z: number; rot: number }[] = [];
+  const items: FleetItem[] = [];
+  const colors = ["#f4f1ea", "#1d1d3f", "#c8102e", "#2a3a7a", "#9a95a8", "#d6b56e", "#3f3f4f", "#4a2c3a", "#2f6ea8", "#7a8c3a"];
+  const kinds: VehicleKind[] = ["sedan", "sedan", "sedan", "suv", "suv", "pickup", "van"];
+  for (const { c, r } of allBlocks()) {
+    const [bx, bz] = blockCenter(c, r);
+    const n = 2 + Math.floor(rand() * 4);
+    for (let k = 0; k < n; k++) {
+      const side = rand() < 0.5 ? 1 : -1;
+      const t = range(rand, -BLOCK / 2 + 3, BLOCK / 2 - 3);
+      const vertical = rand() < 0.5;
+      const e = BLOCK / 2 + ROAD_EDGE;
+      slots.push({
+        x: vertical ? bx + side * e : bx + t,
+        z: vertical ? bz + t : bz + side * e,
+        rot: (vertical ? 0 : Math.PI / 2) + (rand() < 0.5 ? Math.PI : 0),
       });
-    });
-    b.instanceMatrix.needsUpdate = true;
-    cb.instanceMatrix.needsUpdate = true;
-    w.instanceMatrix.needsUpdate = true;
-    if (b.instanceColor) b.instanceColor.needsUpdate = true;
-  }, [cars, dummy]);
-  return (
-    <group>
-      <instancedMesh ref={bodies} args={[undefined, undefined, cars.length]} castShadow>
-        <boxGeometry args={[1.9, 0.7, 4.1]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.4} metalness={0.3} />
-      </instancedMesh>
-      <instancedMesh ref={cabins} args={[undefined, undefined, cars.length]}>
-        <boxGeometry args={[1.6, 0.6, 2]} />
-        <meshStandardMaterial color="#1b2040" roughness={0.2} metalness={0.4} />
-      </instancedMesh>
-      <instancedMesh ref={wheels} args={[undefined, undefined, cars.length * 4]}>
-        <cylinderGeometry args={[0.42, 0.42, 0.32, 10]} onUpdate={(g) => g.rotateZ(Math.PI / 2)} />
-        <meshStandardMaterial color="#141418" roughness={0.9} />
-      </instancedMesh>
-    </group>
+      items.push({ kind: pick(rand, kinds), color: new Color(pick(rand, colors)) });
+    }
+  }
+  return { slots, items };
+}
+
+function ParkedCars() {
+  const [world] = useState(() => buildParked());
+  const slots = world.slots;
+  const pose = useCallback<PoseFn>(
+    (i, out) => {
+      const sl = slots[i];
+      out.x = sl.x;
+      out.y = 0.4;
+      out.z = sl.z;
+      out.yaw = sl.rot;
+      out.spin = 0;
+    },
+    [slots],
   );
+  return <VehicleFleet items={world.items} pose={pose} pools={false} />;
 }
 const ROAD_EDGE = 2.1;
 
@@ -301,7 +178,9 @@ function StreetBanners() {
 }
 
 function Gulls() {
-  const ref = useRef<InstancedMesh>(null);
+  const body = useRef<InstancedMesh>(null);
+  const wingL = useRef<InstancedMesh>(null);
+  const wingR = useRef<InstancedMesh>(null);
   const dummy = useMemo(() => new Object3D(), []);
   const flock = useMemo(() => {
     const rand = mulberry32(8);
@@ -311,158 +190,51 @@ function Gulls() {
       oz: range(rand, -20, 20),
       flap: rand() * 10,
       speed: range(rand, 0.8, 1.2),
+      s: range(rand, 0.8, 1.2),
     }));
   }, []);
   useFrame(({ clock }) => {
-    const m = ref.current;
-    if (!m) return;
+    const b = body.current;
+    const l = wingL.current;
+    const r = wingR.current;
+    if (!b || !l || !r) return;
     const t = clock.elapsedTime;
     const cx = Math.sin(t * 0.05) * 260;
     const cz = RIVER_NEAR + 20 + Math.cos(t * 0.05) * 30;
+    const heading = Math.cos(t * 0.05) > 0 ? 0 : Math.PI;
     flock.forEach((g, i) => {
-      dummy.position.set(cx + g.ox, 26 + g.oy + Math.sin(t * g.speed + g.flap) * 1.2, cz + g.oz);
-      dummy.rotation.set(0, Math.cos(t * 0.05) > 0 ? 0 : Math.PI, Math.sin(t * 9 + g.flap) * 0.5);
+      const flap = Math.sin(t * 9 + g.flap) * 0.7;
+      const y = 26 + g.oy + Math.sin(t * g.speed + g.flap) * 1.2;
+      dummy.position.set(cx + g.ox, y, cz + g.oz);
+      dummy.rotation.set(0, heading + Math.PI / 2, 0);
+      dummy.scale.setScalar(g.s);
       dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
+      b.setMatrixAt(i, dummy.matrix);
+      dummy.rotation.set(0, heading + Math.PI / 2, flap);
+      dummy.updateMatrix();
+      l.setMatrixAt(i, dummy.matrix);
+      dummy.rotation.set(0, heading + Math.PI / 2, -flap);
+      dummy.updateMatrix();
+      r.setMatrixAt(i, dummy.matrix);
     });
-    m.instanceMatrix.needsUpdate = true;
-  });
-  return (
-    <instancedMesh ref={ref} args={[undefined, undefined, flock.length]}>
-      <boxGeometry args={[2.2, 0.08, 0.5]} />
-      <meshStandardMaterial color="#f4f1ea" />
-    </instancedMesh>
-  );
-}
-
-function SmallBoats() {
-  const dn = useDayNight();
-  const refs = useRef<(Group | null)[]>([]);
-  const lamp = useRef<MeshStandardMaterial>(null);
-  useEffect(() => {
-    if (lamp.current) lamp.current.emissiveIntensity = 0.3 + dn.night * 3;
-  }, [dn]);
-  const boats = useMemo(() => {
-    const rand = mulberry32(17);
-    return Array.from({ length: 6 }, () => ({
-      z: range(rand, RIVER_NEAR + 10, RIVER_FAR - 10),
-      speed: range(rand, 3, 7) * (rand() < 0.5 ? 1 : -1),
-      start: range(rand, -400, 400),
-      color: pick(rand, ["#f4f1ea", "#1d2a6a", "#c8102e", "#49d2f2"]),
-    }));
-  }, []);
-  useFrame(({ clock }) => {
-    boats.forEach((b, i) => {
-      const g = refs.current[i];
-      if (!g) return;
-      const x = ((b.start + clock.elapsedTime * b.speed + 450) % 900) - 450;
-      g.position.set(x, -0.3 + Math.sin(clock.elapsedTime * 1.3 + i) * 0.12, b.z);
-      g.rotation.y = b.speed > 0 ? 0 : Math.PI;
-    });
+    b.instanceMatrix.needsUpdate = true;
+    l.instanceMatrix.needsUpdate = true;
+    r.instanceMatrix.needsUpdate = true;
   });
   return (
     <group>
-      {boats.map((b, i) => (
-        <group
-          key={i}
-          ref={(el) => {
-            refs.current[i] = el;
-          }}
-        >
-          <mesh position={[0, 0.5, 0]}>
-            <boxGeometry args={[6, 1, 2.2]} />
-            <meshStandardMaterial color={b.color} roughness={0.5} />
-          </mesh>
-          <mesh position={[0.8, 1.3, 0]}>
-            <boxGeometry args={[2.4, 0.9, 1.6]} />
-            <meshStandardMaterial color="#1d1d3f" />
-          </mesh>
-          <mesh position={[-2.6, 1.4, 0]}>
-            <sphereGeometry args={[0.18, 6, 6]} />
-            <meshStandardMaterial ref={i === 0 ? lamp : undefined} color="#fff6d8" emissive="#fff2c0" emissiveIntensity={3} toneMapped={false} />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  );
-}
-
-function Helicopter() {
-  const rig = useRef<Group>(null);
-  const rotor = useRef<Group>(null);
-  const tail = useRef<Group>(null);
-  const strobe = useRef<MeshStandardMaterial>(null);
-  const path = useMemo(
-    () =>
-      new CatmullRomCurve3(
-        [
-          new Vector3(-220, 70, 40),
-          new Vector3(-80, 85, -120),
-          new Vector3(120, 78, -90),
-          new Vector3(200, 72, 60),
-          new Vector3(40, 66, 110),
-        ],
-        true,
-        "catmullrom",
-        0.4,
-      ),
-    [],
-  );
-  const tmp = useMemo(() => ({ p: new Vector3(), t: new Vector3(), look: new Vector3() }), []);
-  useFrame(({ clock }) => {
-    const g = rig.current;
-    if (!g) return;
-    const u = (clock.elapsedTime * 0.012) % 1;
-    path.getPointAt(u, tmp.p);
-    path.getTangentAt(u, tmp.t);
-    g.position.copy(tmp.p);
-    tmp.look.copy(tmp.p).add(tmp.t);
-    g.lookAt(tmp.look);
-    g.rotation.x += 0.08;
-    if (rotor.current) rotor.current.rotation.y = clock.elapsedTime * 30;
-    if (tail.current) tail.current.rotation.x = clock.elapsedTime * 40;
-    if (strobe.current) strobe.current.emissiveIntensity = Math.sin(clock.elapsedTime * 10) > 0.8 ? 6 : 0.2;
-  });
-  return (
-    <group ref={rig}>
-      <mesh>
-        <capsuleGeometry args={[1.3, 2.4, 6, 10]} />
-        <meshStandardMaterial color="#1d1d3f" roughness={0.4} metalness={0.4} />
-      </mesh>
-      <mesh position={[0, 0.2, 1.4]}>
-        <sphereGeometry args={[1.1, 12, 8]} />
-        <meshStandardMaterial color="#49d2f2" roughness={0.1} metalness={0.3} transparent opacity={0.8} />
-      </mesh>
-      <mesh position={[0, 0.3, -4]}>
-        <boxGeometry args={[0.4, 0.5, 5]} />
-        <meshStandardMaterial color="#1d1d3f" />
-      </mesh>
-      <group ref={rotor} position={[0, 1.6, 0]}>
-        <mesh>
-          <boxGeometry args={[9, 0.06, 0.4]} />
-          <meshStandardMaterial color="#9a95a8" transparent opacity={0.7} />
-        </mesh>
-        <mesh rotation={[0, Math.PI / 2, 0]}>
-          <boxGeometry args={[9, 0.06, 0.4]} />
-          <meshStandardMaterial color="#9a95a8" transparent opacity={0.7} />
-        </mesh>
-      </group>
-      <group ref={tail} position={[0.3, 0.8, -6.4]}>
-        <mesh>
-          <boxGeometry args={[0.06, 1.8, 0.3]} />
-          <meshStandardMaterial color="#9a95a8" />
-        </mesh>
-      </group>
-      <mesh position={[0, -1.4, 0]}>
-        <sphereGeometry args={[0.25, 8, 6]} />
-        <meshStandardMaterial ref={strobe} color="#ff2a3c" emissive="#ff2a3c" emissiveIntensity={4} toneMapped={false} />
-      </mesh>
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * 0.9, -1.5, 0]}>
-          <boxGeometry args={[0.12, 0.12, 3.4]} />
-          <meshStandardMaterial color="#5a5a78" />
-        </mesh>
-      ))}
+      <instancedMesh ref={body} args={[undefined, undefined, flock.length]}>
+        <capsuleGeometry args={[0.14, 0.7, 3, 6]} onUpdate={(g) => g.rotateX(Math.PI / 2)} />
+        <meshStandardMaterial color="#f4f1ea" />
+      </instancedMesh>
+      <instancedMesh ref={wingL} args={[undefined, undefined, flock.length]}>
+        <boxGeometry args={[1.2, 0.04, 0.42]} onUpdate={(g) => g.translate(-0.65, 0, 0)} />
+        <meshStandardMaterial color="#e8e2d2" side={2} />
+      </instancedMesh>
+      <instancedMesh ref={wingR} args={[undefined, undefined, flock.length]}>
+        <boxGeometry args={[1.2, 0.04, 0.42]} onUpdate={(g) => g.translate(0.65, 0, 0)} />
+        <meshStandardMaterial color="#e8e2d2" side={2} />
+      </instancedMesh>
     </group>
   );
 }
@@ -770,13 +542,12 @@ function UtilityPoles() {
 export default function Details() {
   return (
     <group>
-      <Pedestrians />
+      <People />
+      <StreetFurniture />
       <TrafficLights />
       <ParkedCars />
       <StreetBanners />
       <Gulls />
-      <SmallBoats />
-      <Helicopter />
       <RooftopSigns />
       <MacArthurBridge />
       <WindsorTower />

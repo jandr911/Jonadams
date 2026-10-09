@@ -1,6 +1,5 @@
 "use client";
 
-import { useProgress } from "@react-three/drei";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,6 +9,7 @@ import { CityContext, type CityApi } from "./CityContext";
 import { DayNightContext } from "./DayNightContext";
 import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
 import { DESTINATIONS, HOME_CAMERA, type Destination } from "./layout";
+import Loader from "./Loader";
 
 const CityStage = dynamic(() => import("./CityStage"), { ssr: false });
 
@@ -120,26 +120,6 @@ function NavPad({ camRef, reducedMotion }: { camRef: React.MutableRefObject<Came
   );
 }
 
-function Loader({ ready }: { ready: boolean }) {
-  const { progress } = useProgress();
-  const [gone, setGone] = useState(false);
-  useEffect(() => {
-    if (!ready) return;
-    const t = setTimeout(() => setGone(true), 900);
-    return () => clearTimeout(t);
-  }, [ready]);
-  if (gone) return null;
-  return (
-    <div className={`city-loader ${ready ? "is-done" : ""}`} role="status" aria-live="polite">
-      <span className="city-loader__title">Adams UniverseCity</span>
-      <span className="city-loader__sub">Detroit, Michigan</span>
-      <div className="city-loader__bar">
-        <div style={{ width: `${Math.max(8, progress)}%` }} />
-      </div>
-    </div>
-  );
-}
-
 export default function CityCanvas() {
   const router = useRouter();
   const clock = useSyncExternalStore(subscribeMinute, clockSnapshot, serverClockSnapshot);
@@ -153,12 +133,14 @@ export default function CityCanvas() {
   const [navigating, setNavigating] = useState(false);
   const [fade, setFade] = useState(false);
   const [quality, setQuality] = useState<"high" | "low">("high");
-  const [ready, setReady] = useState(false);
+  const [stageUp, setStageUp] = useState(false);
+  const [minWait, setMinWait] = useState(false);
+  const ready = stageUp && minWait;
   const flyRef = useRef<((d: Destination) => Promise<void>) | null>(null);
   const camRef = useRef<CameraControls | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setReady(true), 2400);
+    const t = setTimeout(() => setMinWait(true), 2400);
     return () => clearTimeout(t);
   }, []);
 
@@ -188,16 +170,18 @@ export default function CityCanvas() {
   return (
     <DayNightContext.Provider value={dn}>
       <CityContext.Provider value={api}>
-        <div className="city-root">
-          <CityStage onQuality={setQuality} />
+        <div className={`city-root ${ready ? "is-live" : ""}`}>
+          <CityStage onQuality={setQuality} onReady={() => setStageUp(true)} />
 
           <nav aria-label="City districts" className="city-hud city-hud--districts">
-            {DESTINATIONS.map((d, i) => (
+            <span className="districts__hint">Five districts · Hover to preview · Click to fly in</span>
+            <div className="districts">
+              {DESTINATIONS.map((d, i) => (
               <Link
                 key={d.id}
                 href={d.href}
                 className={`district ${hovered?.id === d.id ? "is-hot" : ""}`}
-                style={{ ["--c" as string]: d.color }}
+                style={{ ["--c" as string]: d.color, ["--i" as string]: i }}
                 onMouseEnter={() => !navigating && setHovered(d)}
                 onMouseLeave={() => setHovered(null)}
                 onClick={(e) => {
@@ -210,7 +194,8 @@ export default function CityCanvas() {
                 <span className="district__name">{d.label}</span>
                 <span className="district__sub">{d.sub}</span>
               </Link>
-            ))}
+              ))}
+            </div>
           </nav>
 
           <div className="city-hud city-hud--status">

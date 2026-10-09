@@ -24,7 +24,6 @@ import {
   CITY_HALF_Z,
   DESTINATIONS,
   RIVER_FAR,
-  RIVER_NEAR,
   blockCenter,
   destinationPosition,
 } from "./layout";
@@ -1081,53 +1080,6 @@ function AdBoard() {
   );
 }
 
-function Riverboat() {
-  const dn = useDayNight();
-  const g = useRef<Group>(null);
-  const lights = useRef<MeshStandardMaterial>(null);
-  useEffect(() => {
-    if (lights.current) lights.current.emissiveIntensity = 0.4 + dn.night * 2.4;
-  }, [dn]);
-  useFrame(({ clock }) => {
-    const b = g.current;
-    if (!b) return;
-    const t = (clock.elapsedTime * 2.2) % 760;
-    const x = -380 + t;
-    b.position.set(x, -0.2 + Math.sin(clock.elapsedTime * 0.8) * 0.15, RIVER_NEAR + 32);
-    b.rotation.z = Math.sin(clock.elapsedTime * 0.6) * 0.01;
-  });
-  return (
-    <group ref={g}>
-      <mesh position={[0, 1.2, 0]}>
-        <boxGeometry args={[26, 2.4, 8]} />
-        <meshStandardMaterial color="#f4f1ea" roughness={0.5} />
-      </mesh>
-      {[3.4, 5.6].map((y, i) => (
-        <mesh key={y} position={[-1 - i * 1.5, y, 0]}>
-          <boxGeometry args={[22 - i * 4, 2, 7 - i]} />
-          <meshStandardMaterial color="#f4f1ea" roughness={0.5} />
-        </mesh>
-      ))}
-      {[3.4, 5.6].map((y, i) => (
-        <mesh key={y} position={[-1 - i * 1.5, y, 0]}>
-          <boxGeometry args={[22.2 - i * 4, 0.7, 7.2 - i]} />
-          <meshStandardMaterial ref={i === 0 ? lights : undefined} color="#ffe6b0" emissive="#ffd27a" emissiveIntensity={2} toneMapped={false} />
-        </mesh>
-      ))}
-      <mesh position={[-11, 3.5, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[2.6, 2.6, 8.6, 14]} />
-        <meshStandardMaterial color="#c8102e" roughness={0.6} />
-      </mesh>
-      {[2, 6].map((sx) => (
-        <mesh key={sx} position={[sx, 8.4, 0]}>
-          <cylinderGeometry args={[0.5, 0.7, 4, 10]} />
-          <meshStandardMaterial color="#1d1d3f" />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
 const BRIDGE = {
   x: -186,
   z0: CITY_HALF_Z - 30,
@@ -1265,7 +1217,6 @@ export default function Landmarks() {
       <MillikenLighthouse />
       <Carousel />
       <AdBoard />
-      <Riverboat />
       <AmbassadorBridge />
       <Welcome />
     </group>

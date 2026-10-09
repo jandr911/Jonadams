@@ -3,8 +3,9 @@
 import { Preload } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef } from "react";
-import { Color } from "three";
-import Blimp from "./Blimp";
+import { Color, PMREMGenerator, Scene as ThreeScene, Texture } from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import Aircraft from "./Aircraft";
 import Buildings from "./Buildings";
 import CameraRig from "./CameraRig";
 import Details from "./Details";
@@ -18,6 +19,34 @@ import PeopleMover from "./PeopleMover";
 import Roads from "./Roads";
 import Sky from "./Sky";
 import Traffic from "./Traffic";
+import Watercraft from "./Watercraft";
+
+function applyEnvironment(scene: ThreeScene, tex: Texture | null) {
+  scene.environment = tex;
+}
+function applyEnvironmentIntensity(scene: ThreeScene, v: number) {
+  scene.environmentIntensity = v;
+}
+
+function Ambience() {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const dn = useDayNight();
+  useEffect(() => {
+    const pmrem = new PMREMGenerator(gl);
+    const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    applyEnvironment(scene, env);
+    return () => {
+      applyEnvironment(scene, null);
+      env.dispose();
+      pmrem.dispose();
+    };
+  }, [gl, scene]);
+  useEffect(() => {
+    applyEnvironmentIntensity(scene, 0.1 + (1 - dn.night) * 0.5);
+  }, [scene, dn.night]);
+  return null;
+}
 
 function ShadowThrottle() {
   const gl = useThree((s) => s.gl);
@@ -30,7 +59,16 @@ function ShadowThrottle() {
   return null;
 }
 
-export default function Scene() {
+function FirstFrames({ onReady }: { onReady: () => void }) {
+  const frames = useRef(0);
+  useFrame(() => {
+    frames.current += 1;
+    if (frames.current === 3) onReady();
+  });
+  return null;
+}
+
+export default function Scene({ onReady }: { onReady: () => void }) {
   const dn = useDayNight();
   const fogColor = useMemo(() => new Color().copy(dn.fog), [dn.fog]);
   return (
@@ -62,11 +100,14 @@ export default function Scene() {
         <Landmarks />
         <PeopleMover />
         <Traffic />
-        <Blimp />
+        <Aircraft />
+        <Watercraft />
         <Details />
         <Suburbs />
         <Preload all />
+        <FirstFrames onReady={onReady} />
       </Suspense>
+      <Ambience />
       <CameraRig />
       <Effects />
       <ShadowThrottle />
