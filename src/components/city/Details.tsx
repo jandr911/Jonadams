@@ -1,7 +1,7 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { BoxGeometry, CapsuleGeometry, Color, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
 import { useDayNight } from "./DayNightContext";
 import MacArthurBridge from "./MacArthurBridge";
@@ -9,6 +9,7 @@ import {
   BLOCK,
   CITY_HALF_X,
   CITY_HALF_Z,
+  PITCH,
   RIVER_FAR,
   RIVER_NEAR,
   WOODWARD_INDEX,
@@ -24,8 +25,6 @@ import NeonSign from "./NeonSign";
 import { RESERVED_BLOCKS } from "./Buildings";
 import People from "./People";
 import StreetFurniture from "./StreetFurniture";
-import VehicleFleet, { type FleetItem, type PoseFn } from "./VehicleFleet";
-import type { VehicleKind } from "./vehicles";
 import { mulberry32, pick, range } from "./rng";
 
 function TrafficLights() {
@@ -102,49 +101,6 @@ function TrafficLights() {
     </group>
   );
 }
-
-function buildParked() {
-  const rand = mulberry32(42);
-  const slots: { x: number; z: number; rot: number }[] = [];
-  const items: FleetItem[] = [];
-  const colors = ["#f4f1ea", "#1d1d3f", "#c8102e", "#2a3a7a", "#9a95a8", "#d6b56e", "#3f3f4f", "#4a2c3a", "#2f6ea8", "#7a8c3a"];
-  const kinds: VehicleKind[] = ["sedan", "sedan", "sedan", "suv", "suv", "pickup", "van"];
-  for (const { c, r, outer } of allBlocks()) {
-    const [bx, bz] = blockCenter(c, r);
-    const n = outer ? 1 + Math.floor(rand() * 2) : 2 + Math.floor(rand() * 4);
-    for (let k = 0; k < n; k++) {
-      const side = rand() < 0.5 ? 1 : -1;
-      const t = range(rand, -BLOCK / 2 + 3, BLOCK / 2 - 3);
-      const vertical = rand() < 0.5;
-      const e = BLOCK / 2 + ROAD_EDGE;
-      slots.push({
-        x: vertical ? bx + side * e : bx + t,
-        z: vertical ? bz + t : bz + side * e,
-        rot: (vertical ? 0 : Math.PI / 2) + (rand() < 0.5 ? Math.PI : 0),
-      });
-      items.push({ kind: pick(rand, kinds), color: new Color(pick(rand, colors)) });
-    }
-  }
-  return { slots, items };
-}
-
-function ParkedCars() {
-  const [world] = useState(() => buildParked());
-  const slots = world.slots;
-  const pose = useCallback<PoseFn>(
-    (i, out) => {
-      const sl = slots[i];
-      out.x = sl.x;
-      out.y = 0.4;
-      out.z = sl.z;
-      out.yaw = sl.rot;
-      out.spin = 0;
-    },
-    [slots],
-  );
-  return <VehicleFleet items={world.items} pose={pose} pools={false} />;
-}
-const ROAD_EDGE = 2.1;
 
 function StreetBanners() {
   const ref = useRef<InstancedMesh>(null);
@@ -438,17 +394,19 @@ function SatelliteDishes() {
   );
 }
 
+const POLE_EDGE = 10.7;
+
 function UtilityPoles() {
   const poles = useRef<InstancedMesh>(null);
   const wires = useRef<InstancedMesh>(null);
   const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const out: { x: number; z: number }[] = [];
-    const zs = [-CITY_HALF_Z - 14, CITY_HALF_Z - 3.6];
+    const northKerb = -CITY_HALF_Z - PITCH / 2 + POLE_EDGE;
     for (let x = -CITY_HALF_X - 60; x <= CITY_HALF_X + 60; x += 16) {
-      out.push({ x, z: zs[0] });
+      out.push({ x, z: northKerb });
     }
-    const xs = [-CITY_HALF_X - 14, CITY_HALF_X + 14];
+    const xs = [-CITY_HALF_X - PITCH / 2 + POLE_EDGE, CITY_HALF_X + PITCH / 2 - POLE_EDGE];
     for (let z = -CITY_HALF_Z; z <= CITY_HALF_Z; z += 16) {
       xs.forEach((x) => out.push({ x, z }));
     }
@@ -498,7 +456,6 @@ export default function Details() {
       <People />
       <StreetFurniture />
       <TrafficLights />
-      <ParkedCars />
       <StreetBanners />
       <Gulls />
       <RooftopSigns />
