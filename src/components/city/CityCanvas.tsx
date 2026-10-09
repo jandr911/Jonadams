@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { CityContext, type CityApi } from "./CityContext";
 import { DayNightContext } from "./DayNightContext";
 import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
-import { useDetroitClock, useDetroitWeather, weatherLabel } from "./DetroitWeather";
+import { useDetroitWeather } from "./DetroitWeather";
 import { DESTINATIONS, homeCamera, type Destination } from "./layout";
 import Loader, { markVisited, useReturningVisitor } from "./Loader";
 
@@ -185,7 +185,6 @@ export default function CityCanvas() {
   }, [hovered, router]);
 
   const weather = useDetroitWeather();
-  const detroit = useDetroitClock();
   const cloud = weather.kind === "ok" ? weather.cloud : OVERCAST_DEFAULT;
   const dn = useMemo(() => computeDayNight(hour, cloud), [hour, cloud]);
 
@@ -252,17 +251,6 @@ export default function CityCanvas() {
               <span>{preset === "auto" ? "Detroit time" : preset}</span>
               <small>{labelFor(hour)}</small>
             </button>
-            {detroit && (
-              <div className="city-clock" aria-live="off">
-                <span className="city-clock__time">{detroit.time}</span>
-                <span className="city-clock__date">{detroit.date} · Detroit</span>
-                <span className="city-clock__weather">
-                  {weather.kind === "ok" && `${weather.tempF}°F · ${weatherLabel(weather.code)}`}
-                  {weather.kind === "loading" && "Reading the sky"}
-                  {weather.kind === "offline" && "Weather offline"}
-                </span>
-              </div>
-            )}
             <span className="city-geo">Downtown Detroit · 42.33° N, 83.05° W</span>
           </div>
 
