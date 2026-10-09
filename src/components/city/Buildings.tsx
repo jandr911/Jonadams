@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import {
+  BoxGeometry,
   Color,
+  ConeGeometry,
   InstancedBufferAttribute,
   InstancedMesh,
   MeshStandardMaterial,
@@ -14,24 +16,22 @@ import {
   AMBASSADOR_RAMP_Z,
   AMBASSADOR_X,
   BLOCK,
-  CITY_HALF_Z,
   COLS,
   DESTINATIONS,
-  OUTER_HALF_X,
-  OUTER_MIN_Z,
   OUTER_ROWS,
   ROWS,
   RIVER_FAR,
   allBlocks,
   blockCenter,
 } from "./layout";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { mulberry32, pick, range } from "./rng";
-import { labelTexture } from "./labels";
+import { ghostAdTexture, labelTexture } from "./labels";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { makeShadowBlobTexture } from "./textures";
-import { useBaseBoxGeometry } from "./instancing";
+import { fillInstances, useBaseBoxGeometry } from "./instancing";
 import { enableReflection } from "./layers";
-import type { Group } from "three";
+import type { BufferGeometry, Group } from "three";
 
 export const RESERVED_BLOCKS = new Set<string>([
   ...DESTINATIONS.map((d) => `${d.block[0]},${d.block[1]}`),
@@ -54,23 +54,82 @@ export const RESERVED_BLOCKS = new Set<string>([
   "3,0",
 ]);
 
-const PALETTE = [
-  "#8a4a3a",
-  "#a3563f",
-  "#7a4034",
-  "#b89a7a",
-  "#c9b48c",
-  "#9c8468",
-  "#6e5a4a",
-  "#5a6a7a",
-  "#3f4e66",
-  "#7c6a5c",
-  "#9a6a4a",
-  "#b07a5a",
-  "#1a2238",
-  "#223050",
-  "#2a3a5c",
+type Style = "deco" | "beaux" | "chicago" | "mid";
+
+const STYLE_CODE: Record<Style, number> = { deco: 1, beaux: 2, chicago: 3, mid: 4 };
+
+const GUARDIAN_BRICK = ["#c0603a", "#b0573a"];
+const RED_BRICK = ["#8a4a3a", "#7a4034", "#9a5a44"];
+const BUFF_BRICK = ["#c9b48c", "#bfa57c", "#b89a7a"];
+const SMOKED_BRICK = ["#5e4a3e", "#4e4038", "#6a5446"];
+const LIMESTONE = ["#d4c8ad", "#c7b998", "#bdb096"];
+const ENAMEL_PANEL = ["#b9b5a8", "#8f9a94", "#a8a294"];
+const WINDSOR_MATERIALS = ["#8a7a6a", "#6e6258", "#9a8a78", "#7a6a5c", "#5e5650"];
+const COPPER_CROWN = ["#5f8f7a", "#6f9c86", "#557f6c"];
+
+const STYLE_MATERIALS: Record<Style, string[]> = {
+  deco: [...BUFF_BRICK, ...LIMESTONE, ...GUARDIAN_BRICK, ...SMOKED_BRICK],
+  beaux: [...LIMESTONE, ...BUFF_BRICK],
+  chicago: [...RED_BRICK, ...GUARDIAN_BRICK, ...SMOKED_BRICK, ...BUFF_BRICK],
+  mid: ENAMEL_PANEL,
+};
+
+const MID_CENTURY_SHARE = 0.06;
+const BLANK_WALL_SHARE = 0.12;
+const GHOST_AD_SHARE = 0.7;
+const NEIGHBOUR_GAP = 8;
+const MIN_AD_HEIGHT = 3;
+const AD_ASPECT = 0.62;
+const LIT_CROWNS = 5;
+const CROWN_RISE = 0.6;
+const CROWN_MAX_HEIGHT = 6;
+const CROWN_MIN_TOP = 28;
+const CROWN_INSET = 0.92;
+const COPPER_SHARE = 0.55;
+const BEACON_MAST = 4;
+
+const GHOST_ADS = [
+  { lines: ["GREAT LAKES", "COAL & ICE CO.", "Cadillac 4-1200"], ground: "#e6dbc2", ink: "#5e1712" },
+  { lines: ["WOODWARD", "DRY GOODS", "established 1911"], ground: "#2f4a3a", ink: "#e6dbc2" },
+  { lines: ["RIVER ROUGE", "TIRE & BATTERY", "road service day or night"], ground: "#e0c46a", ink: "#1f1d1b" },
+  { lines: ["CASS PAINT", "& VARNISH", "covers the city"], ground: "#8f2a22", ink: "#e6dbc2" },
+  { lines: ["BELLE ISLE", "DAIRY", "fresh every morning"], ground: "#e6dbc2", ink: "#1f3a6a" },
+  { lines: ["MOTOR CITY", "FURNITURE", "easy terms"], ground: "#1f1d1b", ink: "#e0c46a" },
 ];
+
+function crownHeight(l: { w: number; d: number }) {
+  return Math.min(Math.min(l.w, l.d) * CROWN_INSET * CROWN_RISE, CROWN_MAX_HEIGHT);
+}
+
+function crownGeometry() {
+  const steps: [number, number][] = [
+    [1, 0.3],
+    [0.76, 0.25],
+    [0.54, 0.22],
+    [0.34, 0.13],
+  ];
+  let y = 0;
+  const parts: BufferGeometry[] = steps.map(([size, rise]) => {
+    const g = new BoxGeometry(size, rise, size).translate(0, y + rise / 2, 0);
+    y += rise;
+    return g;
+  });
+  parts.push(new ConeGeometry(0.2, 0.1, 4).rotateY(Math.PI / 4).translate(0, y + 0.05, 0));
+  const merged = mergeGeometries(parts);
+  for (const part of parts) part.dispose();
+  if (!merged) throw new Error("crown parts could not be merged");
+  return merged;
+}
+
+const CROWN = crownGeometry();
+
+function chooseStyle(h: number, rand: () => number): Style {
+  const x = rand();
+  if (x < MID_CENTURY_SHARE) return "mid";
+  if (h > 34) return x < 0.75 ? "deco" : "beaux";
+  if (h > 18) return x < 0.4 ? "chicago" : x < 0.75 ? "beaux" : "deco";
+  return x < 0.78 ? "chicago" : "beaux";
+}
 
 interface Lot {
   x: number;
@@ -82,6 +141,12 @@ interface Lot {
   color: Color;
   seed: number;
   roofKind: number;
+  style: Style;
+  blank: number;
+  ad: number;
+  lit: number;
+  top: boolean;
+  adFrom?: number;
 }
 
 function cellsForBlock(bx: number, bz: number, rand: () => number) {
@@ -116,20 +181,63 @@ function cellsForBlock(bx: number, bz: number, rand: () => number) {
 }
 
 function pushBuilding(out: Lot[], cell: { x: number; z: number; w: number; d: number }, h: number, rand: () => number) {
-  const color = new Color(pick(rand, PALETTE));
-  out.push({
-    ...cell,
-    h,
-    color,
-    seed: rand() * 100,
-    roofKind: rand() < 0.35 ? 1 : rand() < 0.2 ? 2 : 0,
-  });
+  const arch = mulberry32(Math.floor(rand() * 2 ** 31));
+  const style = chooseStyle(h, arch);
+  const color = new Color(pick(arch, STYLE_MATERIALS[style]));
+  const blank = h > 10 && cell.d > 8 && arch() < BLANK_WALL_SHARE ? (arch() < 0.5 ? 1 : 2) : 0;
+  const ad = blank && arch() < GHOST_AD_SHARE ? Math.floor(arch() * GHOST_ADS.length) : -1;
+  const tier = { style, color, blank: 0, ad: -1, lit: 0, top: true };
+  const base: Lot = { ...cell, h, color, seed: rand() * 100, roofKind: rand() < 0.35 ? 1 : rand() < 0.2 ? 2 : 0, style, blank, ad, lit: 0, top: true };
+  out.push(base);
   if (h > 16 && rand() < 0.85) {
     const k = range(rand, 0.55, 0.72);
-    out.push({ x: cell.x, z: cell.z, w: cell.w * k, d: cell.d * k, y: h, h: h * range(rand, 0.22, 0.4), color, seed: rand() * 100, roofKind: 0 });
+    const second: Lot = { x: cell.x, z: cell.z, w: cell.w * k, d: cell.d * k, y: h, h: h * range(rand, 0.22, 0.4), seed: rand() * 100, roofKind: 0, ...tier };
+    base.top = false;
+    out.push(second);
     if (h > 40 && rand() < 0.6) {
-      out.push({ x: cell.x, z: cell.z, w: cell.w * k * 0.6, d: cell.d * k * 0.6, y: h * 1.3, h: h * 0.18, color, seed: rand() * 100, roofKind: 2 });
+      second.top = false;
+      out.push({ x: cell.x, z: cell.z, w: cell.w * k * 0.6, d: cell.d * k * 0.6, y: h * 1.3, h: h * 0.18, seed: rand() * 100, roofKind: 2, ...tier });
     }
+  }
+}
+
+function windsorMaterial(rand: () => number) {
+  const arch = mulberry32(Math.floor(rand() * 2 ** 31));
+  const style: Style = arch() < 0.25 ? "mid" : "chicago";
+  return { style, color: new Color(pick(arch, WINDSOR_MATERIALS)), blank: 0, ad: -1, lit: 0, top: true };
+}
+
+function topOf(l: Lot) {
+  return (l.y ?? 0) + l.h;
+}
+
+function neighbourHeight(l: Lot, face: number, lots: Lot[]) {
+  const dir = face === 1 ? 1 : -1;
+  const edge = l.x + (dir * l.w) / 2;
+  let tallest = 0;
+  for (const o of lots) {
+    if (o === l || o.y) continue;
+    const gap = dir * (o.x - (dir * o.w) / 2 - edge);
+    if (gap < -0.5 || gap > NEIGHBOUR_GAP || Math.abs(o.z - l.z) > (o.d + l.d) / 2) continue;
+    tallest = Math.max(tallest, o.h);
+  }
+  return tallest;
+}
+
+function adSpan(l: Lot) {
+  const bottom = Math.max((l.adFrom ?? 0) + 0.8, l.h * 0.3);
+  const height = Math.min(l.h - bottom - 1.5, l.d * 0.78 * AD_ASPECT);
+  return { bottom, height };
+}
+
+function exposeSideWalls(lots: Lot[]) {
+  for (const l of lots) {
+    if (!l.blank) continue;
+    const near = neighbourHeight(l, l.blank, lots);
+    const far = neighbourHeight(l, 3 - l.blank, lots);
+    if (far < near) l.blank = 3 - l.blank;
+    l.adFrom = Math.min(near, far);
+    if (l.ad >= 0 && adSpan(l).height < MIN_AD_HEIGHT) l.ad = -1;
   }
 }
 
@@ -137,7 +245,7 @@ function underAmbassador(x: number, z: number, w: number, d: number) {
   return Math.abs(x - AMBASSADOR_X) < w / 2 + AMBASSADOR_CLEAR_HALF && z + d / 2 > AMBASSADOR_RAMP_Z[0] - 2 && z - d / 2 < AMBASSADOR_RAMP_Z[1] + 2;
 }
 
-function buildLots(): { city: Lot[]; outskirts: Lot[]; windsor: Lot[] } {
+function buildLots(): { city: Lot[]; windsor: Lot[] } {
   const rand = mulberry32(2024);
   const city: Lot[] = [];
   // Lots under the bridge still draw from rand so every other lot keeps its seed.
@@ -166,26 +274,6 @@ function buildLots(): { city: Lot[]; outskirts: Lot[]; windsor: Lot[] } {
     }
   }
 
-  const outskirts: Lot[] = [];
-  for (let i = 0; i < 0; i++) {
-    const x = range(rand, -OUTER_HALF_X - 420, OUTER_HALF_X + 420);
-    const z = range(rand, OUTER_MIN_Z - 460, CITY_HALF_Z + 6);
-    const insideGrid = Math.abs(x) < OUTER_HALF_X + 8 && z > OUTER_MIN_Z - 8;
-    if (insideGrid) continue;
-    const dist = Math.hypot(x / 1.3, z - OUTER_MIN_Z) / 460;
-    const h = Math.max(4, range(rand, 6, 26) * (1 - dist * 0.55));
-    outskirts.push({
-      x,
-      z,
-      w: range(rand, 8, 20),
-      d: range(rand, 8, 20),
-      h,
-      color: new Color(pick(rand, PALETTE)).multiplyScalar(0.85),
-      seed: rand() * 100,
-      roofKind: 0,
-    });
-  }
-
   const windsor: Lot[] = [];
   for (let i = 0; i < 140; i++) {
     const side = rand() < 0.5 ? -1 : 1;
@@ -198,21 +286,28 @@ function buildLots(): { city: Lot[]; outskirts: Lot[]; windsor: Lot[] } {
       w: range(rand, 8, 18),
       d: range(rand, 8, 16),
       h,
-      color: new Color(pick(rand, PALETTE)).multiplyScalar(0.7),
+      ...windsorMaterial(rand),
       seed: rand() * 100,
       roofKind: 0,
     };
     if (!underAmbassador(lot.x, lot.z, lot.w, lot.d)) windsor.push(lot);
   }
-  return { city, outskirts, windsor };
+  exposeSideWalls(city);
+  const litCrowns = city
+    .filter(hasCrown)
+    .sort((a, b) => topOf(b) - topOf(a))
+    .slice(0, LIT_CROWNS);
+  for (const l of litCrowns) l.lit = 1;
+  return { city, windsor };
 }
 
 function InstancedLots({ lots, winSize }: { lots: Lot[]; winSize?: [number, number] }) {
-  const mat = useWindowMaterial({ winSize, glow: 0.1 });
+  const mat = useWindowMaterial({ winSize, glow: 0.1, architecture: true });
   const lotGeometry = useBaseBoxGeometry();
   const ref = useRef<InstancedMesh>(null);
   const dummy = useMemo(() => new Object3D(), []);
   const seeds = useMemo(() => new Float32Array(lots.map((l) => l.seed)), [lots]);
+  const arch = useMemo(() => new Float32Array(lots.flatMap((l) => [STYLE_CODE[l.style], l.blank, l.lit])), [lots]);
   useEffect(() => {
     const m = ref.current;
     if (!m) return;
@@ -224,9 +319,10 @@ function InstancedLots({ lots, winSize }: { lots: Lot[]; winSize?: [number, numb
       m.setColorAt(i, l.color);
     });
     m.geometry.setAttribute("aSeed", new InstancedBufferAttribute(seeds, 1));
+    m.geometry.setAttribute("aArch", new InstancedBufferAttribute(arch, 3));
     m.instanceMatrix.needsUpdate = true;
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
-  }, [lots, seeds, dummy]);
+  }, [lots, seeds, arch, dummy]);
   return (
     <instancedMesh ref={ref} args={[lotGeometry, mat, lots.length]} castShadow receiveShadow />
   );
@@ -312,7 +408,8 @@ function StreetLevel({ lots }: { lots: Lot[] }) {
         [l.x + l.w / 2, l.z, Math.PI / 2],
         [l.x - l.w / 2, l.z, -Math.PI / 2],
       ];
-      sides.forEach(([sx, sz, rot]) => {
+      sides.forEach(([sx, sz, rot], side) => {
+        const blankSide = l.blank > 0 && side === l.blank + 1;
         const len = rot === 0 || rot === Math.PI ? l.w : l.d;
         const n = 1 + Math.floor(rand() * 3);
         for (let k = 0; k < n; k++) {
@@ -322,8 +419,9 @@ function StreetLevel({ lots }: { lots: Lot[] }) {
           const nx = Math.sin(rot);
           const nz = Math.cos(rot);
           const w = range(rand, 2.2, 3.6);
-          if (rand() < 0.5) awn.push({ x: sx + ox + nx * 0.9, z: sz + oz + nz * 0.9, rot, color: new Color(pick(rand, palette)), w });
-          if (rand() < 0.6) signs[Math.floor(rand() * SHOP_SIGNS.length)].push({ x: sx + ox + nx * 0.08, z: sz + oz + nz * 0.08, rot, w: Math.min(3.4, len * 0.6 / n) });
+          if (rand() < 0.5 && !blankSide) awn.push({ x: sx + ox + nx * 0.9, z: sz + oz + nz * 0.9, rot, color: new Color(pick(rand, palette)), w });
+          const signIndex = rand() < 0.6 ? Math.floor(rand() * SHOP_SIGNS.length) : -1;
+          if (signIndex >= 0 && !blankSide) signs[signIndex].push({ x: sx + ox + nx * 0.08, z: sz + oz + nz * 0.08, rot, w: Math.min(3.4, len * 0.6 / n) });
         }
       });
     });
@@ -383,13 +481,12 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
   const dn = useDayNight();
   const tanks = useRef<InstancedMesh>(null);
   const masts = useRef<InstancedMesh>(null);
-  const beacons = useRef<InstancedMesh>(null);
   const beaconMat = useRef<MeshStandardMaterial>(null);
   const dummy = useMemo(() => new Object3D(), []);
-  const tankLots = useMemo(() => lots.filter((l) => l.roofKind === 1), [lots]);
+  const tankLots = useMemo(() => lots.filter((l) => l.roofKind === 1 && !hasCrown(l)), [lots]);
   const bulkheads = useRef<InstancedMesh>(null);
   const units = useRef<InstancedMesh>(null);
-  const bulkLots = useMemo(() => lots.filter((l) => !l.y && l.h > 8 && l.seed % 1 < 0.75), [lots]);
+  const bulkLots = useMemo(() => lots.filter((l) => !l.y && l.h > 8 && l.seed % 1 < 0.75 && !hasCrown(l)), [lots]);
   const unitLots = useMemo(() => {
     const rand = mulberry32(55);
     const out: { x: number; y: number; z: number; s: number }[] = [];
@@ -397,12 +494,14 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
       if (l.y) return;
       const n = 1 + Math.floor(rand() * 3);
       for (let k = 0; k < n; k++) {
-        out.push({ x: l.x + (rand() - 0.5) * l.w * 0.6, y: 0.4 + l.h + 0.5, z: l.z + (rand() - 0.5) * l.d * 0.6, s: range(rand, 0.8, 1.6) });
+        const unit = { x: l.x + (rand() - 0.5) * l.w * 0.6, y: 0.4 + l.h + 0.5, z: l.z + (rand() - 0.5) * l.d * 0.6, s: range(rand, 0.8, 1.6) };
+        if (!hasCrown(l)) out.push(unit);
       }
     });
     return out;
   }, [lots]);
-  const mastLots = useMemo(() => lots.filter((l) => l.roofKind === 2 || (l.h > 44 && !l.y)), [lots]);
+  const beaconLot = useMemo(() => lots.reduce((best, l) => (topOf(l) > topOf(best) ? l : best), lots[0]), [lots]);
+  const mastLots = useMemo(() => lots.filter((l) => (l.roofKind === 2 || (l.h > 44 && !l.y)) && l !== beaconLot && !hasCrown(l)), [lots, beaconLot]);
   const parapets = useRef<InstancedMesh>(null);
   const vents = useRef<InstancedMesh>(null);
   const skylights = useRef<InstancedMesh>(null);
@@ -423,21 +522,22 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
       parapet.push({ x: l.x, y: top + 0.3, z: l.z - l.d / 2, sx: l.w + 0.5, sy: 0.6, sz: 0.4, ry: 0 });
       parapet.push({ x: l.x + l.w / 2, y: top + 0.3, z: l.z, sx: 0.4, sy: 0.6, sz: l.d + 0.5, ry: 0 });
       parapet.push({ x: l.x - l.w / 2, y: top + 0.3, z: l.z, sx: 0.4, sy: 0.6, sz: l.d + 0.5, ry: 0 });
+      const roof = (list: P[]) => (hasCrown(l) ? [] : list);
       const n = Math.floor(rand() * 4);
       for (let k = 0; k < n; k++) {
-        vent.push({ x: l.x + (rand() - 0.5) * l.w * 0.7, y: top + 0.45, z: l.z + (rand() - 0.5) * l.d * 0.7, sx: 1, sy: range(rand, 0.6, 1.3), sz: 1, ry: 0 });
+        roof(vent).push({ x: l.x + (rand() - 0.5) * l.w * 0.7, y: top + 0.45, z: l.z + (rand() - 0.5) * l.d * 0.7, sx: 1, sy: range(rand, 0.6, 1.3), sz: 1, ry: 0 });
       }
       if (l.w > 9 && l.d > 9 && rand() < 0.4) {
-        skylight.push({ x: l.x + (rand() - 0.5) * l.w * 0.3, y: top + 0.3, z: l.z + (rand() - 0.5) * l.d * 0.3, sx: range(rand, 1.8, 3.2), sy: 0.5, sz: range(rand, 1.2, 2.2), ry: rand() < 0.5 ? 0 : Math.PI / 2 });
+        roof(skylight).push({ x: l.x + (rand() - 0.5) * l.w * 0.3, y: top + 0.3, z: l.z + (rand() - 0.5) * l.d * 0.3, sx: range(rand, 1.8, 3.2), sy: 0.5, sz: range(rand, 1.2, 2.2), ry: rand() < 0.5 ? 0 : Math.PI / 2 });
       }
       if (rand() < 0.35) {
-        dish.push({ x: l.x + (rand() - 0.5) * l.w * 0.8, y: top + 0.9, z: l.z + (rand() - 0.5) * l.d * 0.8, sx: 1, sy: 1, sz: 1, ry: rand() * 6.28, rx: -0.9 });
+        roof(dish).push({ x: l.x + (rand() - 0.5) * l.w * 0.8, y: top + 0.9, z: l.z + (rand() - 0.5) * l.d * 0.8, sx: 1, sy: 1, sz: 1, ry: rand() * 6.28, rx: -0.9 });
       }
       if (!l.y && l.h < 30 && l.w > 8 && rand() < 0.14) {
-        green.push({ x: l.x + (rand() - 0.5) * l.w * 0.25, y: top + 0.18, z: l.z + (rand() - 0.5) * l.d * 0.25, sx: l.w * 0.5, sy: 0.3, sz: l.d * 0.45, ry: 0 });
+        roof(green).push({ x: l.x + (rand() - 0.5) * l.w * 0.25, y: top + 0.18, z: l.z + (rand() - 0.5) * l.d * 0.25, sx: l.w * 0.5, sy: 0.3, sz: l.d * 0.45, ry: 0 });
         const m = 2 + Math.floor(rand() * 4);
         for (let k = 0; k < m; k++) {
-          green.push({ x: l.x + (rand() - 0.5) * l.w * 0.6, y: top + 0.55, z: l.z + (rand() - 0.5) * l.d * 0.6, sx: range(rand, 0.6, 1.4), sy: range(rand, 0.6, 1.1), sz: range(rand, 0.6, 1.4), ry: 0 });
+          roof(green).push({ x: l.x + (rand() - 0.5) * l.w * 0.6, y: top + 0.55, z: l.z + (rand() - 0.5) * l.d * 0.6, sx: range(rand, 0.6, 1.4), sy: range(rand, 0.6, 1.1), sz: range(rand, 0.6, 1.4), ry: 0 });
         }
       }
     });
@@ -498,27 +598,21 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
       t.instanceMatrix.needsUpdate = true;
     }
     const m = masts.current;
-    const b = beacons.current;
-    if (m && b) {
+    if (m) {
       mastLots.forEach((l, i) => {
         const mh = 3 + (l.h > 44 ? 5 : 0);
-        const top = 0.4 + (l.y ?? 0) + l.h;
-        dummy.position.set(l.x, top + mh / 2, l.z);
+        dummy.position.set(l.x, 0.4 + topOf(l) + mh / 2, l.z);
         dummy.scale.set(1, mh, 1);
         dummy.updateMatrix();
         m.setMatrixAt(i, dummy.matrix);
-        dummy.position.set(l.x, top + mh + 0.3, l.z);
-        dummy.scale.set(1, 1, 1);
-        dummy.updateMatrix();
-        b.setMatrixAt(i, dummy.matrix);
       });
       m.instanceMatrix.needsUpdate = true;
-      b.instanceMatrix.needsUpdate = true;
     }
   }, [tankLots, mastLots, bulkLots, unitLots, dummy]);
   useEffect(() => {
-    if (beaconMat.current) beaconMat.current.emissiveIntensity = 1.2 + dn.night * 3;
+    if (beaconMat.current) beaconMat.current.emissiveIntensity = 0.6 + dn.night * 3;
   }, [dn]);
+  const beaconMast = BEACON_MAST + (hasCrown(beaconLot) ? crownHeight(beaconLot) : 0);
   return (
     <group name="roof-details">
       <instancedMesh ref={parapets} args={[undefined, undefined, extras.parapet.length]}>
@@ -557,16 +651,16 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
         <cylinderGeometry args={[0.1, 0.16, 1, 5]} />
         <meshStandardMaterial color="#aaa" roughness={0.5} metalness={0.6} />
       </instancedMesh>
-      <instancedMesh ref={beacons} args={[undefined, undefined, mastLots.length]}>
-        <sphereGeometry args={[0.35, 8, 6]} />
-        <meshStandardMaterial
-          ref={beaconMat}
-          color="#ff2244"
-          emissive="#ff3355"
-          emissiveIntensity={3}
-          toneMapped={false}
-        />
-      </instancedMesh>
+      <group position={[beaconLot.x, 0.4 + topOf(beaconLot), beaconLot.z]}>
+        <mesh position={[0, beaconMast / 2, 0]}>
+          <cylinderGeometry args={[0.12, 0.2, beaconMast, 5]} />
+          <meshStandardMaterial color="#5a5a5a" roughness={0.5} metalness={0.6} />
+        </mesh>
+        <mesh position={[0, beaconMast + 0.4, 0]}>
+          <sphereGeometry args={[0.55, 10, 8]} />
+          <meshStandardMaterial ref={beaconMat} color="#ff2244" emissive="#ff3355" emissiveIntensity={3} toneMapped={false} />
+        </mesh>
+      </group>
     </group>
   );
 }
@@ -722,32 +816,38 @@ function Facades({ lots }: { lots: Lot[] }) {
     lots.forEach((l) => {
       const y0 = 0.4 + (l.y ?? 0);
       const top = y0 + l.h;
-      cornice.push({ x: l.x, y: top - 0.35, z: l.z, sx: l.w + 0.9, sy: 0.7, sz: l.d + 0.9, ry: 0 });
-      if (l.h > 12) cornice.push({ x: l.x, y: top - 1.3, z: l.z, sx: l.w + 0.5, sy: 0.3, sz: l.d + 0.5, ry: 0 });
+      if (l.style !== "mid") cornice.push({ x: l.x, y: top - 0.35, z: l.z, sx: l.w + 0.9, sy: 0.7, sz: l.d + 0.9, ry: 0 });
+      if (l.h > 12 && l.style !== "mid") cornice.push({ x: l.x, y: top - 1.3, z: l.z, sx: l.w + 0.5, sy: 0.3, sz: l.d + 0.5, ry: 0 });
+      if (l.style === "beaux" && l.top) cornice.push({ x: l.x, y: top - 0.6, z: l.z, sx: l.w + 2.6, sy: 1.1, sz: l.d + 2.6, ry: 0 });
+      if (l.style === "beaux" && !l.y) cornice.push({ x: l.x, y: y0 + 0.45, z: l.z, sx: l.w + 0.7, sy: 0.9, sz: l.d + 0.7, ry: 0 });
       const lum = l.color.r * 0.299 + l.color.g * 0.587 + l.color.b * 0.114;
       const glass = lum < 0.2;
       if (l.y) return;
-      for (let y = y0 + 7.5; y < top - 4; y += 7.5) belt.push({ x: l.x, y, z: l.z, sx: l.w + 0.45, sy: 0.28, sz: l.d + 0.45, ry: 0 });
+      const horizontalBelts = (l.style === "chicago" || l.style === "beaux") && l.ad < 0;
+      for (let y = y0 + 7.5; horizontalBelts && y < top - 4; y += 7.5) belt.push({ x: l.x, y, z: l.z, sx: l.w + 0.45, sy: 0.28, sz: l.d + 0.45, ry: 0 });
       const sides: [number, number, number, number][] = [
         [l.x, l.z + l.d / 2, 0, l.w],
         [l.x, l.z - l.d / 2, Math.PI, l.w],
         [l.x + l.w / 2, l.z, Math.PI / 2, l.d],
         [l.x - l.w / 2, l.z, -Math.PI / 2, l.d],
       ];
-      if (!glass && l.w > 7) {
-        sides.forEach(([sx, sz, ry, len]) => {
+      if (!glass && l.w > 7 && l.style !== "mid") {
+        const rise = l.style === "deco" ? l.h + 1.4 : l.h - 1.2;
+        sides.forEach(([sx, sz, ry, len], side) => {
+          if (l.blank > 0 && side === l.blank + 1) return;
           const cols = Math.max(1, Math.round(len / 4.6));
           for (let k = 0; k <= cols; k++) {
             const t = -len / 2 + (k / cols) * len;
             const px = sx + Math.cos(ry) * t + Math.sin(ry) * 0.2;
             const pz = sz - Math.sin(ry) * t + Math.cos(ry) * 0.2;
-            pil.push({ x: px, y: y0 + l.h / 2 + 0.4, z: pz, sx: 0.5, sy: l.h - 1.2, sz: 0.5, ry });
+            pil.push({ x: px, y: y0 + 0.4 + rise / 2, z: pz, sx: 0.5, sy: rise, sz: 0.5, ry });
           }
         });
       }
       const style = rand();
       if (!glass && style < 0.32 && l.h > 9) {
-        const [sx, sz, ry, len] = sides[Math.floor(rand() * 2) + 2];
+        const pickSide = Math.floor(rand() * 2) + 2;
+        const [sx, sz, ry, len] = sides[pickSide === l.blank + 1 ? 5 - pickSide : pickSide];
         const span = Math.min(3.6, len - 2);
         for (let y = y0 + 4; y < top - 2; y += 3.2) {
           const px = sx + Math.sin(ry) * 0.7;
@@ -769,7 +869,7 @@ function Facades({ lots }: { lots: Lot[] }) {
           }
         });
       }
-      if (rand() < 0.18 && l.h > 8) {
+      if (rand() < 0.18 && l.h > 8 && !hasCrown(l)) {
         const ry = rand() < 0.5 ? 0 : Math.PI / 2;
         const w = Math.min(l.w, l.d) * 0.7;
         board.push({ x: l.x, y: top + 2.6, z: l.z, sx: w, sy: w * 0.36, sz: 0.3, ry });
@@ -882,19 +982,103 @@ function Facades({ lots }: { lots: Lot[] }) {
   );
 }
 
+function hasCrown(l: Lot) {
+  return l.top && l.style === "deco" && topOf(l) > CROWN_MIN_TOP;
+}
+
+function crownColor(l: Lot) {
+  const rand = mulberry32(Math.floor(l.seed * 1000));
+  return rand() < COPPER_SHARE ? new Color(pick(rand, COPPER_CROWN)) : l.color.clone().lerp(new Color(LIMESTONE[0]), 0.5);
+}
+
+function fillCrowns(mesh: InstancedMesh | null, lots: Lot[]) {
+  if (!mesh) return;
+  const dummy = new Object3D();
+  lots.forEach((l, i) => {
+    dummy.position.set(l.x, 0.4 + topOf(l), l.z);
+    dummy.scale.set(l.w * CROWN_INSET, crownHeight(l), l.d * CROWN_INSET);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(i, dummy.matrix);
+    mesh.setColorAt(i, crownColor(l));
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  mesh.computeBoundingSphere();
+}
+
+function Crowns({ lots }: { lots: Lot[] }) {
+  const dn = useDayNight();
+  const plain = useRef<InstancedMesh>(null);
+  const lit = useRef<InstancedMesh>(null);
+  const litMat = useRef<MeshStandardMaterial>(null);
+  const { dark, floodlit } = useMemo(() => {
+    const tops = lots.filter(hasCrown);
+    return { dark: tops.filter((l) => !l.lit), floodlit: tops.filter((l) => l.lit) };
+  }, [lots]);
+  useEffect(() => {
+    fillCrowns(plain.current, dark);
+    fillCrowns(lit.current, floodlit);
+  }, [dark, floodlit]);
+  useEffect(() => {
+    if (litMat.current) litMat.current.emissiveIntensity = dn.night * 0.95;
+  }, [dn]);
+  return (
+    <group name="crowns">
+      <instancedMesh ref={plain} args={[CROWN, undefined, dark.length]} castShadow>
+        <meshStandardMaterial color="#ffffff" roughness={0.75} metalness={0.2} />
+      </instancedMesh>
+      <instancedMesh ref={lit} args={[CROWN, undefined, floodlit.length]} castShadow>
+        <meshStandardMaterial ref={litMat} color="#ffffff" emissive="#ffcf96" emissiveIntensity={0} roughness={0.75} metalness={0.2} />
+      </instancedMesh>
+    </group>
+  );
+}
+
+function GhostAdWall({ ad, lots }: { ad: (typeof GHOST_ADS)[number]; lots: Lot[] }) {
+  const ref = useRef<InstancedMesh>(null);
+  const tex = useMemo(() => ghostAdTexture(ad.lines, ad.ground, ad.ink), [ad]);
+  useEffect(() => {
+    const dummy = new Object3D();
+    fillInstances(ref.current, dummy, lots.length, (i, o) => {
+      const l = lots[i];
+      const side = l.blank === 1 ? 1 : -1;
+      const { bottom, height } = adSpan(l);
+      o.position.set(l.x + side * (l.w / 2 + 0.04), 0.4 + bottom + height / 2, l.z);
+      o.rotation.set(0, side * (Math.PI / 2), 0);
+      o.scale.set(height / AD_ASPECT, height, 1);
+    });
+  }, [lots]);
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, lots.length]}>
+      <planeGeometry args={[1, 1]} />
+      <meshStandardMaterial map={tex} transparent depthWrite={false} polygonOffset polygonOffsetFactor={-2} roughness={0.95} />
+    </instancedMesh>
+  );
+}
+
+function GhostAds({ lots }: { lots: Lot[] }) {
+  const byAd = useMemo(() => GHOST_ADS.map((_, i) => lots.filter((l) => l.ad === i)), [lots]);
+  return (
+    <group name="ghost-ads">
+      {GHOST_ADS.map((ad, i) => byAd[i].length > 0 && <GhostAdWall key={ad.lines[0]} ad={ad} lots={byAd[i]} />)}
+    </group>
+  );
+}
+
 export default function Buildings() {
-  const { city, outskirts, windsor } = useMemo(() => buildLots(), []);
+  const { city, windsor } = useMemo(() => buildLots(), []);
   const root = useRef<Group>(null);
   useEffect(() => enableReflection(root.current), []);
   return (
     <group ref={root}>
       <InstancedLots lots={city} />
-      <InstancedLots lots={outskirts} winSize={[2.2, 2.6]} />
       <InstancedLots lots={windsor} winSize={[2.2, 2.6]} />
       <ContactShadows lots={city} />
       <RoofDetails lots={city} />
       <StreetLevel lots={city} />
       <Facades lots={city} />
+      <Crowns lots={city} />
+      <GhostAds lots={city} />
     </group>
   );
 }

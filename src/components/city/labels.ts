@@ -224,3 +224,46 @@ export function handPaintedBillboardTexture(script: string, headline: string, fo
     weather(ctx, w, h, rand, 1.2);
   });
 }
+
+export function ghostAdTexture(lines: string[], ground: string, ink: string) {
+  const w = 512;
+  const h = 320;
+  return cached(`ghost|${lines.join("|")}|${ground}|${ink}`, w, h, (ctx) => {
+    const rand = mulberry32(seedOf(lines.join()));
+    ctx.globalAlpha = 0.82;
+    ctx.fillStyle = ground;
+    ctx.fillRect(12, 12, w - 24, h - 24);
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 8;
+    ctx.strokeRect(30, 30, w - 60, h - 60);
+    ctx.fillStyle = ink;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `${h * 0.2}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+    ctx.fillText(lines[0], w / 2, h * 0.3, w * 0.8);
+    ctx.font = `${h * 0.25}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+    ctx.fillText(lines[1], w / 2, h * 0.56, w * 0.84);
+    ctx.font = `italic ${h * 0.11}px CityScript, Georgia, serif`;
+    ctx.fillText(lines[2], w / 2, h * 0.8, w * 0.72);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "destination-out";
+    for (let i = 0; i < 46; i++) {
+      const x = rand() * w;
+      const y = rand() * h;
+      const r = 10 + rand() * 60;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(0,0,0,${0.4 + rand() * 0.5})`);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    for (let y = 0, row = 0; y < h; y += 7, row++) {
+      ctx.fillRect(0, y, w, 1.5);
+      for (let x = (row % 2) * 9; x < w; x += 18) ctx.fillRect(x, y, 1.5, 7);
+    }
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalCompositeOperation = "source-over";
+  });
+}
