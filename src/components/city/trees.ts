@@ -243,10 +243,21 @@ export function createCrownMaterial() {
         "#include <common>",
         `#include <common>
         varying vec3 vLeafPos;
-        float leafHash(vec2 p) {
-          vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-          p3 += dot(p3, p3.yzx + 33.33);
-          return fract((p3.x + p3.y) * p3.z);
+        #define LEAF_TUFT_NEAR 70.0
+        #define LEAF_TUFT_FAR 120.0
+        #define LEAF_DETAIL_FAR 260.0
+        float leafHash(vec3 p) {
+          p = fract(p * 0.1031);
+          p += dot(p, p.zyx + 31.32);
+          return fract((p.x + p.y) * p.z);
+        }
+        float leafNoise(vec3 p) {
+          vec3 i = floor(p);
+          vec3 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          float a = mix(mix(leafHash(i), leafHash(i + vec3(1.0, 0.0, 0.0)), f.x), mix(leafHash(i + vec3(0.0, 1.0, 0.0)), leafHash(i + vec3(1.0, 1.0, 0.0)), f.x), f.y);
+          float b = mix(mix(leafHash(i + vec3(0.0, 0.0, 1.0)), leafHash(i + vec3(1.0, 0.0, 1.0)), f.x), mix(leafHash(i + vec3(0.0, 1.0, 1.0)), leafHash(i + 1.0), f.x), f.y);
+          return mix(a, b, f.z);
         }`,
       )
       .replace(
@@ -261,13 +272,19 @@ export function createCrownMaterial() {
         "#include <normal_fragment_begin>",
         `#include <normal_fragment_begin>
         {
-          vec3 cell = floor(vLeafPos * 3.2);
-          vec3 leaf = vec3(leafHash(cell.xy + cell.z), leafHash(cell.yz + cell.x * 1.7), leafHash(cell.zx + cell.y * 2.3)) - 0.5;
-          normal = normalize(normal + leaf * 1.1);
+          float viewDist = length(vViewPosition);
+          float rim = 1.0 - abs(dot(normalize(vNormal), vViewPosition / viewDist));
+          float tufts = 1.0 - smoothstep(LEAF_TUFT_NEAR, LEAF_TUFT_FAR, viewDist);
+          if (rim > 0.5 && tufts > 0.0 && leafNoise(vLeafPos * 5.5 + 9.3) < (rim - 0.5) * 2.4 * tufts) discard;
+          if (viewDist < LEAF_DETAIL_FAR) {
+            vec3 leafP = vLeafPos * 2.4;
+            vec3 leaf = vec3(leafNoise(leafP), leafNoise(leafP + 17.1), leafNoise(leafP + 33.7)) - 0.5;
+            normal = normalize(normal + leaf * 1.3);
+          }
         }`,
       );
   };
-  mat.customProgramCacheKey = () => "crown-wind-fade-leaf";
+  mat.customProgramCacheKey = () => "crown-wind-fade-leaf-tufts";
   return mat;
 }
 
