@@ -4,6 +4,7 @@ import { Float, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import { AdditiveBlending, CatmullRomCurve3, ConeGeometry, DoubleSide, Group, MathUtils, Mesh, MeshStandardMaterial, PlaneGeometry, Vector3 } from "three";
+import { SITE } from "@/content/site";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import { gradientColors } from "./instancing";
@@ -72,6 +73,8 @@ function Pilot({ position, top = "#1d1d3f", rotation = 0 }: { position: [number,
 const BLIMP_SKIN = "#c9cbc6";
 const BLIMP_TRIM = "#a8aaa5";
 const BLIMP_INK = "#1f2a3a";
+const BLIMP_NAME = "#f0a81e";
+const BLIMP_NAME_EDGE = "#4a2a06";
 const BLIMP_METAL = "#4a4c50";
 
 function Blimp() {
@@ -227,16 +230,26 @@ function Blimp() {
           ))}
         </group>
         {[1, -1].map((side) => (
-          <Text key={side} font={SCRIPT_FONT} fontSize={4.4} anchorX="center" anchorY="middle" position={[0.6, 0.2, side * 5.08]} rotation={[0, side > 0 ? 0 : Math.PI, 0]}>
-            Adams
-            <meshStandardMaterial attach="material" color={BLIMP_INK} roughness={0.6} />
+          <Text
+            key={side}
+            font={SCRIPT_FONT}
+            fontSize={5.2}
+            anchorX="center"
+            anchorY="middle"
+            position={[0.6, 0.2, side * 5.08]}
+            rotation={[0, side > 0 ? 0 : Math.PI, 0]}
+            outlineWidth="7%"
+            outlineColor={BLIMP_NAME_EDGE}
+          >
+            {SITE.nickname}
+            <meshStandardMaterial attach="material" color={BLIMP_NAME} emissive={BLIMP_NAME} emissiveIntensity={0.25 + dn.night * 1.4} roughness={0.35} metalness={0.2} toneMapped={false} />
           </Text>
         ))}
-        <mesh position={[0, 0, 5.2]}>
+        <mesh position={[0, -3.2, 3.9]}>
           <sphereGeometry args={[0.22, 6, 6]} />
           <meshStandardMaterial color="#2aff7a" emissive="#2aff7a" emissiveIntensity={nav} toneMapped={false} />
         </mesh>
-        <mesh position={[0, 0, -5.2]}>
+        <mesh position={[0, -3.2, -3.9]}>
           <sphereGeometry args={[0.22, 6, 6]} />
           <meshStandardMaterial color="#ff2a3c" emissive="#ff2a3c" emissiveIntensity={nav} toneMapped={false} />
         </mesh>

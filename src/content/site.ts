@@ -2,6 +2,7 @@ export const SITE = {
   name: "Adams UniverseCity",
   cityName: "UniverseCity",
   artist: "Jonathan Adams",
+  nickname: "Jonn",
   city: "Detroit, Michigan",
   year: 2026,
   submitEmail: "",
