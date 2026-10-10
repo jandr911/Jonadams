@@ -225,6 +225,87 @@ export function handPaintedBillboardTexture(script: string, headline: string, fo
   });
 }
 
+export function wheatpastePosterTexture(headline: string, script: string, footer: string) {
+  const w = 1024;
+  const h = 544;
+  const sheets = 3;
+  return cached(`wheatpaste|${headline}|${script}|${footer}`, w, h, (ctx) => {
+    const rand = mulberry32(seedOf(headline + footer));
+    ctx.fillStyle = "#3a3733";
+    ctx.fillRect(0, 0, w, h);
+    const sw = w / sheets;
+    for (let i = 0; i < sheets; i++) {
+      ctx.save();
+      ctx.translate(sw * i + sw / 2 + (rand() - 0.5) * 10, h / 2 + (rand() - 0.5) * 8);
+      ctx.rotate((rand() - 0.5) * 0.03);
+      const pw = sw - 10;
+      const ph = h - 18;
+      ctx.fillStyle = i === 1 ? "#d9cfb6" : "#15130f";
+      ctx.fillRect(-pw / 2, -ph / 2, pw, ph);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = i === 1 ? "#15130f" : "#d6b56e";
+      ctx.font = `italic ${ph * 0.1}px CityScript, Georgia, serif`;
+      ctx.fillText(script, 0, -ph * 0.33, pw * 0.84);
+      ctx.font = `${ph * 0.24}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+      const [first, ...rest] = headline.split(" ");
+      ctx.fillText(first, 0, -ph * 0.12, pw * 0.9);
+      ctx.fillText(rest.join(" "), 0, ph * 0.12, pw * 0.9);
+      ctx.fillRect(-pw * 0.3, ph * 0.27, pw * 0.6, 3);
+      ctx.font = `${ph * 0.06}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+      ctx.fillText(footer, 0, ph * 0.36, pw * 0.84);
+      ctx.restore();
+    }
+    ctx.fillStyle = "#3a3733";
+    for (let i = 0; i < 7; i++) {
+      const x = rand() * w;
+      const y = rand() < 0.5 ? rand() * h * 0.15 : h - rand() * h * 0.15;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      for (let k = 0; k < 6; k++) ctx.lineTo(x + (rand() - 0.3) * 70, y + (rand() - 0.5) * 50);
+      ctx.closePath();
+      ctx.fill();
+    }
+    weather(ctx, w, h, rand, 1.4);
+  });
+}
+
+export function hologramTexture(kicker: string, headline: string, footer: string) {
+  const w = 1024;
+  const h = 512;
+  return cached(`hologram|${kicker}|${headline}|${footer}`, w, h, (ctx) => {
+    ctx.strokeStyle = "#ffffff";
+    ctx.fillStyle = "#ffffff";
+    ctx.lineWidth = 6;
+    ctx.globalAlpha = 0.35;
+    ctx.fillRect(16, 16, w - 32, h - 32);
+    ctx.globalAlpha = 1;
+    const corner = 70;
+    for (const [x, y, dx, dy] of [[16, 16, 1, 1], [w - 16, 16, -1, 1], [16, h - 16, 1, -1], [w - 16, h - 16, -1, -1]]) {
+      ctx.beginPath();
+      ctx.moveTo(x + dx * corner, y);
+      ctx.lineTo(x, y);
+      ctx.lineTo(x, y + dy * corner);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(40, 40, w - 80, h - 80);
+    ctx.globalAlpha = 1;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `${h * 0.09}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+    ctx.fillText(kicker.split("").join(" "), w / 2, h * 0.22, w * 0.8);
+    ctx.font = `${h * 0.32}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+    ctx.fillText(headline, w / 2, h * 0.52, w * 0.86);
+    ctx.fillRect(w * 0.3, h * 0.72, w * 0.4, 3);
+    ctx.font = `italic ${h * 0.085}px CityScript, Georgia, serif`;
+    ctx.fillText(footer, w / 2, h * 0.82, w * 0.8);
+    const bars = [0.4, 0.75, 0.55, 1, 0.65, 0.85, 0.5];
+    bars.forEach((b, i) => ctx.fillRect(70 + i * 16, h * 0.86 - b * 50, 9, b * 50));
+  });
+}
+
 export function ghostAdTexture(lines: string[], ground: string, ink: string) {
   const w = 512;
   const h = 320;

@@ -14,11 +14,13 @@ import Suburbs from "./Suburbs";
 import { useDayNight } from "./DayNightContext";
 import Effects from "./Effects";
 import Ground from "./Ground";
+import HoloBillboards from "./HoloBillboards";
 import Landmarks from "./Landmarks";
 import { requestShadowUpdate, setShadowManual } from "./mirrorRender";
 import PeopleMover from "./PeopleMover";
 import Roads from "./Roads";
 import Sky from "./Sky";
+import SkyTraffic from "./SkyTraffic";
 import Steam from "./Steam";
 import Traffic from "./Traffic";
 import { TreeWind } from "./TreeStand";
@@ -109,6 +111,8 @@ export default function Scene({ onReady }: { onReady: () => void }) {
         <PeopleMover />
         <Traffic />
         <Aircraft />
+        <SkyTraffic />
+        <HoloBillboards />
         <Watercraft />
         <Details />
         <Steam />

@@ -1,9 +1,11 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  BoxGeometry,
   CatmullRomCurve3,
+  Color,
   type CanvasTexture,
   DoubleSide,
   Group,
@@ -84,6 +86,13 @@ function Pylons({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canvas
 }
 
 const GUIDEWAY_SEGMENTS = 160;
+const LED_GOLD = "#f3c46e";
+const LED_OFFSET = 0.77;
+const MAGLEV_PULSE = new Color("#fff3d0").multiplyScalar(4);
+
+function setLedGlow(mat: MeshStandardMaterial, night: number) {
+  mat.emissiveIntensity = 0.8 + night * 1.6;
+}
 
 function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: CanvasTexture }) {
   const joints = useRef<InstancedMesh>(null);
@@ -92,6 +101,11 @@ function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canv
   const railL = useRef<InstancedMesh>(null);
   const railR = useRef<InstancedMesh>(null);
   const tray = useRef<InstancedMesh>(null);
+  const leds = useRef<InstancedMesh>(null);
+  const dn = useDayNight();
+  const [led] = useState(() => new MeshStandardMaterial({ color: "#2a2620", emissive: LED_GOLD, emissiveIntensity: 0, toneMapped: false }));
+  useEffect(() => () => led.dispose(), [led]);
+  useEffect(() => setLedGlow(led, dn.night), [led, dn.night]);
   const dummy = useMemo(() => new Object3D(), []);
   const segLen = useMemo(() => curve.getLength() / GUIDEWAY_SEGMENTS, [curve]);
   useEffect(() => {
@@ -118,6 +132,15 @@ function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canv
     along(railL.current, -0.55, 0.72, 1.08);
     along(railR.current, 0.55, 0.72, 1.08);
     along(tray.current, -1.05, -0.1, 1.06);
+    fillInstances(leds.current, dummy, GUIDEWAY_SEGMENTS * 2, (i, d) => {
+      const u = (Math.floor(i / 2) + 0.5) / GUIDEWAY_SEGMENTS;
+      const side = i % 2 === 0 ? -LED_OFFSET : LED_OFFSET;
+      curve.getPointAt(u, p);
+      curve.getTangentAt(u, t);
+      d.position.set(p.x + t.z * side, p.y - 0.38, p.z - t.x * side);
+      d.rotation.y = Math.atan2(t.x, t.z);
+      d.scale.z = segLen * 1.08;
+    });
   }, [curve, dummy, segLen]);
   return (
     <group>
@@ -140,6 +163,9 @@ function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canv
       <instancedMesh ref={joints} args={[undefined, undefined, GUIDEWAY_SEGMENTS]}>
         <boxGeometry args={[2.3, 1.7, 0.5]} />
         <meshStandardMaterial color="#a39f96" map={concrete} roughness={1} />
+      </instancedMesh>
+      <instancedMesh ref={leds} args={[undefined, undefined, GUIDEWAY_SEGMENTS * 2]} material={led} name="people-mover-led">
+        <boxGeometry args={[0.06, 0.12, 1]} />
       </instancedMesh>
       <instancedMesh ref={walkway} args={[undefined, undefined, GUIDEWAY_SEGMENTS]}>
         <boxGeometry args={[0.7, 0.1, 1]} />
@@ -376,6 +402,51 @@ function Stations({ curve }: { curve: CatmullRomCurve3 }) {
   );
 }
 
+const PULSE_COUNT = 14;
+const PULSE_SPEED = 0.045;
+const PULSE = new BoxGeometry(0.09, 0.16, 3.2);
+const PULSE_SAMPLES = 512;
+
+function sampleLoop(curve: CatmullRomCurve3) {
+  const points = curve.getSpacedPoints(PULSE_SAMPLES);
+  const tangents = points.map((_, i) => {
+    const next = points[(i + 1) % PULSE_SAMPLES];
+    const prev = points[(i - 1 + PULSE_SAMPLES) % PULSE_SAMPLES];
+    return next.clone().sub(prev).normalize();
+  });
+  return { points, tangents };
+}
+
+function placePulses(m: InstancedMesh, d: Object3D, loop: ReturnType<typeof sampleLoop>, time: number) {
+  for (let i = 0; i < PULSE_COUNT; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const u = (((i / PULSE_COUNT + time * PULSE_SPEED * side) % 1) + 1) % 1;
+    const k = Math.floor(u * PULSE_SAMPLES) % PULSE_SAMPLES;
+    const p = loop.points[k];
+    const t = loop.tangents[k];
+    const offset = side * (LED_OFFSET + 0.03);
+    d.position.set(p.x + t.z * offset, p.y - 0.38, p.z - t.x * offset);
+    d.rotation.set(0, Math.atan2(t.x, t.z), 0);
+    d.updateMatrix();
+    m.setMatrixAt(i, d.matrix);
+  }
+  m.instanceMatrix.needsUpdate = true;
+}
+
+function MaglevPulses({ curve }: { curve: CatmullRomCurve3 }) {
+  const ref = useRef<InstancedMesh>(null);
+  const [dummy] = useState(() => new Object3D());
+  const [loop] = useState(() => sampleLoop(curve));
+  useFrame(({ clock }) => {
+    if (ref.current) placePulses(ref.current, dummy, loop, clock.elapsedTime);
+  });
+  return (
+    <instancedMesh ref={ref} args={[PULSE, undefined, PULSE_COUNT]} frustumCulled={false} name="maglev-pulses" userData={{ noReflect: true }}>
+      <meshBasicMaterial color={MAGLEV_PULSE} toneMapped={false} />
+    </instancedMesh>
+  );
+}
+
 export default function PeopleMover() {
   const curve = useMemo(() => buildLoop(), []);
   const concrete = useMemo(() => makeStainedConcreteTexture(), []);
@@ -388,6 +459,7 @@ export default function PeopleMover() {
       <Guideway curve={curve} concrete={concrete} />
       <Pylons curve={curve} concrete={concrete} />
       <Train curve={curve} />
+      <MaglevPulses curve={curve} />
     </group>
   );
 }

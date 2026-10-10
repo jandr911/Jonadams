@@ -68,10 +68,12 @@ const frag = /* glsl */ `
     float far = smoothstep(30.0, 420.0, length(cameraPosition - vWorld));
     vec4 uv = vMirror;
     uv.x += ((n1 - 0.5) * 0.005 + (n3 - 0.5) * 0.003) * uv.w;
-    uv.y += ((n2 - 0.5) * (0.006 + far * 0.008) + (n3 - 0.5) * 0.003) * uv.w;
+    uv.y += ((n2 - 0.5) * (0.006 + far * 0.008) * (1.0 + uNight * 1.6) + (n3 - 0.5) * 0.003) * uv.w;
     vec3 refl = texture2DProj(uMirror, uv, far * 0.5).rgb;
     refl = refl / (1.0 + refl * 0.45);
-    refl = mix(vec3(dot(refl, vec3(0.3, 0.59, 0.11))), refl, 0.7);
+    float reflLum = dot(refl, vec3(0.3, 0.59, 0.11));
+    refl = mix(vec3(reflLum), refl, 0.7);
+    refl *= mix(1.0, smoothstep(0.04, 0.3, reflLum), uNight * 0.75);
 
     vec3 v = normalize(cameraPosition - vWorld);
     vec3 n = normalize(vec3((n1 - 0.5) * 0.25 + (n3 - 0.5) * 0.35, 1.0, (n2 - 0.5) * 0.25 + (n3 - 0.5) * 0.35));
@@ -164,7 +166,7 @@ export default function RiverMirror({
   useEffect(() => {
     const m = mesh.current?.material as ShaderMaterial | undefined;
     if (!m) return;
-    m.uniforms.uColor.value.set("#4b5046").lerp(new Color("#0e1436"), dn.night);
+    m.uniforms.uColor.value.set("#4b5046").lerp(new Color("#080c1c"), dn.night);
     m.uniforms.uStrength.value = 0.8 + dn.night * 0.2;
     m.uniforms.uNight.value = dn.night;
     m.uniforms.uSunDir.value.set(...dn.sunDir);

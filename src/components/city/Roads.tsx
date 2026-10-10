@@ -13,6 +13,7 @@ const STRIPES = Math.floor((ROAD_HALF - 0.6) / 1.1);
 
 function LaneDashes() {
   const ref = useRef<InstancedMesh>(null);
+  const dn = useDayNight();
   const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const out: { x: number; z: number; rot: number }[] = [];
@@ -45,13 +46,14 @@ function LaneDashes() {
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <boxGeometry args={[0.28, 0.04, 2.2]} />
-      <meshStandardMaterial color="#e6d98a" roughness={0.8} />
+      <meshStandardMaterial color="#e6d98a" emissive="#ffb84a" emissiveIntensity={0.35 + dn.night * 1.3} roughness={0.8} toneMapped={false} />
     </instancedMesh>
   );
 }
 
 function EdgeLines() {
   const ref = useRef<InstancedMesh>(null);
+  const dn = useDayNight();
   const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const out: { x: number; z: number; rot: number; len: number }[] = [];
@@ -88,7 +90,7 @@ function EdgeLines() {
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <boxGeometry args={[0.18, 0.03, 1]} />
-      <meshStandardMaterial color="#d9d6cc" roughness={0.8} />
+      <meshStandardMaterial color="#d9d6cc" emissive="#49f2d6" emissiveIntensity={0.35 + dn.night * 1.3} roughness={0.8} toneMapped={false} />
     </instancedMesh>
   );
 }
