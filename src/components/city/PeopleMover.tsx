@@ -1,7 +1,7 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CatmullRomCurve3,
   type CanvasTexture,
@@ -84,6 +84,12 @@ function Pylons({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canvas
 }
 
 const GUIDEWAY_SEGMENTS = 160;
+const LED_GOLD = "#f3c46e";
+const LED_OFFSET = 0.77;
+
+function setLedGlow(mat: MeshStandardMaterial, night: number) {
+  mat.emissiveIntensity = night * 2.4;
+}
 
 function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: CanvasTexture }) {
   const joints = useRef<InstancedMesh>(null);
@@ -92,6 +98,11 @@ function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canv
   const railL = useRef<InstancedMesh>(null);
   const railR = useRef<InstancedMesh>(null);
   const tray = useRef<InstancedMesh>(null);
+  const leds = useRef<InstancedMesh>(null);
+  const dn = useDayNight();
+  const [led] = useState(() => new MeshStandardMaterial({ color: "#2a2620", emissive: LED_GOLD, emissiveIntensity: 0, toneMapped: false }));
+  useEffect(() => () => led.dispose(), [led]);
+  useEffect(() => setLedGlow(led, dn.night), [led, dn.night]);
   const dummy = useMemo(() => new Object3D(), []);
   const segLen = useMemo(() => curve.getLength() / GUIDEWAY_SEGMENTS, [curve]);
   useEffect(() => {
@@ -118,6 +129,15 @@ function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canv
     along(railL.current, -0.55, 0.72, 1.08);
     along(railR.current, 0.55, 0.72, 1.08);
     along(tray.current, -1.05, -0.1, 1.06);
+    fillInstances(leds.current, dummy, GUIDEWAY_SEGMENTS * 2, (i, d) => {
+      const u = (Math.floor(i / 2) + 0.5) / GUIDEWAY_SEGMENTS;
+      const side = i % 2 === 0 ? -LED_OFFSET : LED_OFFSET;
+      curve.getPointAt(u, p);
+      curve.getTangentAt(u, t);
+      d.position.set(p.x + t.z * side, p.y - 0.38, p.z - t.x * side);
+      d.rotation.y = Math.atan2(t.x, t.z);
+      d.scale.z = segLen * 1.08;
+    });
   }, [curve, dummy, segLen]);
   return (
     <group>
@@ -140,6 +160,9 @@ function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canv
       <instancedMesh ref={joints} args={[undefined, undefined, GUIDEWAY_SEGMENTS]}>
         <boxGeometry args={[2.3, 1.7, 0.5]} />
         <meshStandardMaterial color="#a39f96" map={concrete} roughness={1} />
+      </instancedMesh>
+      <instancedMesh ref={leds} args={[undefined, undefined, GUIDEWAY_SEGMENTS * 2]} material={led} name="people-mover-led">
+        <boxGeometry args={[0.06, 0.12, 1]} />
       </instancedMesh>
       <instancedMesh ref={walkway} args={[undefined, undefined, GUIDEWAY_SEGMENTS]}>
         <boxGeometry args={[0.7, 0.1, 1]} />
