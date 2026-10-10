@@ -859,6 +859,101 @@ body {
   white-space: nowrap;
   box-shadow: 0 0 40px color-mix(in srgb, var(--c) 35%, transparent);
   transform: scale(1.25);
+  position: relative;
+}
+.hotspot-label::before,
+.hotspot-label::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 0 solid var(--c);
+}
+.hotspot-label::before {
+  top: -7px;
+  left: -7px;
+  border-top-width: 1.5px;
+  border-left-width: 1.5px;
+}
+.hotspot-label::after {
+  right: -7px;
+  bottom: -7px;
+  border-right-width: 1.5px;
+  border-bottom-width: 1.5px;
+}
+
+.city-frame {
+  position: absolute;
+  inset: 6px;
+  z-index: 15;
+  pointer-events: none;
+  opacity: 0;
+}
+.city-root.is-live .city-frame {
+  opacity: 1;
+  transition: opacity 0.9s ease 1.4s;
+}
+@media (max-width: 640px) {
+  .city-frame {
+    display: none;
+  }
+}
+.city-frame i {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 0 solid color-mix(in srgb, var(--gold) 55%, transparent);
+}
+.city-frame i:nth-child(1) {
+  top: 0;
+  left: 0;
+  border-top-width: 1px;
+  border-left-width: 1px;
+}
+.city-frame i:nth-child(2) {
+  top: 0;
+  right: 0;
+  border-top-width: 1px;
+  border-right-width: 1px;
+}
+.city-frame i:nth-child(3) {
+  bottom: 0;
+  left: 0;
+  border-bottom-width: 1px;
+  border-left-width: 1px;
+}
+.city-frame i:nth-child(4) {
+  bottom: 0;
+  right: 0;
+  border-bottom-width: 1px;
+  border-right-width: 1px;
+}
+
+.city-readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 9px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+.city-readout::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+}
+@media (max-width: 640px) {
+  .city-readout {
+    display: none;
+  }
 }
 .hotspot-label strong {
   font-family: var(--font-serif), serif;

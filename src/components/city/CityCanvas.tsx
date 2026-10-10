@@ -18,6 +18,7 @@ const CityStage = dynamic(() => import("./CityStage"), { ssr: false });
 const PRESETS: TimePreset[] = ["auto", "day", "dusk", "night"];
 const OVERCAST_DEFAULT = 0.6;
 const DISTRICTS_HINT = "Five districts · Hover to preview · Click to fly in";
+const READOUT = `${DESTINATIONS.length} districts online · Sky lanes active`;
 
 function subscribeMinute(cb: () => void) {
   const id = setInterval(cb, 60_000);
@@ -218,6 +219,12 @@ export default function CityCanvas() {
       <CityContext.Provider value={api}>
         <div className={`city-root ${ready ? "is-live" : ""}`}>
           <CityStage onQuality={setQuality} onReady={() => setStageUp(true)} />
+          <div className="city-frame" aria-hidden>
+            <i />
+            <i />
+            <i />
+            <i />
+          </div>
 
           <nav aria-label="City districts" className="city-hud city-hud--districts">
             <span className="districts__hint">{hovered ? hovered.blurb : DISTRICTS_HINT}</span>
@@ -257,6 +264,7 @@ export default function CityCanvas() {
               <small>{labelFor(hour)}</small>
             </button>
             <span className="city-geo">Downtown Detroit · 42.33° N, 83.05° W</span>
+            <span className="city-readout">{READOUT}</span>
           </div>
 
           <div className="city-hud city-hud--pad">

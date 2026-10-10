@@ -26,6 +26,7 @@ const vertexShader = /* glsl */ `
   varying vec3 vWorld;
   varying vec3 vArch;
   varying vec3 vNormalL;
+  varying float vInstanced;
   #include <fog_pars_vertex>
 
   void main() {
@@ -34,9 +35,11 @@ const vertexShader = /* glsl */ `
       m = modelMatrix * instanceMatrix;
       vSeed = aSeed;
       vArch = aArch * uArchitecture;
+      vInstanced = 1.0;
     #else
       vSeed = uSeed;
       vArch = vec3(0.0);
+      vInstanced = 0.0;
     #endif
     vNormalL = normal;
     #ifdef USE_INSTANCING_COLOR
@@ -66,6 +69,7 @@ const vertexShader = /* glsl */ `
 const fragmentShader = /* glsl */ `
   uniform float uNight;
   uniform float uTime;
+  #define NEON_MIN_HEIGHT 24.0
   uniform vec3 uSunDir;
   uniform vec3 uSunColor;
   uniform float uSunIntensity;
@@ -91,6 +95,7 @@ const fragmentShader = /* glsl */ `
   varying float vLocalY;
   varying vec3 vWorld;
   varying vec3 vArch;
+  varying float vInstanced;
   varying vec3 vNormalL;
   #include <fog_pars_fragment>
 
@@ -349,6 +354,18 @@ const fragmentShader = /* glsl */ `
     vec3 roof = vColor * 0.55 * light * gravel;
     roof = mix(roof, facade * 1.05, parapet);
     col = mix(col, roof, vTop * step(0.5, n.y));
+
+    float neonPick = hash(vec2(vSeed * 7.3, 3.0));
+    float neonOn = step(NEON_MIN_HEIGHT, vSize.y) * step(0.65, neonPick) * (1.0 - uCylindrical) * vInstanced;
+    float stripWidth = max(0.22, length(cameraPosition - vWorld) * 0.0026);
+    float halfWidth = abs(vNormalL.x) > 0.5 ? vSize.z * 0.5 : vSize.x * 0.5;
+    float cornerStrip = step(halfWidth - abs(vFace.x), stripWidth) * (1.0 - vTop);
+    float crownStrip = step(vSize.y - stripWidth * 1.5, vLocalY) * (1.0 - vTop);
+    float roofStrip = step(min(rim.x, rim.y), stripWidth) * vTop;
+    float climb = smoothstep(0.9, 1.0, fract(vLocalY / max(vSize.y, 1.0) - uTime * 0.12 + vSeed));
+    vec3 neonCol = neonPick < 0.8 ? vec3(0.06, 0.9, 0.75) : neonPick < 0.9 ? vec3(1.0, 0.7, 0.25) : vec3(1.0, 0.2, 0.6);
+    float neon = max(max(cornerStrip, crownStrip), roofStrip) * neonOn;
+    col = mix(col, neonCol * mix(1.7, 2.4, uNight) * (1.0 + cornerStrip * climb * 1.5), neon);
 
     gl_FragColor = vec4(col, 1.0);
     #include <fog_fragment>

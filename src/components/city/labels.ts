@@ -270,6 +270,42 @@ export function wheatpastePosterTexture(headline: string, script: string, footer
   });
 }
 
+export function hologramTexture(kicker: string, headline: string, footer: string) {
+  const w = 1024;
+  const h = 512;
+  return cached(`hologram|${kicker}|${headline}|${footer}`, w, h, (ctx) => {
+    ctx.strokeStyle = "#ffffff";
+    ctx.fillStyle = "#ffffff";
+    ctx.lineWidth = 6;
+    ctx.globalAlpha = 0.35;
+    ctx.fillRect(16, 16, w - 32, h - 32);
+    ctx.globalAlpha = 1;
+    const corner = 70;
+    for (const [x, y, dx, dy] of [[16, 16, 1, 1], [w - 16, 16, -1, 1], [16, h - 16, 1, -1], [w - 16, h - 16, -1, -1]]) {
+      ctx.beginPath();
+      ctx.moveTo(x + dx * corner, y);
+      ctx.lineTo(x, y);
+      ctx.lineTo(x, y + dy * corner);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(40, 40, w - 80, h - 80);
+    ctx.globalAlpha = 1;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `${h * 0.09}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+    ctx.fillText(kicker.split("").join(" "), w / 2, h * 0.22, w * 0.8);
+    ctx.font = `${h * 0.32}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+    ctx.fillText(headline, w / 2, h * 0.52, w * 0.86);
+    ctx.fillRect(w * 0.3, h * 0.72, w * 0.4, 3);
+    ctx.font = `italic ${h * 0.085}px CityScript, Georgia, serif`;
+    ctx.fillText(footer, w / 2, h * 0.82, w * 0.8);
+    const bars = [0.4, 0.75, 0.55, 1, 0.65, 0.85, 0.5];
+    bars.forEach((b, i) => ctx.fillRect(70 + i * 16, h * 0.86 - b * 50, 9, b * 50));
+  });
+}
+
 export function ghostAdTexture(lines: string[], ground: string, ink: string) {
   const w = 512;
   const h = 320;
