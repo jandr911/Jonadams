@@ -77,14 +77,15 @@ function Smoke({ at, size = 0.5, drift = -1 }: { at: [number, number, number]; s
   const puffs = useRef<(Mesh | null)[]>([]);
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    puffs.current.forEach((m, i) => {
-      if (!m) return;
+    for (let i = 0; i < puffs.current.length; i++) {
+      const m = puffs.current[i];
+      if (!m) continue;
       const u = (t * 0.35 + i / 6) % 1;
       m.position.set(at[0] + drift * u * 6 + Math.sin(t + i) * 0.3, at[1] + u * 6, at[2] + Math.cos(t * 0.7 + i) * 0.4);
       const s = size * (0.6 + u * 2.2);
       m.scale.setScalar(s);
       (m.material as MeshStandardMaterial).opacity = (1 - u) * 0.35;
-    });
+    }
   });
   return (
     <group>
@@ -194,6 +195,7 @@ function Radar({ position, size = 1 }: { position: [number, number, number]; siz
 
 function Speedboat({ color, night }: { color: string; night: number }) {
   const hull = useMemo(() => hullGeometry(7, 2.2, 1.0, 0.3), []);
+  useEffect(() => () => hull.dispose(), [hull]);
   return (
     <group>
       <mesh geometry={hull}>
@@ -302,6 +304,7 @@ function Speedboat({ color, night }: { color: string; night: number }) {
 
 function Trawler({ night }: { night: number }) {
   const hull = useMemo(() => hullGeometry(11, 3.8, 1.7, 0.25, 0.1), []);
+  useEffect(() => () => hull.dispose(), [hull]);
   return (
     <group>
       <mesh geometry={hull}>
@@ -436,8 +439,11 @@ function Stay({ from, to }: { from: [number, number, number]; to: [number, numbe
 
 function Sailboat({ color, night }: { color: string; night: number }) {
   const hull = useMemo(() => hullGeometry(8, 2.4, 1.1, 0.3, 0.1), []);
+  useEffect(() => () => hull.dispose(), [hull]);
   const main = useMemo(() => sailGeometry(3.6, 8.2), []);
+  useEffect(() => () => main.dispose(), [main]);
   const jib = useMemo(() => sailGeometry(2.6, 6.4), []);
+  useEffect(() => () => jib.dispose(), [jib]);
   return (
     <group rotation={[0, 0, 0.1]}>
       <mesh geometry={hull}>
@@ -735,6 +741,7 @@ function Stage({ night }: { night: number }) {
 
 function Princess({ night }: { night: number }) {
   const hull = useMemo(() => hullGeometry(28, 8.6, 2.4, 0.18, 0.08), []);
+  useEffect(() => () => hull.dispose(), [hull]);
   const decks = [
     { y: 0, l: 25, w: 8.4 },
     { y: 2.8, l: 22, w: 7.6 },
@@ -899,6 +906,7 @@ function Portholes({ count, length, y, z }: { count: number; length: number; y: 
 
 function Laker({ night }: { night: number }) {
   const hull = useMemo(() => hullGeometry(96, 12, 5.2, 0.1, 0.05), []);
+  useEffect(() => () => hull.dispose(), [hull]);
   const posts = useRef<InstancedMesh>(null);
   const lamps = useRef<InstancedMesh>(null);
   useEffect(() => {
@@ -1105,6 +1113,7 @@ function Laker({ night }: { night: number }) {
 
 function JetSki({ color, night }: { color: string; night: number }) {
   const hull = useMemo(() => hullGeometry(2.6, 1.0, 0.6, 0.35, 0.05), []);
+  useEffect(() => () => hull.dispose(), [hull]);
   return (
     <group>
       <mesh geometry={hull}>
@@ -1141,29 +1150,115 @@ interface Craft {
   color: string;
   bob: number;
   weave: number;
+  min: number;
+  max: number;
+  returnZ?: number;
 }
 
-const NORTH_LANE = [RIVER_NEAR + 5.5, RIVER_NEAR + 7.5];
+interface Lane {
+  z: number;
+  speed: number;
+  min: number;
+  max: number;
+  returnZ?: number;
+}
+
+interface CraftPose {
+  x: number;
+  z: number;
+  yaw: number;
+  calm: number;
+}
+
+const WEAVE_EASE = 20;
+
+function easeFromEnds(s: number, straight: number) {
+  return Math.min(1, Math.min(s, straight - s) / WEAVE_EASE);
+}
+
+function laneLength(b: Craft) {
+  const straight = b.max - b.min;
+  if (b.returnZ === undefined) return straight;
+  return 2 * straight + Math.PI * Math.abs(b.returnZ - b.z);
+}
+
+function poseCraft(b: Craft, travelled: number, out: CraftPose) {
+  const straight = b.max - b.min;
+  const length = laneLength(b);
+  let s = ((travelled % length) + length) % length;
+  out.calm = 1;
+  if (b.returnZ === undefined) {
+    out.x = b.speed > 0 ? b.min + s : b.max - s;
+    out.z = b.z;
+    out.yaw = b.speed > 0 ? 0 : -Math.PI;
+    return;
+  }
+  const r = (b.returnZ - b.z) / 2;
+  const turn = Math.PI * r;
+  if (s < straight) {
+    out.x = b.min + s;
+    out.z = b.z;
+    out.yaw = 0;
+    out.calm = easeFromEnds(s, straight);
+    return;
+  }
+  s -= straight;
+  out.calm = 0;
+  if (s < turn) {
+    const a = s / r;
+    out.x = b.max + Math.sin(a) * r;
+    out.z = b.z + r - Math.cos(a) * r;
+    out.yaw = -a;
+    return;
+  }
+  s -= turn;
+  if (s < straight) {
+    out.x = b.max - s;
+    out.z = b.returnZ;
+    out.yaw = -Math.PI;
+    out.calm = easeFromEnds(s, straight);
+    return;
+  }
+  s -= straight;
+  const a = s / r;
+  out.x = b.min - Math.sin(a) * r;
+  out.z = b.returnZ - r + Math.cos(a) * r;
+  out.yaw = -Math.PI - a;
+}
+
+const CHANNEL = { min: -LOOP / 2, max: LOOP / 2 };
+const LANES = {
+  north: { z: RIVER_NEAR + 2.5, returnZ: RIVER_NEAR + 6, speed: 10, min: -480, max: 200 },
+  princess: { z: RIVER_FAR - 25, speed: 2.4, ...CHANNEL },
+  sail: { z: RIVER_FAR - 18.7, speed: -2, ...CHANNEL },
+  laker: { z: RIVER_FAR - 11, speed: 1.7, ...CHANNEL },
+} satisfies Record<string, Lane>;
+
+function inLane(lane: Lane, kind: Craft["kind"], slot: number, slots: number, extra: Partial<Craft> = {}): Craft {
+  const craft: Craft = { kind, z: lane.z, returnZ: lane.returnZ, speed: lane.speed, start: 0, color: "", bob: 0.12, weave: 0, min: lane.min, max: lane.max, ...extra };
+  craft.start = (laneLength(craft) * slot) / slots;
+  return craft;
+}
 
 function buildFleet(): Craft[] {
   const rand = mulberry32(17);
-  const out: Craft[] = [
-    { kind: "laker", z: RIVER_FAR - 15, speed: 1.7, start: -200, color: "", bob: 0, weave: 0 },
-    { kind: "princess", z: RIVER_FAR - 22, speed: 2.4, start: -380, color: "", bob: 0.12, weave: 0 },
+  const speedColor = () => pick(rand, ["#f4f1ea", "#1d2a6a", "#c8102e", "#49d2f2", "#ff4fa3"]);
+  const skiColor = () => pick(rand, ["#ffb02e", "#49d2f2", "#ff4fa3"]);
+  const sailColor = () => pick(rand, ["#f4f1ea", "#1d2a6a", "#2f6ea8"]);
+  return [
+    inLane(LANES.laker, "laker", 0, 3, { bob: 0 }),
+    inLane(LANES.laker, "trawler", 1, 3, { bob: 0.1 }),
+    inLane(LANES.laker, "trawler", 2, 3, { bob: 0.1 }),
+    inLane(LANES.princess, "princess", 0, 1),
+    inLane(LANES.sail, "sail", 0, 3, { color: sailColor(), bob: 0.16 }),
+    inLane(LANES.sail, "sail", 1, 3, { color: sailColor(), bob: 0.16 }),
+    inLane(LANES.sail, "sail", 2, 3, { color: sailColor(), bob: 0.16 }),
+    inLane(LANES.north, "speed", 0, 5, { color: speedColor(), bob: 0.14 }),
+    inLane(LANES.north, "jetski", 1, 5, { color: skiColor(), bob: 0.2, weave: 1.2 }),
+    inLane(LANES.north, "speed", 2, 5, { color: speedColor(), bob: 0.14 }),
+    inLane(LANES.north, "jetski", 3, 5, { color: skiColor(), bob: 0.2, weave: 1.2 }),
+    inLane(LANES.north, "speed", 4, 5, { color: speedColor(), bob: 0.14 }),
   ];
-  for (let i = 0; i < 3; i++) {
-    out.push({ kind: "speed", z: i === 0 ? range(rand, NORTH_LANE[0], NORTH_LANE[1]) : range(rand, RIVER_FAR - 25, RIVER_FAR - 9), speed: range(rand, 7, 10) * (rand() < 0.5 ? 1 : -1), start: range(rand, -LOOP / 2, LOOP / 2), color: pick(rand, ["#f4f1ea", "#1d2a6a", "#c8102e", "#49d2f2", "#ff4fa3"]), bob: 0.14, weave: 0 });
-  }
-  for (let i = 0; i < 2; i++) {
-    out.push({ kind: "trawler", z: range(rand, RIVER_FAR - 25, RIVER_FAR - 10), speed: range(rand, 3, 4.2) * (rand() < 0.5 ? 1 : -1), start: range(rand, -LOOP / 2, LOOP / 2), color: "", bob: 0.1, weave: 0 });
-  }
-  for (let i = 0; i < 3; i++) {
-    out.push({ kind: "sail", z: range(rand, RIVER_FAR - 27, RIVER_FAR - 11), speed: range(rand, 1.6, 2.6) * (rand() < 0.5 ? 1 : -1), start: range(rand, -LOOP / 2, LOOP / 2), color: pick(rand, ["#f4f1ea", "#1d2a6a", "#2f6ea8"]), bob: 0.16, weave: 0 });
-  }
-  for (let i = 0; i < 2; i++) {
-    out.push({ kind: "jetski", z: range(rand, NORTH_LANE[0], NORTH_LANE[1]), speed: range(rand, 11, 14) * (rand() < 0.5 ? 1 : -1), start: range(rand, -LOOP / 2, LOOP / 2), color: pick(rand, ["#ffb02e", "#49d2f2", "#ff4fa3"]), bob: 0.2, weave: 1.2 });
-  }
-  return out;
 }
 
 export default function Watercraft() {
@@ -1171,18 +1266,23 @@ export default function Watercraft() {
   const [fleet] = useState(() => buildFleet());
   const refs = useRef<(Group | null)[]>([]);
   const root = useRef<Group>(null);
+  const [pose] = useState<CraftPose>(() => ({ x: 0, z: 0, yaw: 0, calm: 1 }));
   useEffect(() => enableReflection(root.current), []);
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    fleet.forEach((b, i) => {
+    for (let i = 0; i < fleet.length; i++) {
+      const b = fleet[i];
       const g = refs.current[i];
-      if (!g) return;
-      const x = ((((b.start + t * b.speed) % LOOP) + LOOP * 1.5) % LOOP) - LOOP / 2;
-      const weave = b.weave ? Math.sin(t * 0.9 + i) * b.weave : 0;
-      g.position.set(x, WATER_Y + 0.55 + Math.sin(t * 1.1 + i) * b.bob, b.z + weave);
-      const heading = b.weave ? Math.atan2(Math.cos(t * 0.9 + i) * b.weave * 0.9, b.speed) : 0;
-      g.rotation.set(Math.sin(t * 0.9 + i) * b.bob * 0.12, (b.speed > 0 ? 0 : Math.PI) - heading, Math.sin(t * 0.7 + i) * b.bob * 0.15 + (b.weave ? -Math.cos(t * 0.9 + i) * 0.2 : 0));
-    });
+      if (!g) continue;
+      poseCraft(b, b.start + t * Math.abs(b.speed), pose);
+      const sway = b.weave * pose.calm;
+      const weaving = sway > 0;
+      const weave = weaving ? Math.sin(t * 0.9 + i) * sway : 0;
+      g.position.set(pose.x, WATER_Y + 0.55 + Math.sin(t * 1.1 + i) * b.bob, pose.z + weave);
+      const heading = weaving ? Math.atan2(Math.cos(t * 0.9 + i) * sway * 0.9, Math.abs(b.speed)) : 0;
+      const along = Math.cos(pose.yaw) >= 0 ? 1 : -1;
+      g.rotation.set(Math.sin(t * 0.9 + i) * b.bob * 0.12, pose.yaw - along * heading, Math.sin(t * 0.7 + i) * b.bob * 0.15 + (weaving ? -Math.cos(t * 0.9 + i) * 0.2 * pose.calm : 0));
+    }
   });
   return (
     <group ref={root}>

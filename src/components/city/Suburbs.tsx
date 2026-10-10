@@ -100,7 +100,7 @@ function placeFeatureBlock(kind: BlockKind, cx: number, cz: number, rand: () => 
     f.lawns.push(placed(cx, 0.02, cz, PAD - 2, 1, PAD - 2));
     f.fields.push(placed(cx + 9, 0.04, cz + 9, 9, 1, 9));
     f.boxes.push(placed(cx - 12, 1.5, cz - 12, 6, 3, 6, 0, new Color("#5a4636")));
-    f.roofs.push(placed(cx - 12, 3, cz - 12, 1.3, 0.8, 1.3, Math.PI / 4, new Color("#3a3230")));
+    f.roofs.push(placed(cx - 12, 3, cz - 12, 1.3, 0.8, 1.3, 0, new Color("#3a3230")));
     for (let k = 0; k < 16; k++) trees.push({ x: cx + range(rand, -half + 4, half - 4), z: cz + range(rand, -half + 4, half - 4), s: range(rand, 1.1, 1.9) });
     return;
   }
@@ -108,9 +108,9 @@ function placeFeatureBlock(kind: BlockKind, cx: number, cz: number, rand: () => 
     const body = new Color(pick(rand, BOX_COLORS.church));
     f.lawns.push(placed(cx, 0.02, cz, PAD - 2, 1, PAD - 2));
     f.boxes.push(placed(cx - 6, 4.5, cz, 14, 9, 24, 0, body));
-    f.roofs.push(placed(cx - 6, 9, cz, 2.05, 1.6, 3.5, Math.PI / 4, new Color("#3a3230")));
+    f.roofs.push(placed(cx - 6, 9, cz, 2.05, 1.6, 3.5, 0, new Color("#3a3230")));
     f.boxes.push(placed(cx - 6, 8, cz + 10.5, 3.2, 16, 3.2, 0, body));
-    f.roofs.push(placed(cx - 6, 16, cz + 10.5, 0.5, 2.4, 0.5, Math.PI / 4, new Color("#2c3038")));
+    f.roofs.push(placed(cx - 6, 16, cz + 10.5, 0.5, 2.4, 0.5, 0, new Color("#2c3038")));
     f.lots.push(placed(cx + 13, 0.03, cz, 22, 1, 30));
     for (let k = 0; k < 5; k++) trees.push({ x: cx + range(rand, -half + 3, -14), z: cz + range(rand, -half + 3, half - 3), s: range(rand, 1, 1.6) });
     return;
@@ -166,7 +166,7 @@ const WATER_TOWER = (() => {
   const legs = [[-2, -2], [2, -2], [-2, 2], [2, 2]].map(([x, z]) => new CylinderGeometry(0.18, 0.22, 14, 6).translate(x, 7, z));
   return mergeParts([tank, cap, ...legs], "water tower");
 })();
-const FEATURE_ROOF = new ConeGeometry(4.9, 2.8, 4).translate(0, 1.4, 0);
+const FEATURE_ROOF = new ConeGeometry(4.9, 2.8, 4).rotateY(Math.PI / 4).translate(0, 1.4, 0);
 const FLAT_PLANE = new PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
 const FIELD_DISC = new CircleGeometry(1, 20).rotateX(-Math.PI / 2);
 
@@ -199,6 +199,28 @@ interface Bank {
   h: number;
   d: number;
   color: Color;
+}
+
+const FREEWAY_X = OUTER_HALF_X + 42;
+const FREEWAY_Z0 = -EXTENT;
+const FREEWAY_Z1 = CITY_HALF_Z - 10;
+const FREEWAY_Y = 7;
+const FREEWAY_CLEAR = 12;
+
+function onFreeway(x0: number, z: number) {
+  return x0 < FREEWAY_X + FREEWAY_CLEAR && x0 + STREET > FREEWAY_X - FREEWAY_CLEAR && z < FREEWAY_Z1 + FREEWAY_CLEAR;
+}
+
+function freewayVerge(x0: number, z0: number, z1: number, rand: () => number, trees: { x: number; z: number; s: number }[], banks: Bank[]) {
+  const west = FREEWAY_X - FREEWAY_CLEAR - (x0 + 2);
+  const east = x0 + STREET - 2 - (FREEWAY_X + FREEWAY_CLEAR);
+  banks.push(lawnRect(x0 + 2 + west / 2, z0, z1, west));
+  banks.push(lawnRect(FREEWAY_X + FREEWAY_CLEAR + east / 2, z0, z1, east));
+  for (let k = 0; k < 6; k++) {
+    const onWest = k % 2 === 0;
+    const x = onWest ? x0 + 4 + rand() * (west - 4) : FREEWAY_X + FREEWAY_CLEAR + 2 + rand() * (east - 4);
+    trees.push({ x, z: range(rand, z0 + 3, z1 - 3), s: range(rand, 1, 1.8) });
+  }
 }
 
 function insideDowntown(x: number, z: number) {
@@ -242,7 +264,9 @@ function buildRiverfront(rand: () => number, trees: { x: number; z: number; s: n
   const path = (x: number, z: number, w: number) => banks.push({ x, y: 0.2, z, w, h: 0.5, d: 3, color: PATH });
   for (let x = -EXTENT; x < EXTENT; x += STREET) {
     const cx = x + STREET / 2;
-    if (!insideDowntown(cx, nearBank.z0)) {
+    if (!insideDowntown(cx, nearBank.z0) && onFreeway(x, nearBank.z0)) {
+      freewayVerge(x, nearBank.z0, nearBank.z1, rand, trees, banks);
+    } else if (!insideDowntown(cx, nearBank.z0)) {
       banks.push(lawnRect(cx, nearBank.z0, nearBank.z1, STREET - 4));
       let built = false;
       if (cx > 0 && cx < LOFT_REACH) {
@@ -301,6 +325,10 @@ function buildHouses(): {
           if (Math.abs(tree.x - AMBASSADOR_X) > AMBASSADOR_CLEAR_HALF + 3 || tree.z > AMBASSADOR_RAMP_Z[1] + 6) trees.push(tree);
         }
         banks.push(lawnRect(cx, cz - (STREET - 4) / 2, cz + (STREET - 4) / 2, STREET - 4));
+        continue;
+      }
+      if (onFreeway(x, cz)) {
+        freewayVerge(x, cz - (STREET - 4) / 2, cz + (STREET - 4) / 2, rand, trees, banks);
         continue;
       }
       const windsorCore = cz >= RIVER_FAR + 150 && cz < RIVER_FAR + 330 && Math.abs(cx) < 260;
@@ -699,10 +727,6 @@ function SuburbStreets() {
   );
 }
 
-const FREEWAY_X = OUTER_HALF_X + 42;
-const FREEWAY_Z0 = -EXTENT;
-const FREEWAY_Z1 = CITY_HALF_Z - 10;
-const FREEWAY_Y = 7;
 
 interface FreewayCar {
   lane: number;
@@ -901,7 +925,6 @@ function StoreSigns({ spot }: { spot: SignSpot }) {
   const dn = useDayNight();
   const mat = useRef<MeshStandardMaterial>(null);
   const tex = useMemo(() => labelTexture(spot.text, { width: 512, height: 112, bg: "#1d1d3f", fg: "#ffb02e", border: "#ffb02e", size: 60 }), [spot.text]);
-  useEffect(() => () => tex.dispose(), [tex]);
   useEffect(() => {
     if (mat.current) mat.current.emissiveIntensity = 0.1 + dn.night * 1.1;
   }, [dn]);

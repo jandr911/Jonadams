@@ -6,7 +6,7 @@ import { AdditiveBlending, BoxGeometry, Color, Group, InstancedMesh, MeshBasicMa
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import { gradientColors } from "./instancing";
-import { CITY_HALF_Z, LANE_OFFSET, OUTER_COLS, OUTER_HALF_X, OUTER_MIN_Z, PITCH, ROAD_HALF, WOODWARD_INDEX, lightIsGreen, outerRoadLinesX, outerRoadLinesZ } from "./layout";
+import { CITY_HALF_Z, LANE_OFFSET, MEDIAN_LANE_OFFSET, OUTER_COLS, OUTER_HALF_X, OUTER_MIN_Z, PITCH, ROAD_HALF, WOODWARD_INDEX, isMedianLine, lightIsGreen, outerRoadLinesX, outerRoadLinesZ } from "./layout";
 import { mulberry32, pick, range } from "./rng";
 import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
 import { VEHICLE_SPECS, type VehicleKind } from "./vehicles";
@@ -90,6 +90,10 @@ function laneKey(axis: "x" | "z", line: number, dir: 1 | -1) {
   return `${axis}|${line}|${dir}`;
 }
 
+function laneOffset(axis: "x" | "z", line: number) {
+  return isMedianLine(axis === "z" ? "x" : "z", line) ? MEDIAN_LANE_OFFSET : LANE_OFFSET;
+}
+
 function buildWorld(): World {
   const rand = mulberry32(77);
   const cars: Car[] = [];
@@ -109,7 +113,7 @@ function buildWorld(): World {
       axis,
       line,
       lineIndex,
-      lane: -dir * LANE_OFFSET,
+      lane: -dir * laneOffset(axis, line),
       dir,
       along: range(rand, min, max),
       speed: kind === "bus" ? range(rand, 5, 7) : kind === "police" ? range(rand, 9, 14) : range(rand, 7, 13),
@@ -260,7 +264,8 @@ function stepWorld(w: World, time: number) {
   for (const c of w.cars) markOccupied(w, c.axis, c.lineIndex, c.along, c.len);
   for (const t of w.trams) markOccupied(w, "z", WOODWARD_OUTER, t.along, TRAM_LEN);
   for (const t of w.trams) stepTram(w, t, dt, time);
-  w.cars.forEach((c, i) => {
+  for (let i = 0; i < w.cars.length; i++) {
+    const c = w.cars[i];
     const min = c.axis === "z" ? Z_ROAD_MIN : X_ROAD_MIN;
     const max = c.axis === "z" ? Z_ROAD_MAX : X_ROAD_MAX;
     let target = c.speed;
@@ -276,7 +281,7 @@ function stepWorld(w: World, time: number) {
       c.vel = 0;
       clearEntry(w.lanes[i], c);
     }
-  });
+  }
 }
 
 function clearEntry(lane: Car[], c: Car) {

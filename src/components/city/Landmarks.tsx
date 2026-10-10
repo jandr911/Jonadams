@@ -257,8 +257,8 @@ function ClubEntrance() {
         <boxGeometry args={[8, 0.12, 1.2]} />
         <meshStandardMaterial color="#8a8a98" roughness={0.9} />
       </mesh>
-      <mesh position={[0, 0.31, 2.8]}>
-        <boxGeometry args={[3.2, 0.05, 7]} />
+      <mesh position={[0, 0.31, 0.8]}>
+        <boxGeometry args={[3.2, 0.05, 2.6]} />
         <meshStandardMaterial color="#c8102e" roughness={0.95} />
       </mesh>
       <mesh position={[0, 0.2, -1.2]}>
@@ -274,7 +274,7 @@ function ClubEntrance() {
         <meshStandardMaterial ref={glowMat} color="#fff6d8" emissive={GOLD_LIGHT} emissiveIntensity={0.2} toneMapped={false} />
       </mesh>
       {[-6.6, 6.6].map((x) => (
-        <mesh key={x} position={[x, 3, 4.6]}>
+        <mesh key={x} position={[x, 3, 1.4]}>
           <cylinderGeometry args={[0.14, 0.14, 6.1, 8]} />
           <meshStandardMaterial color={GOLD} metalness={0.7} roughness={0.3} />
         </mesh>
@@ -570,7 +570,7 @@ const MC_FRONT = 10;
 type Box = { x: number; y: number; z: number; sx: number; sy: number; sz: number };
 const MC_TRIM: Box[] = [
   ...MC_ARCH_X.flatMap((ax) => [-1, 1].map((s) => ({ x: ax + s * 3.1, y: 5.2, z: MC_FRONT + 0.15, sx: 0.6, sy: 6.6, sz: 0.5 }))),
-  ...MC_ARCH_X.map((ax) => ({ x: ax, y: 11.5, z: MC_FRONT + 0.2, sx: 0.8, sy: 1.1, sz: 0.5 })),
+  ...MC_ARCH_X.map((ax) => ({ x: ax, y: 8.95, z: MC_FRONT + 0.3, sx: 0.8, sy: 1, sz: 0.6 })),
   ...MC_COLUMN_X.flatMap((cx) => [
     { x: cx, y: 0.25, z: MC_FRONT + 0.6, sx: 1.2, sy: 0.5, sz: 1.2 },
     { x: cx, y: 10.35, z: MC_FRONT + 0.6, sx: 1.1, sy: 0.5, sz: 1.1 },
@@ -578,9 +578,9 @@ const MC_TRIM: Box[] = [
   { x: 0, y: 11.7, z: MC_FRONT + 0.6, sx: 27.4, sy: 2.2, sz: 1.3 },
 ];
 const MC_MUNTINS: Box[] = MC_ARCH_X.flatMap((ax) => [
-  { x: ax, y: 5.2, z: MC_FRONT + 0.12, sx: 0.12, sy: 6.6, sz: 0.3 },
-  { x: ax, y: 4.2, z: MC_FRONT + 0.12, sx: 5.4, sy: 0.12, sz: 0.3 },
-  { x: ax, y: 7.2, z: MC_FRONT + 0.12, sx: 5.4, sy: 0.12, sz: 0.3 },
+  { x: ax, y: 5.2, z: MC_FRONT + 0.32, sx: 0.12, sy: 6.6, sz: 0.3 },
+  { x: ax, y: 4.2, z: MC_FRONT + 0.32, sx: 5.4, sy: 0.12, sz: 0.3 },
+  { x: ax, y: 7.2, z: MC_FRONT + 0.32, sx: 5.4, sy: 0.12, sz: 0.3 },
 ]);
 const MC_BALUSTER_COUNT = 25;
 
@@ -835,7 +835,7 @@ const CAMPUS_TREES = plantTrees(
 );
 
 function CampusMartius() {
-  const [x, z] = blockCenter(4, 4);
+  const [x, z] = blockCenter(4, 2);
   const jet = useRef<Mesh>(null);
   useFrame(({ clock }) => {
     if (jet.current) jet.current.scale.y = 0.8 + Math.sin(clock.elapsedTime * 3) * 0.2;
@@ -900,7 +900,7 @@ function Guardian() {
 }
 
 function AllyDetroitCenter() {
-  const [x, z] = blockCenter(5, 3);
+  const [x, z] = blockCenter(4, 4);
   return (
     <Landmark name="Ally Detroit Center" note="1993 · twin Flemish spires" position={[x, PAD, z]} labelHeight={80}>
       <WindowedBox w={17} h={54} d={17} color="#8c7a68" winSize={[1.7, 2.2]} seed={121} cool="#e8f4ff" />
@@ -976,7 +976,7 @@ function DavidStott() {
 }
 
 function CadillacTower() {
-  const [x, z] = blockCenter(5, 4);
+  const [x, z] = blockCenter(5, 2);
   return (
     <Landmark name="Cadillac Tower" note="1927 · 40 storeys" position={[x, PAD, z]} labelHeight={60}>
       <WindowedBox w={10} h={46} d={10} color="#b89a7a" winSize={[1.5, 2.2]} seed={151} />
@@ -998,7 +998,7 @@ function CadillacTower() {
 
 function Fisher() {
   const dn = useDayNight();
-  const [x, z] = blockCenter(3, 0);
+  const [x, z] = blockCenter(3, -6);
   const roof = useRef<MeshStandardMaterial>(null);
   useEffect(() => {
     if (roof.current) roof.current.emissiveIntensity = dn.night * 1.1;
@@ -1018,12 +1018,15 @@ function Fisher() {
   );
 }
 
+function setStadiumGlow(mat: MeshStandardMaterial, night: number) {
+  mat.emissiveIntensity = 0.3 + night * 4;
+}
+
 function StadiumLights({ radius, height, count }: { radius: number; height: number; count: number }) {
   const dn = useDayNight();
-  const mat = useRef<MeshStandardMaterial>(null);
-  useEffect(() => {
-    if (mat.current) mat.current.emissiveIntensity = 0.3 + dn.night * 4;
-  }, [dn]);
+  const [lamp] = useState(() => new MeshStandardMaterial({ color: "#fff6d8", emissive: "#fff2c0", emissiveIntensity: 3, toneMapped: false }));
+  useEffect(() => () => lamp.dispose(), [lamp]);
+  useEffect(() => setStadiumGlow(lamp, dn.night), [lamp, dn.night]);
   return (
     <group>
       {Array.from({ length: count }).map((_, i) => {
@@ -1034,9 +1037,8 @@ function StadiumLights({ radius, height, count }: { radius: number; height: numb
               <cylinderGeometry args={[0.2, 0.3, height, 6]} />
               <meshStandardMaterial color="#5a5a78" />
             </mesh>
-            <mesh position={[0, height + 0.4, 0]} rotation={[0, -a, 0]}>
+            <mesh position={[0, height + 0.4, 0]} rotation={[0, -a, 0]} material={lamp}>
               <boxGeometry args={[3.2, 1.6, 0.4]} />
-              <meshStandardMaterial ref={i === 0 ? mat : undefined} color="#fff6d8" emissive="#fff2c0" emissiveIntensity={3} toneMapped={false} />
             </mesh>
           </group>
         );
@@ -1095,7 +1097,7 @@ function FordField() {
 }
 
 function LittleCaesarsArena() {
-  const [x, z] = blockCenter(4, 0);
+  const [x, z] = blockCenter(3, 0);
   return (
     <Landmark name="Little Caesars Arena" note="Red Wings · Pistons" position={[x, PAD, z]} labelHeight={26}>
       <mesh position={[0, 7, 0]}>
@@ -1121,7 +1123,7 @@ const MILLIKEN_TREES = plantTrees(
 );
 
 function MillikenLighthouse() {
-  const [x, z] = blockCenter(7, 5);
+  const [x, z] = blockCenter(8, 5);
   const beam = useRef<Group>(null);
   useFrame(({ clock }) => {
     if (beam.current) beam.current.rotation.y = clock.elapsedTime * 1.2;
@@ -1160,7 +1162,7 @@ function MillikenLighthouse() {
 }
 
 function Carousel() {
-  const [x, z] = blockCenter(8, 5);
+  const [x, z] = blockCenter(7, 5);
   const spin = useRef<Group>(null);
   useFrame(({ clock }) => {
     if (spin.current) spin.current.rotation.y = clock.elapsedTime * 0.4;

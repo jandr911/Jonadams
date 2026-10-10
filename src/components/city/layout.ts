@@ -3,6 +3,7 @@ export const ROAD = 11;
 export const PITCH = BLOCK + ROAD;
 export const ROAD_HALF = ROAD / 2;
 export const LANE_OFFSET = 1.3;
+export const MEDIAN_LANE_OFFSET = 2.4;
 export const KERB_PARK_OFFSET = 2.2;
 export const CROSSWALK_OFFSET = ROAD_HALF + 1.1;
 export const CORNER_OFFSET = ROAD_HALF + 0.7;
@@ -14,6 +15,8 @@ export const CITY_HALF_Z = (ROWS * PITCH) / 2;
 
 export const RIVER_NEAR = CITY_HALF_Z + 12;
 export const RIVER_FAR = RIVER_NEAR + 70;
+
+export const CAMERA_CEILING = 250;
 
 export const AMBASSADOR_X = -186;
 export const AMBASSADOR_CLEAR_HALF = 9;
@@ -106,10 +109,20 @@ export function roadLinesX(): number[] {
   return xs;
 }
 
+export const PEOPLE_MOVER_X = [2, 7];
+export const PEOPLE_MOVER_Z = [1, 5];
+
 export function roadLinesZ(): number[] {
   const zs: number[] = [];
   for (let r = 0; r <= ROWS; r++) zs.push(-CITY_HALF_Z + r * PITCH);
   return zs;
+}
+
+const MEDIAN_X = PEOPLE_MOVER_X.map((i) => roadLinesX()[i]);
+const MEDIAN_Z = PEOPLE_MOVER_Z.map((i) => roadLinesZ()[i]);
+
+export function isMedianLine(axis: "x" | "z", line: number) {
+  return (axis === "x" ? MEDIAN_X : MEDIAN_Z).some((m) => Math.abs(m - line) < 0.01);
 }
 
 export interface Destination {
