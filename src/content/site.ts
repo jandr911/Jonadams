@@ -17,6 +17,14 @@ export const MUSIC = {
   title: "",
 };
 
+export const CITY_FALLBACK = "This browser can't draw the 3D city. The districts below still take you everywhere.";
+
+export const ALTER_EGO = {
+  name: "",
+  art: { standing: "/alter-ego/standing.png", walking: "/alter-ego/walking.png" },
+  note: "Jonathan Adams' alter ego",
+};
+
 export const DESCRIPTION = "Step into the world of Jonathan Adams. Music, art, and the creatives of Detroit.";
 
 export const SHARE_IMAGE = {

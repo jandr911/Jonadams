@@ -6,6 +6,8 @@ import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Color, InstancedMesh, PMREMGenerator, Scene as ThreeScene, Texture } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import Aircraft from "./Aircraft";
+import AlterEgo from "./AlterEgo";
+import StageBoundary from "./StageBoundary";
 import Buildings from "./Buildings";
 import CameraRig from "./CameraRig";
 import { useCity } from "./CityContext";
@@ -28,6 +30,8 @@ import Steam from "./Steam";
 import Traffic from "./Traffic";
 import { TreeWind } from "./TreeStand";
 import Watercraft from "./Watercraft";
+
+function ignoreFailure() {}
 
 function applyEnvironment(scene: ThreeScene, tex: Texture | null) {
   scene.environment = tex;
@@ -119,6 +123,11 @@ export default function Scene({ onReady }: { onReady: () => void }) {
         <PeopleMover />
         <Traffic />
         <Aircraft />
+        <StageBoundary name="The alter ego" fallback={null} onFail={ignoreFailure}>
+          <Suspense fallback={null}>
+            <AlterEgo flyBy={extras} />
+          </Suspense>
+        </StageBoundary>
         {extras && <SkyTraffic />}
         {extras && <HoloBillboards />}
         <Watercraft />
