@@ -152,6 +152,7 @@ function LightPools({ items }: { items: { x: number; z: number }[] }) {
   const poolMat = useRef<MeshBasicMaterial>(null);
   const dummy = useMemo(() => new Object3D(), []);
   const texture = useMemo(() => makePoolTexture(), []);
+  useEffect(() => () => texture.dispose(), [texture]);
   useEffect(() => {
     const m = ref.current;
     if (!m) return;
@@ -168,7 +169,7 @@ function LightPools({ items }: { items: { x: number; z: number }[] }) {
     if (poolMat.current) poolMat.current.opacity = 0.55 * dn.night;
   }, [dn]);
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
+    <instancedMesh ref={ref} args={[undefined, undefined, items.length]} visible={dn.night > 0.01}>
       <planeGeometry args={[1, 1]} />
       <meshBasicMaterial ref={poolMat} map={texture} transparent opacity={0.5} depthWrite={false} blending={AdditiveBlending} toneMapped={false} />
     </instancedMesh>
