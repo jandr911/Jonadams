@@ -15,6 +15,7 @@ import {
   RIVER_NEAR,
   WOODWARD_INDEX,
   allBlocks,
+  isMedianLine,
   lightIsAmber,
   lightIsGreen,
   blockCenter,
@@ -99,7 +100,7 @@ function TrafficLights() {
       </instancedMesh>
       <instancedMesh ref={lamps} args={[undefined, undefined, items.length]} frustumCulled={false}>
         <sphereGeometry args={[0.15, 8, 6]} />
-        <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={1} toneMapped={false} />
+        <meshBasicMaterial color="#ffffff" toneMapped={false} />
       </instancedMesh>
     </group>
   );
@@ -171,7 +172,8 @@ function Gulls() {
     const cx = Math.sin(t * 0.05) * 260;
     const cz = RIVER_NEAR + 20 + Math.cos(t * 0.05) * 30;
     const heading = Math.cos(t * 0.05) > 0 ? 0 : Math.PI;
-    flock.forEach((g, i) => {
+    for (let i = 0; i < flock.length; i++) {
+      const g = flock[i];
       const flap = Math.sin(t * 9 + g.flap) * 0.7;
       const y = 26 + g.oy + Math.sin(t * g.speed + g.flap) * 1.2;
       dummy.position.set(cx + g.ox, y, cz + g.oz);
@@ -185,7 +187,7 @@ function Gulls() {
       dummy.rotation.set(0, heading + Math.PI / 2, -flap);
       dummy.updateMatrix();
       r.setMatrixAt(i, dummy.matrix);
-    });
+    }
     b.instanceMatrix.needsUpdate = true;
     l.instanceMatrix.needsUpdate = true;
     r.instanceMatrix.needsUpdate = true;
@@ -208,7 +210,7 @@ function Gulls() {
 const ROOF_SIGNS = [
   { text: "MOTOR CITY", bg: "#e6dbc2", fg: "#8f2a22", block: [1, 2] as [number, number] },
   { text: "313", bg: "#1f2a3a", fg: "#e6dbc2", block: [7, 3] as [number, number] },
-  { text: "WOODWARD", bg: "#2f4a3a", fg: "#e6dbc2", block: [4, 2] as [number, number] },
+  { text: "WOODWARD", bg: "#2f4a3a", fg: "#e6dbc2", block: [4, 3] as [number, number] },
   { text: "BUILT IN DETROIT", bg: "#e6dbc2", fg: "#1f1d1b", block: [6, 3] as [number, number] },
   { text: "HITSVILLE", bg: "#1f3a6a", fg: "#f4f1ea", block: [1, 1] as [number, number] },
   { text: "EASTERN MARKET", bg: "#8f2a22", fg: "#e6dbc2", block: [8, 2] as [number, number] },
@@ -365,15 +367,14 @@ function SatelliteDishes() {
   const items = useMemo(() => {
     const rand = mulberry32(31);
     const out: { x: number; y: number; z: number; rot: number }[] = [];
-    for (const { c, r, outer } of allBlocks()) {
-      {
-        if (!outer && RESERVED_BLOCKS.has(`${c},${r}`)) continue;
-        const [bx, bz] = blockCenter(c, r);
-        const n = 2 + Math.floor(rand() * 4);
-        for (let k = 0; k < n; k++) {
-          const side = rand() < 0.5 ? 1 : -1;
-          out.push({ x: bx + (rand() - 0.5) * (BLOCK - 6), y: 4 + rand() * 12, z: bz + side * (BLOCK / 2 - 1.7), rot: side > 0 ? 0 : Math.PI });
-        }
+    for (const { c, r } of allBlocks()) {
+      const reserved = RESERVED_BLOCKS.has(`${c},${r}`);
+      const [bx, bz] = blockCenter(c, r);
+      const n = 2 + Math.floor(rand() * 4);
+      for (let k = 0; k < n; k++) {
+        const side = rand() < 0.5 ? 1 : -1;
+        const item = { x: bx + (rand() - 0.5) * (BLOCK - 6), y: 4 + rand() * 12, z: bz + side * (BLOCK / 2 - 1.7), rot: side > 0 ? 0 : Math.PI };
+        if (!reserved) out.push(item);
       }
     }
     return out;
@@ -405,18 +406,23 @@ function buildParked() {
   const kinds: VehicleKind[] = ["sedan", "sedan", "sedan", "suv", "suv", "pickup", "van"];
   for (const { c, r, outer } of allBlocks()) {
     const [bx, bz] = blockCenter(c, r);
+    const landmark = RESERVED_BLOCKS.has(`${c},${r}`);
     const n = outer ? 1 + Math.floor(rand() * 2) : 2 + Math.floor(rand() * 4);
     for (let k = 0; k < n; k++) {
       const side = rand() < 0.5 ? 1 : -1;
       const t = range(rand, -BLOCK / 2 + 3, BLOCK / 2 - 3);
       const vertical = rand() < 0.5;
       const e = BLOCK / 2 + KERB_PARK_OFFSET;
-      slots.push({
+      const slot = {
         x: vertical ? bx + side * e : bx + t,
         z: vertical ? bz + t : bz + side * e,
         rot: (vertical ? 0 : Math.PI / 2) + (rand() < 0.5 ? Math.PI : 0),
-      });
-      items.push({ kind: pick(rand, kinds), color: new Color(pick(rand, colors)) });
+      };
+      const item = { kind: pick(rand, kinds), color: new Color(pick(rand, colors)) };
+      const underGuideway = vertical ? isMedianLine("x", bx + (side * PITCH) / 2) : isMedianLine("z", bz + (side * PITCH) / 2);
+      if (landmark || underGuideway) continue;
+      slots.push(slot);
+      items.push(item);
     }
   }
   return { slots, items };

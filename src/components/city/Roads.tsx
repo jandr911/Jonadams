@@ -13,6 +13,7 @@ const STRIPES = Math.floor((ROAD_HALF - 0.6) / 1.1);
 
 function LaneDashes() {
   const ref = useRef<InstancedMesh>(null);
+  const dn = useDayNight();
   const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const out: { x: number; z: number; rot: number }[] = [];
@@ -45,13 +46,14 @@ function LaneDashes() {
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <boxGeometry args={[0.28, 0.04, 2.2]} />
-      <meshStandardMaterial color="#e6d98a" roughness={0.8} />
+      <meshStandardMaterial color="#e6d98a" emissive="#ffb84a" emissiveIntensity={0.35 + dn.night * 1.3} roughness={0.8} />
     </instancedMesh>
   );
 }
 
 function EdgeLines() {
   const ref = useRef<InstancedMesh>(null);
+  const dn = useDayNight();
   const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const out: { x: number; z: number; rot: number; len: number }[] = [];
@@ -88,7 +90,7 @@ function EdgeLines() {
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <boxGeometry args={[0.18, 0.03, 1]} />
-      <meshStandardMaterial color="#d9d6cc" roughness={0.8} />
+      <meshStandardMaterial color="#d9d6cc" emissive="#49f2d6" emissiveIntensity={0.35 + dn.night * 1.3} roughness={0.8} />
     </instancedMesh>
   );
 }
@@ -150,6 +152,7 @@ function LightPools({ items }: { items: { x: number; z: number }[] }) {
   const poolMat = useRef<MeshBasicMaterial>(null);
   const dummy = useMemo(() => new Object3D(), []);
   const texture = useMemo(() => makePoolTexture(), []);
+  useEffect(() => () => texture.dispose(), [texture]);
   useEffect(() => {
     const m = ref.current;
     if (!m) return;
@@ -166,7 +169,7 @@ function LightPools({ items }: { items: { x: number; z: number }[] }) {
     if (poolMat.current) poolMat.current.opacity = 0.55 * dn.night;
   }, [dn]);
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
+    <instancedMesh ref={ref} args={[undefined, undefined, items.length]} visible={dn.night > 0.01}>
       <planeGeometry args={[1, 1]} />
       <meshBasicMaterial ref={poolMat} map={texture} transparent opacity={0.5} depthWrite={false} blending={AdditiveBlending} toneMapped={false} />
     </instancedMesh>
@@ -216,7 +219,7 @@ function Streetlights() {
         <meshStandardMaterial color="#4d4f4f" roughness={0.6} metalness={0.5} />
       </instancedMesh>
       <instancedMesh ref={heads} args={[undefined, undefined, items.length]}>
-        <sphereGeometry args={[0.36, 6, 4]} />
+        <sphereGeometry args={[0.3, 10, 6]} />
         <meshStandardMaterial
           ref={headMat}
           color="#ffd27a"

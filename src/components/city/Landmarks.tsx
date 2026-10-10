@@ -3,7 +3,8 @@
 import { Html, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AdditiveBlending, Color, CylinderGeometry, Group, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
+import { AdditiveBlending, BoxGeometry, Color, ConeGeometry, CylinderGeometry, Group, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
+import { SITE } from "@/content/site";
 import AmbassadorBridge from "./AmbassadorBridge";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
@@ -12,13 +13,16 @@ import {
   CITY_HALF_Z,
   DESTINATIONS,
   blockCenter,
+  destinationById,
   destinationPosition,
 } from "./layout";
-import { carvedStoneTexture, handPaintedBillboardTexture } from "./labels";
+import { carvedStoneTexture, handPaintedBillboardTexture, wheatpastePosterTexture } from "./labels";
 import NeonSign, { DISPLAY_FONT, SCRIPT_FONT } from "./NeonSign";
 import PaintedSign from "./PaintedSign";
+import { mulberry32 } from "./rng";
+import TreeStand, { plantTrees } from "./TreeStand";
 import { useWindowMaterial } from "./useWindowMaterial";
-import { baseBoxGeometry, fillInstances } from "./instancing";
+import { baseBoxGeometry, fillInstances, mergeParts } from "./instancing";
 import { enableReflection } from "./layers";
 import type { WindowMaterialOptions } from "./windowMaterial";
 
@@ -253,8 +257,8 @@ function ClubEntrance() {
         <boxGeometry args={[8, 0.12, 1.2]} />
         <meshStandardMaterial color="#8a8a98" roughness={0.9} />
       </mesh>
-      <mesh position={[0, 0.31, 2.8]}>
-        <boxGeometry args={[3.2, 0.05, 7]} />
+      <mesh position={[0, 0.31, 0.8]}>
+        <boxGeometry args={[3.2, 0.05, 2.6]} />
         <meshStandardMaterial color="#c8102e" roughness={0.95} />
       </mesh>
       <mesh position={[0, 0.2, -1.2]}>
@@ -270,7 +274,7 @@ function ClubEntrance() {
         <meshStandardMaterial ref={glowMat} color="#fff6d8" emissive={GOLD_LIGHT} emissiveIntensity={0.2} toneMapped={false} />
       </mesh>
       {[-6.6, 6.6].map((x) => (
-        <mesh key={x} position={[x, 3, 4.6]}>
+        <mesh key={x} position={[x, 3, 1.4]}>
           <cylinderGeometry args={[0.14, 0.14, 6.1, 8]} />
           <meshStandardMaterial color={GOLD} metalness={0.7} roughness={0.3} />
         </mesh>
@@ -521,13 +525,22 @@ function Fan({ position, r }: { position: [number, number, number]; r: number })
   );
 }
 
+const WATER_TANK = (() => {
+  const legs = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => new BoxGeometry(0.35, 4, 0.35).translate(sx * 1.6, 2, sz * 1.6)));
+  return mergeParts(
+    [
+      ...legs,
+      new BoxGeometry(4, 0.3, 4).translate(0, 4.15, 0),
+      new CylinderGeometry(2.3, 2.3, 4.2, 14, 1).translate(0, 6.4, 0),
+      new ConeGeometry(2.5, 1.6, 14, 1).translate(0, 9.3, 0),
+    ],
+    "water tank",
+  );
+})();
+
 function MerchWarehouse() {
   const d = DESTINATIONS[3];
   const [x, z] = destinationPosition(d);
-  const eyes = useRef<MeshStandardMaterial>(null);
-  useFrame(({ clock }) => {
-    if (eyes.current) eyes.current.emissiveIntensity = 2.5 + Math.sin(clock.elapsedTime * 3) * 1.5;
-  });
   return (
     <Hotspot dest={d} position={[x, PAD, z]}>
       <WindowedBox w={19} h={14} d={17} color="#8a4a3a" winSize={[2.6, 3]} seed={31} cool="#d6fbff" />
@@ -544,33 +557,9 @@ function MerchWarehouse() {
       <Fan position={[-5.5, 7.5, 8.8]} r={2} />
       <NeonSign text="MERCH" color="#ffb02e" width={11} height={3.6} fontSize={2.8} position={[2.5, 9.6, 8.9]} rotation={[0, 0, -0.06]} blink="fast" />
       <PaintedSign text="RIVERTOWN" bg="#2f4a3a" fg="#e6dbc2" width={12} height={2.2} position={[0, 17.4, 0]} doubleSided depth={0.8} />
-      <group position={[6, 15.2, 2]}>
-        <mesh position={[0, 3.5, 0]}>
-          <boxGeometry args={[4.4, 5, 4.4]} />
-          <meshStandardMaterial color="#1f6b8a" roughness={0.5} />
-        </mesh>
-        <mesh position={[0, 8, 0]}>
-          <boxGeometry args={[3.6, 3, 3.6]} />
-          <meshStandardMaterial color="#2e86a8" roughness={0.5} />
-        </mesh>
-        {[-0.9, 0.9].map((ex) => (
-          <mesh key={ex} position={[ex, 8.3, 1.85]}>
-            <boxGeometry args={[0.9, 0.5, 0.2]} />
-            <meshStandardMaterial ref={ex < 0 ? eyes : undefined} color="#ffd27a" emissive="#ffb02e" emissiveIntensity={3} toneMapped={false} />
-          </mesh>
-        ))}
-        <mesh position={[0, 10.4, 0]}>
-          <cylinderGeometry args={[0.1, 0.14, 1.8, 5]} />
-          <meshStandardMaterial color="#1d1d3f" />
-        </mesh>
-        <Beacon position={[0, 11.5, 0]} color="#49d2f2" size={0.35} rate={2} />
-        {[-1, 1].map((s) => (
-          <mesh key={s} position={[s * 2.9, 4.4, 0]} rotation={[0, 0, s * 0.5]}>
-            <boxGeometry args={[1, 3.6, 1]} />
-            <meshStandardMaterial color="#1f6b8a" />
-          </mesh>
-        ))}
-      </group>
+      <mesh geometry={WATER_TANK} position={[6.5, 15.2, -3.6]}>
+        <meshStandardMaterial color="#5a4632" roughness={0.95} />
+      </mesh>
     </Hotspot>
   );
 }
@@ -581,7 +570,7 @@ const MC_FRONT = 10;
 type Box = { x: number; y: number; z: number; sx: number; sy: number; sz: number };
 const MC_TRIM: Box[] = [
   ...MC_ARCH_X.flatMap((ax) => [-1, 1].map((s) => ({ x: ax + s * 3.1, y: 5.2, z: MC_FRONT + 0.15, sx: 0.6, sy: 6.6, sz: 0.5 }))),
-  ...MC_ARCH_X.map((ax) => ({ x: ax, y: 11.5, z: MC_FRONT + 0.2, sx: 0.8, sy: 1.1, sz: 0.5 })),
+  ...MC_ARCH_X.map((ax) => ({ x: ax, y: 8.95, z: MC_FRONT + 0.3, sx: 0.8, sy: 1, sz: 0.6 })),
   ...MC_COLUMN_X.flatMap((cx) => [
     { x: cx, y: 0.25, z: MC_FRONT + 0.6, sx: 1.2, sy: 0.5, sz: 1.2 },
     { x: cx, y: 10.35, z: MC_FRONT + 0.6, sx: 1.1, sy: 0.5, sz: 1.1 },
@@ -589,9 +578,9 @@ const MC_TRIM: Box[] = [
   { x: 0, y: 11.7, z: MC_FRONT + 0.6, sx: 27.4, sy: 2.2, sz: 1.3 },
 ];
 const MC_MUNTINS: Box[] = MC_ARCH_X.flatMap((ax) => [
-  { x: ax, y: 5.2, z: MC_FRONT + 0.12, sx: 0.12, sy: 6.6, sz: 0.3 },
-  { x: ax, y: 4.2, z: MC_FRONT + 0.12, sx: 5.4, sy: 0.12, sz: 0.3 },
-  { x: ax, y: 7.2, z: MC_FRONT + 0.12, sx: 5.4, sy: 0.12, sz: 0.3 },
+  { x: ax, y: 5.2, z: MC_FRONT + 0.32, sx: 0.12, sy: 6.6, sz: 0.3 },
+  { x: ax, y: 4.2, z: MC_FRONT + 0.32, sx: 5.4, sy: 0.12, sz: 0.3 },
+  { x: ax, y: 7.2, z: MC_FRONT + 0.32, sx: 5.4, sy: 0.12, sz: 0.3 },
 ]);
 const MC_BALUSTER_COUNT = 25;
 
@@ -839,8 +828,14 @@ function SpiritOfDetroit() {
   );
 }
 
+const CAMPUS_TREES = plantTrees(
+  mulberry32(828),
+  Array.from({ length: 6 }, (_, i) => ({ x: Math.cos((i / 6) * Math.PI * 2) * 9, z: Math.sin((i / 6) * Math.PI * 2) * 9, s: 1.1 })),
+  { shade: 0.7, elm: 0.3 },
+);
+
 function CampusMartius() {
-  const [x, z] = blockCenter(4, 4);
+  const [x, z] = blockCenter(4, 2);
   const jet = useRef<Mesh>(null);
   useFrame(({ clock }) => {
     if (jet.current) jet.current.scale.y = 0.8 + Math.sin(clock.elapsedTime * 3) * 0.2;
@@ -862,21 +857,7 @@ function CampusMartius() {
       <mesh ref={jet} geometry={JET_PLUME} position={[0, 0.6, 0]}>
         <meshStandardMaterial color="#dfe9ec" emissive="#ffffff" emissiveIntensity={0.15} transparent opacity={0.55} />
       </mesh>
-      {[0, 1, 2, 3, 4, 5].map((i) => {
-        const a = (i / 6) * Math.PI * 2;
-        return (
-          <group key={i} position={[Math.cos(a) * 9, 0, Math.sin(a) * 9]}>
-            <mesh position={[0, 2.2, 0]}>
-              <cylinderGeometry args={[0.2, 0.3, 4.4, 6]} />
-              <meshStandardMaterial color="#4a2e2a" />
-            </mesh>
-            <mesh position={[0, 5.6, 0]}>
-              <icosahedronGeometry args={[2.2, 0]} />
-              <meshStandardMaterial color="#2f8a5a" flatShading />
-            </mesh>
-          </group>
-        );
-      })}
+      <TreeStand trees={CAMPUS_TREES} quality="near" seed={1879} castShadow />
     </Landmark>
   );
 }
@@ -919,7 +900,7 @@ function Guardian() {
 }
 
 function AllyDetroitCenter() {
-  const [x, z] = blockCenter(5, 3);
+  const [x, z] = blockCenter(4, 4);
   return (
     <Landmark name="Ally Detroit Center" note="1993 · twin Flemish spires" position={[x, PAD, z]} labelHeight={80}>
       <WindowedBox w={17} h={54} d={17} color="#8c7a68" winSize={[1.7, 2.2]} seed={121} cool="#e8f4ff" />
@@ -995,7 +976,7 @@ function DavidStott() {
 }
 
 function CadillacTower() {
-  const [x, z] = blockCenter(5, 4);
+  const [x, z] = blockCenter(5, 2);
   return (
     <Landmark name="Cadillac Tower" note="1927 · 40 storeys" position={[x, PAD, z]} labelHeight={60}>
       <WindowedBox w={10} h={46} d={10} color="#b89a7a" winSize={[1.5, 2.2]} seed={151} />
@@ -1017,32 +998,35 @@ function CadillacTower() {
 
 function Fisher() {
   const dn = useDayNight();
-  const [x, z] = blockCenter(3, 0);
-  const crown = useRef<MeshStandardMaterial>(null);
+  const [x, z] = blockCenter(3, -6);
+  const roof = useRef<MeshStandardMaterial>(null);
   useEffect(() => {
-    if (crown.current) crown.current.emissiveIntensity = 0.3 + dn.night * 2.2;
+    if (roof.current) roof.current.emissiveIntensity = dn.night * 1.1;
   }, [dn]);
   return (
     <Landmark name="Fisher Building" note="1928 · New Center · golden tower" position={[x, PAD, z]} labelHeight={66}>
       <WindowedBox w={15} h={48} d={15} color="#b8a070" winSize={[1.8, 2.3]} seed={81} />
-      <mesh position={[0, 51, 0]}>
-        <boxGeometry args={[11, 6, 11]} />
-        <meshStandardMaterial ref={crown} color="#ffb02e" emissive="#ffb02e" emissiveIntensity={2} toneMapped={false} />
+      <mesh position={[0, 50.5, 0]}>
+        <boxGeometry args={[11, 5, 11]} />
+        <meshStandardMaterial color="#a8925f" roughness={0.85} />
       </mesh>
-      <mesh position={[0, 55.5, 0]}>
-        <boxGeometry args={[7, 3, 7]} />
-        <meshStandardMaterial color="#ffd27a" emissive="#ffd27a" emissiveIntensity={1.2} toneMapped={false} />
+      <mesh position={[0, 57.5, 0]} rotation={[0, Math.PI / 4, 0]}>
+        <coneGeometry args={[7.6, 9, 4]} />
+        <meshStandardMaterial ref={roof} color="#9c8a3c" metalness={0.55} roughness={0.42} emissive="#ffb02e" emissiveIntensity={0} />
       </mesh>
     </Landmark>
   );
 }
 
+function setStadiumGlow(mat: MeshStandardMaterial, night: number) {
+  mat.emissiveIntensity = 0.3 + night * 4;
+}
+
 function StadiumLights({ radius, height, count }: { radius: number; height: number; count: number }) {
   const dn = useDayNight();
-  const mat = useRef<MeshStandardMaterial>(null);
-  useEffect(() => {
-    if (mat.current) mat.current.emissiveIntensity = 0.3 + dn.night * 4;
-  }, [dn]);
+  const [lamp] = useState(() => new MeshStandardMaterial({ color: "#fff6d8", emissive: "#fff2c0", emissiveIntensity: 3, toneMapped: false }));
+  useEffect(() => () => lamp.dispose(), [lamp]);
+  useEffect(() => setStadiumGlow(lamp, dn.night), [lamp, dn.night]);
   return (
     <group>
       {Array.from({ length: count }).map((_, i) => {
@@ -1053,9 +1037,8 @@ function StadiumLights({ radius, height, count }: { radius: number; height: numb
               <cylinderGeometry args={[0.2, 0.3, height, 6]} />
               <meshStandardMaterial color="#5a5a78" />
             </mesh>
-            <mesh position={[0, height + 0.4, 0]} rotation={[0, -a, 0]}>
+            <mesh position={[0, height + 0.4, 0]} rotation={[0, -a, 0]} material={lamp}>
               <boxGeometry args={[3.2, 1.6, 0.4]} />
-              <meshStandardMaterial ref={i === 0 ? mat : undefined} color="#fff6d8" emissive="#fff2c0" emissiveIntensity={3} toneMapped={false} />
             </mesh>
           </group>
         );
@@ -1114,7 +1097,7 @@ function FordField() {
 }
 
 function LittleCaesarsArena() {
-  const [x, z] = blockCenter(4, 0);
+  const [x, z] = blockCenter(3, 0);
   return (
     <Landmark name="Little Caesars Arena" note="Red Wings · Pistons" position={[x, PAD, z]} labelHeight={26}>
       <mesh position={[0, 7, 0]}>
@@ -1133,8 +1116,14 @@ function LittleCaesarsArena() {
   );
 }
 
+const MILLIKEN_TREES = plantTrees(
+  mulberry32(1122),
+  [-7, -2, 3].map((x, i) => ({ x, z: -6 + i * 3, s: 1 })),
+  { shade: 0.5, elm: 0.5 },
+);
+
 function MillikenLighthouse() {
-  const [x, z] = blockCenter(7, 5);
+  const [x, z] = blockCenter(8, 5);
   const beam = useRef<Group>(null);
   useFrame(({ clock }) => {
     if (beam.current) beam.current.rotation.y = clock.elapsedTime * 1.2;
@@ -1167,24 +1156,13 @@ function MillikenLighthouse() {
           <meshBasicMaterial color="#fff2c0" transparent opacity={0.08} blending={2} depthWrite={false} toneMapped={false} />
         </mesh>
       </group>
-      {[-7, -2, 3].map((tx, i) => (
-        <group key={tx} position={[tx, 0, -6 + i * 3]}>
-          <mesh position={[0, 2, 0]}>
-            <cylinderGeometry args={[0.2, 0.3, 4, 6]} />
-            <meshStandardMaterial color="#4a2e2a" />
-          </mesh>
-          <mesh position={[0, 5, 0]}>
-            <icosahedronGeometry args={[2, 0]} />
-            <meshStandardMaterial color="#2f8a5a" flatShading />
-          </mesh>
-        </group>
-      ))}
+      <TreeStand trees={MILLIKEN_TREES} quality="near" seed={1879} castShadow />
     </Landmark>
   );
 }
 
 function Carousel() {
-  const [x, z] = blockCenter(8, 5);
+  const [x, z] = blockCenter(7, 5);
   const spin = useRef<Group>(null);
   useFrame(({ clock }) => {
     if (spin.current) spin.current.rotation.y = clock.elapsedTime * 0.4;
@@ -1233,11 +1211,12 @@ function Carousel() {
 
 function AdBoard() {
   const [x, z] = blockCenter(6, 4);
+  const poster = useMemo(() => wheatpastePosterTexture(SITE.artist.toUpperCase(), `Live at ${destinationById("club").label}`, "DETROIT · ONE NIGHT ONLY"), []);
   return (
     <Landmark name="Rivertown Lofts" note="Converted warehouse" position={[x, PAD, z]} labelHeight={32}>
       <WindowedBox w={16} h={18} d={16} color="#a3563f" winSize={[2.4, 2.6]} seed={171} />
       <group position={[0, 24, 2]} rotation={[0, 0, -0.1]}>
-        <PaintedSign text="YOUR AD HERE" bg="#e6dbc2" fg="#1f1d1b" width={12} height={6.4} />
+        <PaintedSign texture={poster} width={12} height={6.4} />
       </group>
       {[-5, 5].map((px) => (
         <mesh key={px} position={[px, 19.5, 2]}>
@@ -1251,8 +1230,8 @@ function AdBoard() {
 
 function Welcome() {
   return (
-    <group position={[0, PAD, CITY_HALF_Z + 6]}>
-      <Text font={DISPLAY_FONT} fontSize={6} color={new Color("#f3dfae").multiplyScalar(1.5)} anchorX="center" anchorY="bottom" rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.55, 0]} letterSpacing={0.18} material-toneMapped={false}>
+    <group position={[0, PAD, CITY_HALF_Z + 10.2]}>
+      <Text font={DISPLAY_FONT} fontSize={3.4} color={new Color("#f3dfae").multiplyScalar(1.5)} anchorX="center" anchorY="bottom" rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.55, 0]} letterSpacing={0.18} material-toneMapped={false}>
         DETROIT · ADAMS UNIVERSECITY
       </Text>
     </group>

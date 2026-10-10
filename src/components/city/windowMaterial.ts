@@ -26,6 +26,7 @@ const vertexShader = /* glsl */ `
   varying vec3 vWorld;
   varying vec3 vArch;
   varying vec3 vNormalL;
+  varying float vInstanced;
   #include <fog_pars_vertex>
 
   void main() {
@@ -34,9 +35,11 @@ const vertexShader = /* glsl */ `
       m = modelMatrix * instanceMatrix;
       vSeed = aSeed;
       vArch = aArch * uArchitecture;
+      vInstanced = 1.0;
     #else
       vSeed = uSeed;
       vArch = vec3(0.0);
+      vInstanced = 0.0;
     #endif
     vNormalL = normal;
     #ifdef USE_INSTANCING_COLOR
@@ -46,7 +49,7 @@ const vertexShader = /* glsl */ `
     #endif
     vec3 scale = vec3(length(m[0].xyz), length(m[1].xyz), length(m[2].xyz));
     vSize = scale;
-    vNormalW = normalize(mat3(m) * normal);
+    vNormalW = normalize(mat3(m) * (normal / (scale * scale)));
     vec3 p = position;
     if (uCylindrical > 0.5) vFace = vec2(atan(p.z, p.x) * scale.x, p.y * scale.y);
     else if (abs(normal.x) > 0.5) vFace = vec2(p.z * scale.z, p.y * scale.y);
@@ -66,6 +69,7 @@ const vertexShader = /* glsl */ `
 const fragmentShader = /* glsl */ `
   uniform float uNight;
   uniform float uTime;
+  #define NEON_MIN_HEIGHT 24.0
   uniform vec3 uSunDir;
   uniform vec3 uSunColor;
   uniform float uSunIntensity;
@@ -91,6 +95,7 @@ const fragmentShader = /* glsl */ `
   varying float vLocalY;
   varying vec3 vWorld;
   varying vec3 vArch;
+  varying float vInstanced;
   varying vec3 vNormalL;
   #include <fog_pars_fragment>
 
@@ -242,7 +247,10 @@ const fragmentShader = /* glsl */ `
 
     float h = hash(cell + vSeed * 13.17);
     float floorDark = step(0.12, hash(vec2(cell.y, vSeed * 3.7)));
-    float lit = max(step(1.0 - uLitDensity * uNight, h) * floorDark, shop * step(0.25, h) * uNight);
+    float occupancy = hash(vec2(vSeed * 5.3, 11.0));
+    float density = uLitDensity * mix(0.3, 1.4, occupancy);
+    float wholeFloor = step(0.93, hash(vec2(cell.y * 1.7, vSeed * 2.1))) * step(0.35, occupancy);
+    float lit = max(max(step(1.0 - density * uNight, h) * floorDark, wholeFloor * uNight), shop * step(0.25, h) * uNight);
     float flick = 1.0 - 0.45 * step(0.992, hash(cell + floor(uTime * 0.7) + vSeed));
     vec3 tint = mix(uWarm, uCool, step(COOL_WINDOW_THRESHOLD, hash(cell * 1.71 + vSeed)));
     float hue = hash(cell * 0.77 + vSeed * 2.3);
@@ -271,9 +279,11 @@ const fragmentShader = /* glsl */ `
     vec3 dayGlass = (mix(vColor * 0.4, uHemiSky * 0.95, 0.6) * (0.55 + 0.6 * ndl)
                 + uSunColor * spec * 2.5 + uHemiSky * fres * 0.6 + uHemiSky * (0.05 + 0.25 * skyGrad))
                 * (0.85 + 0.15 * bright);
+    vec3 tintedGlass = vColor * 0.5 + uHemiSky * (0.08 + 0.55 * fres + 0.14 * skyGrad) + uSunColor * spec * 2.5;
+    dayGlass = mix(dayGlass, tintedGlass, isGlass);
     vec3 dayDark = vColor * 0.18 + uHemiSky * (0.06 + 0.1 * fres);
     vec3 dayLit = tint * 0.55 * dressing + uHemiSky * 0.1;
-    vec3 dayWin = mix(mix(dayGlass, dayDark, step(0.6, dayKind)), dayLit, step(0.9, dayKind) * (1.0 - shop));
+    vec3 dayWin = mix(mix(dayGlass, dayDark, step(mix(0.6, 0.86, isGlass), dayKind)), dayLit, step(0.9, dayKind) * (1.0 - shop));
     dayWin = mix(dayWin, dayGlass, sMid * (1.0 - shop));
     dayWin = dayWin * lintel * reveal * (1.0 - 0.35 * shade);
     vec3 nightUnlit = ((facade * 0.5 + vColor * 0.06) * lintel + uHemiSky * 0.05 * skyGrad) * reveal;
@@ -336,6 +346,7 @@ const fragmentShader = /* glsl */ `
     float flood = vArch.z * uNight * smoothstep(vSize.y - FLOOD_REACH, vSize.y, vLocalY) * (1.0 - vTop);
     col += vColor * vec3(1.0, 0.8, 0.52) * flood * 2.2;
 
+
     // roof: gravel, parapet rim, slight AO
     vec2 rim = vSize.xz * 0.5 - abs(vTopXZ);
     float parapet = step(min(rim.x, rim.y), 0.7);
@@ -343,6 +354,18 @@ const fragmentShader = /* glsl */ `
     vec3 roof = vColor * 0.55 * light * gravel;
     roof = mix(roof, facade * 1.05, parapet);
     col = mix(col, roof, vTop * step(0.5, n.y));
+
+    float neonPick = hash(vec2(vSeed * 7.3, 3.0));
+    float neonOn = step(NEON_MIN_HEIGHT, vSize.y) * step(0.65, neonPick) * (1.0 - uCylindrical) * vInstanced;
+    float stripWidth = max(0.22, length(cameraPosition - vWorld) * 0.0026);
+    float halfWidth = abs(vNormalL.x) > 0.5 ? vSize.z * 0.5 : vSize.x * 0.5;
+    float cornerStrip = step(halfWidth - abs(vFace.x), stripWidth) * (1.0 - vTop);
+    float crownStrip = step(vSize.y - stripWidth * 1.5, vLocalY) * (1.0 - vTop);
+    float roofStrip = step(min(rim.x, rim.y), stripWidth) * vTop * step(0.5, n.y);
+    float climb = smoothstep(0.9, 1.0, fract(vLocalY / max(vSize.y, 1.0) - uTime * 0.12 + vSeed));
+    vec3 neonCol = neonPick < 0.8 ? vec3(0.06, 0.9, 0.75) : neonPick < 0.9 ? vec3(1.0, 0.7, 0.25) : vec3(1.0, 0.2, 0.6);
+    float neon = max(max(cornerStrip, crownStrip), roofStrip) * neonOn;
+    col = mix(col, neonCol * mix(1.7, 2.4, uNight) * (1.0 + cornerStrip * climb * 1.5), neon);
 
     gl_FragColor = vec4(col, 1.0);
     #include <fog_fragment>

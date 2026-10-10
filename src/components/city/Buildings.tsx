@@ -20,7 +20,6 @@ import {
   DESTINATIONS,
   OUTER_ROWS,
   ROWS,
-  RIVER_FAR,
   allBlocks,
   blockCenter,
 } from "./layout";
@@ -45,13 +44,13 @@ export const RESERVED_BLOCKS = new Set<string>([
   "3,3",
   "2,3",
   "2,2",
-  "5,3",
-  "5,4",
+  "4,2",
+  "5,2",
   "6,4",
   "5,1",
   "6,1",
-  "4,0",
   "3,0",
+  "3,-6",
 ]);
 
 type Style = "deco" | "beaux" | "chicago" | "mid";
@@ -64,7 +63,6 @@ const BUFF_BRICK = ["#c9b48c", "#bfa57c", "#b89a7a"];
 const SMOKED_BRICK = ["#5e4a3e", "#4e4038", "#6a5446"];
 const LIMESTONE = ["#d4c8ad", "#c7b998", "#bdb096"];
 const ENAMEL_PANEL = ["#b9b5a8", "#8f9a94", "#a8a294"];
-const WINDSOR_MATERIALS = ["#8a7a6a", "#6e6258", "#9a8a78", "#7a6a5c", "#5e5650"];
 const COPPER_CROWN = ["#5f8f7a", "#6f9c86", "#557f6c"];
 
 const STYLE_MATERIALS: Record<Style, string[]> = {
@@ -201,12 +199,6 @@ function pushBuilding(out: Lot[], cell: { x: number; z: number; w: number; d: nu
   }
 }
 
-function windsorMaterial(rand: () => number) {
-  const arch = mulberry32(Math.floor(rand() * 2 ** 31));
-  const style: Style = arch() < 0.25 ? "mid" : "chicago";
-  return { style, color: new Color(pick(arch, WINDSOR_MATERIALS)), blank: 0, ad: -1, lit: 0, top: true };
-}
-
 function topOf(l: Lot) {
   return (l.y ?? 0) + l.h;
 }
@@ -245,13 +237,13 @@ function underAmbassador(x: number, z: number, w: number, d: number) {
   return Math.abs(x - AMBASSADOR_X) < w / 2 + AMBASSADOR_CLEAR_HALF && z + d / 2 > AMBASSADOR_RAMP_Z[0] - 2 && z - d / 2 < AMBASSADOR_RAMP_Z[1] + 2;
 }
 
-function buildLots(): { city: Lot[]; windsor: Lot[] } {
+function buildLots(): { city: Lot[] } {
   const rand = mulberry32(2024);
   const city: Lot[] = [];
-  // Lots under the bridge still draw from rand so every other lot keeps its seed.
+  // Reserved blocks and lots under the bridge still draw from rand so every other lot keeps its seed.
   const cleared: Lot[] = [];
   for (const { c, r, outer } of allBlocks()) {
-    if (!outer && RESERVED_BLOCKS.has(`${c},${r}`)) continue;
+    const reserved = RESERVED_BLOCKS.has(`${c},${r}`);
     const [bx, bz] = blockCenter(c, r);
     const cells = cellsForBlock(bx, bz, rand);
     if (!outer) {
@@ -261,7 +253,7 @@ function buildLots(): { city: Lot[]; windsor: Lot[] } {
       for (const cell of cells) {
         const base = frontRow ? range(rand, 6, 14) : range(rand, 8, 18);
         const tall = frontRow ? 0 : core * range(rand, 12, 36);
-        pushBuilding(city, cell, base + tall, rand);
+        pushBuilding(reserved ? cleared : city, cell, base + tall, rand);
       }
     } else {
       const ring = Math.max(r < 0 ? -r : 0, c < 0 ? -c : 0, c >= COLS ? c - COLS + 1 : 0);
@@ -269,40 +261,22 @@ function buildLots(): { city: Lot[]; windsor: Lot[] } {
       for (const cell of cells) {
         if (rand() < 0.08) continue;
         const h = range(rand, 5, 12) + range(rand, 0, 22) * falloff * (rand() < 0.3 ? 1.6 : 1);
-        pushBuilding(underAmbassador(cell.x, cell.z, cell.w, cell.d) ? cleared : city, cell, h, rand);
+        pushBuilding(reserved || underAmbassador(cell.x, cell.z, cell.w, cell.d) ? cleared : city, cell, h, rand);
       }
     }
   }
 
-  const windsor: Lot[] = [];
-  for (let i = 0; i < 140; i++) {
-    const side = rand() < 0.5 ? -1 : 1;
-    const x = side * range(rand, 175, 640);
-    const z = range(rand, RIVER_FAR + 14, RIVER_FAR + 140);
-    const h = range(rand, 5, 26) * (1 - Math.abs(x) / 900);
-    const lot: Lot = {
-      x,
-      z,
-      w: range(rand, 8, 18),
-      d: range(rand, 8, 16),
-      h,
-      ...windsorMaterial(rand),
-      seed: rand() * 100,
-      roofKind: 0,
-    };
-    if (!underAmbassador(lot.x, lot.z, lot.w, lot.d)) windsor.push(lot);
-  }
   exposeSideWalls(city);
   const litCrowns = city
     .filter(hasCrown)
     .sort((a, b) => topOf(b) - topOf(a))
     .slice(0, LIT_CROWNS);
   for (const l of litCrowns) l.lit = 1;
-  return { city, windsor };
+  return { city };
 }
 
-function InstancedLots({ lots, winSize }: { lots: Lot[]; winSize?: [number, number] }) {
-  const mat = useWindowMaterial({ winSize, glow: 0.1, architecture: true });
+function InstancedLots({ lots }: { lots: Lot[] }) {
+  const mat = useWindowMaterial({ glow: 0.1, architecture: true });
   const lotGeometry = useBaseBoxGeometry();
   const ref = useRef<InstancedMesh>(null);
   const dummy = useMemo(() => new Object3D(), []);
@@ -455,6 +429,7 @@ function StreetLevel({ lots }: { lots: Lot[] }) {
 function ContactShadows({ lots }: { lots: Lot[] }) {
   const ref = useRef<InstancedMesh>(null);
   const texture = useMemo(() => makeShadowBlobTexture(), []);
+  useEffect(() => () => texture.dispose(), [texture]);
   const bases = useMemo(() => lots.filter((l) => !l.y), [lots]);
   useEffect(() => {
     const dummy = new Object3D();
@@ -1066,13 +1041,12 @@ function GhostAds({ lots }: { lots: Lot[] }) {
 }
 
 export default function Buildings() {
-  const { city, windsor } = useMemo(() => buildLots(), []);
+  const { city } = useMemo(() => buildLots(), []);
   const root = useRef<Group>(null);
   useEffect(() => enableReflection(root.current), []);
   return (
     <group ref={root}>
       <InstancedLots lots={city} />
-      <InstancedLots lots={windsor} winSize={[2.2, 2.6]} />
       <ContactShadows lots={city} />
       <RoofDetails lots={city} />
       <StreetLevel lots={city} />

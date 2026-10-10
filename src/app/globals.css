@@ -294,28 +294,28 @@ body {
   outline: 1px solid color-mix(in srgb, var(--c) 70%, transparent);
   outline-offset: -1px;
 }
-.site-nav__link:hover::before,
+a.site-nav__link:hover::before,
 .site-nav__link:focus-visible::before,
 .site-nav__link[aria-current="page"]::before {
   opacity: 1;
 }
-.site-nav__link:hover::after,
+a.site-nav__link:hover::after,
 .site-nav__link:focus-visible::after,
 .site-nav__link[aria-current="page"]::after {
   transform: scaleX(1);
 }
-.site-nav__link:hover .site-nav__index,
+a.site-nav__link:hover .site-nav__index,
 .site-nav__link:focus-visible .site-nav__index,
 .site-nav__link[aria-current="page"] .site-nav__index {
   opacity: 1;
   text-shadow: 0 0 14px color-mix(in srgb, var(--c) 80%, transparent);
 }
-.site-nav__link:hover .site-nav__name,
+a.site-nav__link:hover .site-nav__name,
 .site-nav__link:focus-visible .site-nav__name,
 .site-nav__link[aria-current="page"] .site-nav__name {
   color: var(--gold-2);
 }
-.site-nav__link:hover .site-nav__sub,
+a.site-nav__link:hover .site-nav__sub,
 .site-nav__link:focus-visible .site-nav__sub,
 .site-nav__link[aria-current="page"] .site-nav__sub {
   color: color-mix(in srgb, var(--c) 75%, var(--paper));
@@ -577,7 +577,9 @@ body {
   gap: 8px;
 }
 .districts__hint {
-  padding: 0 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--panel);
   font-size: 9px;
   letter-spacing: 0.3em;
   text-transform: uppercase;
@@ -857,6 +859,101 @@ body {
   white-space: nowrap;
   box-shadow: 0 0 40px color-mix(in srgb, var(--c) 35%, transparent);
   transform: scale(1.25);
+  position: relative;
+}
+.hotspot-label::before,
+.hotspot-label::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 0 solid var(--c);
+}
+.hotspot-label::before {
+  top: -7px;
+  left: -7px;
+  border-top-width: 1.5px;
+  border-left-width: 1.5px;
+}
+.hotspot-label::after {
+  right: -7px;
+  bottom: -7px;
+  border-right-width: 1.5px;
+  border-bottom-width: 1.5px;
+}
+
+.city-frame {
+  position: absolute;
+  inset: 6px;
+  z-index: 15;
+  pointer-events: none;
+  opacity: 0;
+}
+.city-root.is-live .city-frame {
+  opacity: 1;
+  transition: opacity 0.9s ease 1.4s;
+}
+@media (max-width: 640px) {
+  .city-frame {
+    display: none;
+  }
+}
+.city-frame i {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 0 solid color-mix(in srgb, var(--gold) 55%, transparent);
+}
+.city-frame i:nth-child(1) {
+  top: 0;
+  left: 0;
+  border-top-width: 1px;
+  border-left-width: 1px;
+}
+.city-frame i:nth-child(2) {
+  top: 0;
+  right: 0;
+  border-top-width: 1px;
+  border-right-width: 1px;
+}
+.city-frame i:nth-child(3) {
+  bottom: 0;
+  left: 0;
+  border-bottom-width: 1px;
+  border-left-width: 1px;
+}
+.city-frame i:nth-child(4) {
+  bottom: 0;
+  right: 0;
+  border-bottom-width: 1px;
+  border-right-width: 1px;
+}
+
+.city-readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 9px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+.city-readout::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+}
+@media (max-width: 640px) {
+  .city-readout {
+    display: none;
+  }
 }
 .hotspot-label strong {
   font-family: var(--font-serif), serif;
@@ -1505,6 +1602,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  scroll-margin-top: calc(var(--header-h) + 24px);
   margin-top: clamp(56px, 9vh, 96px);
   padding-top: clamp(28px, 4vh, 40px);
   border-top: 1px solid var(--line);
@@ -1765,7 +1863,7 @@ body {
   font-style: italic;
   font-size: 15px;
   color: var(--gold-2);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75), 0 2px 12px rgba(0, 0, 0, 0.6);
 }
 @media (max-width: 640px) {
   .city-geo {
@@ -1886,6 +1984,9 @@ body {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .city-root .city-frame {
+    transition: none;
+  }
   .districts,
   .districts__hint,
   .district {

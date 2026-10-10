@@ -5,7 +5,6 @@ import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
 import {
   AdditiveBlending,
-  BufferAttribute,
   Color,
   CylinderGeometry,
   DoubleSide,
@@ -13,28 +12,90 @@ import {
   MathUtils,
   Mesh,
   MeshBasicMaterial,
-  MeshStandardMaterial,
+  OctahedronGeometry,
+  ShaderMaterial,
+  UniformsLib,
+  UniformsUtils,
 } from "three";
 import { useCity } from "./CityContext";
+import { HOLOGRAM_TIME } from "./HologramClock";
+import { gradientColors } from "./instancing";
+import { seedOf } from "./rng";
 import type { Destination } from "./layout";
 
 const BEACON_HEIGHT = 10;
 
-function makeBeaconColumn() {
-  const geo = new CylinderGeometry(0.12, 0.12, BEACON_HEIGHT, 8, 1, true);
-  const pos = geo.attributes.position;
-  const colors = new Float32Array(pos.count * 3);
-  for (let i = 0; i < pos.count; i++) {
-    const a = Math.pow((pos.getY(i) + BEACON_HEIGHT / 2) / BEACON_HEIGHT, 1.4);
-    colors[i * 3] = a;
-    colors[i * 3 + 1] = a;
-    colors[i * 3 + 2] = a;
+const BEACON_COLUMN = gradientColors(new CylinderGeometry(0.12, 0.12, BEACON_HEIGHT, 8, 1, true), "y", -BEACON_HEIGHT / 2, BEACON_HEIGHT, 1.4);
+const CRYSTAL = new OctahedronGeometry(1, 0).scale(1.1, 2.1, 1.1);
+
+const hologramVert = /* glsl */ `
+  varying vec3 vNormalV;
+  varying vec3 vViewDir;
+  varying float vY;
+  #include <fog_pars_vertex>
+  void main() {
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    vNormalV = normalize(normalMatrix * normal);
+    vViewDir = normalize(-mvPosition.xyz);
+    vY = position.y;
+    gl_Position = projectionMatrix * mvPosition;
+    #include <fog_vertex>
   }
-  geo.setAttribute("color", new BufferAttribute(colors, 3));
-  return geo;
+`;
+
+const hologramFrag = /* glsl */ `
+  uniform vec3 uColor;
+  uniform float uTime;
+  uniform float uIntensity;
+  uniform float uScanSpeed;
+  uniform float uSeed;
+  varying vec3 vNormalV;
+  varying vec3 vViewDir;
+  varying float vY;
+  #include <fog_pars_fragment>
+  void main() {
+    float fres = pow(1.0 - abs(dot(normalize(vNormalV), normalize(vViewDir))), 1.6);
+    float scan = 0.45 + 0.55 * step(0.45, fract(vY * 2.4 - uTime * uScanSpeed));
+    float glitch = 1.0 - 0.6 * step(0.985, fract(sin(mod(floor(uTime * 14.0), 613.0) * 91.7 + uSeed * 17.3) * 43758.5)) * step(0.0001, uTime);
+    float a = (0.22 + 0.78 * fres) * scan * glitch * uIntensity;
+    #ifdef USE_FOG
+      a *= 1.0 - smoothstep(fogNear, fogFar, vFogDepth);
+    #endif
+    gl_FragColor = vec4(uColor * (1.1 + fres * 1.8), a);
+    #include <colorspace_fragment>
+  }
+`;
+
+function makeHologramMaterial(color: string, seed: number) {
+  const mat = new ShaderMaterial({
+    vertexShader: hologramVert,
+    fragmentShader: hologramFrag,
+    uniforms: UniformsUtils.merge([
+      UniformsLib.fog,
+      {
+        uColor: { value: new Color(color) },
+        uTime: { value: 0 },
+        uIntensity: { value: 0.8 },
+        uScanSpeed: { value: 0.6 },
+        uSeed: { value: seed },
+      },
+    ]),
+    fog: true,
+    transparent: true,
+    blending: AdditiveBlending,
+    depthWrite: false,
+    side: DoubleSide,
+    toneMapped: false,
+  });
+  mat.uniforms.uTime = HOLOGRAM_TIME;
+  return mat;
 }
 
-const BEACON_COLUMN = makeBeaconColumn();
+function tickHologram(mat: ShaderMaterial, hot: boolean, k: number) {
+  const u = mat.uniforms;
+  u.uIntensity.value = MathUtils.lerp(u.uIntensity.value, hot ? 1.6 : 0.8, k);
+  u.uScanSpeed.value = MathUtils.lerp(u.uScanSpeed.value, hot ? 2.2 : 0.6, k);
+}
 
 interface HotspotProps {
   dest: Destination;
@@ -46,8 +107,9 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
   const { hovered, setHovered, flyTo, navigating } = useCity();
   const group = useRef<Group>(null);
   const inner = useRef<Group>(null);
-  const tip = useRef<Mesh>(null);
-  const tipMat = useRef<MeshStandardMaterial>(null);
+  const crystal = useRef<Mesh>(null);
+  const [hologram] = useState(() => makeHologramMaterial(dest.color, seedOf(dest.id) % 997));
+  useEffect(() => () => hologram.dispose(), [hologram]);
   const columnMat = useRef<MeshBasicMaterial>(null);
   const ring = useRef<Mesh>(null);
   const [local, setLocal] = useState(false);
@@ -60,24 +122,17 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
     };
   }, [local]);
 
-  useFrame(({ clock }, dt) => {
-    const t = clock.elapsedTime;
+  useFrame((_, dt) => {
     const k = 1 - Math.exp(-dt * 10);
-    const pulse = 0.5 + 0.5 * Math.sin(t * 2.2);
     if (inner.current) {
       const s = MathUtils.lerp(inner.current.scale.x, isHovered ? 1.035 : 1, k);
       inner.current.scale.setScalar(s);
     }
-    if (tip.current) {
-      tip.current.scale.setScalar(0.9 + pulse * 0.25);
+    if (crystal.current) {
+      crystal.current.rotation.y = HOLOGRAM_TIME.value * 0.5;
+      crystal.current.position.y = BEACON_HEIGHT + 2.65 + Math.sin(HOLOGRAM_TIME.value * 2.2) * 0.25;
     }
-    if (tipMat.current) {
-      tipMat.current.emissiveIntensity = MathUtils.lerp(
-        tipMat.current.emissiveIntensity,
-        (isHovered ? 4 : 1.4) + pulse * 0.6,
-        k,
-      );
-    }
+    tickHologram(hologram, isHovered, k);
     if (columnMat.current) {
       columnMat.current.opacity = MathUtils.lerp(columnMat.current.opacity, isHovered ? 0.9 : 0.55, k);
     }
@@ -85,7 +140,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
       const target = isHovered ? 1 : 0;
       const s = MathUtils.lerp(ring.current.scale.x, target, k);
       ring.current.scale.set(s, s, s);
-      ring.current.rotation.z = t * 0.6;
+      ring.current.rotation.z = HOLOGRAM_TIME.value * 0.6;
     }
   });
 
@@ -124,18 +179,9 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
             toneMapped={false}
           />
         </mesh>
-        <mesh ref={tip} position={[0, BEACON_HEIGHT, 0]}>
-          <sphereGeometry args={[0.42, 10, 8]} />
-          <meshStandardMaterial
-            ref={tipMat}
-            color={dest.color}
-            emissive={dest.color}
-            emissiveIntensity={1.4}
-            toneMapped={false}
-          />
-        </mesh>
+        <mesh ref={crystal} geometry={CRYSTAL} material={hologram} position={[0, BEACON_HEIGHT + 2.4, 0]} userData={{ noReflect: true }} />
       </group>
-      <mesh ref={ring} position={[0, dest.markerHeight + 4.6, 0]} rotation={[Math.PI / 2, 0, 0]} scale={0}>
+      <mesh ref={ring} position={[0, dest.markerHeight + BEACON_HEIGHT + 2.4, 0]} rotation={[Math.PI / 2, 0, 0]} scale={0}>
         <torusGeometry args={[3.4, 0.22, 8, 32]} />
         <meshStandardMaterial
           color={dest.color}
@@ -146,7 +192,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
       </mesh>
       {isHovered && !navigating && (
         <Html
-          position={[0, dest.markerHeight + 7.5, 0]}
+          position={[0, dest.markerHeight + BEACON_HEIGHT + 7, 0]}
           center
           distanceFactor={90}
           style={{ pointerEvents: "none" }}

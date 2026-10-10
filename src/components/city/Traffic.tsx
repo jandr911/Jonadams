@@ -2,15 +2,18 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Color, Group, MeshStandardMaterial } from "three";
+import { AdditiveBlending, BoxGeometry, Color, Group, InstancedMesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
+import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
-import { CITY_HALF_Z, LANE_OFFSET, OUTER_COLS, OUTER_HALF_X, OUTER_MIN_Z, PITCH, ROAD_HALF, WOODWARD_INDEX, lightIsGreen, outerRoadLinesX, outerRoadLinesZ } from "./layout";
+import { gradientColors } from "./instancing";
+import { CITY_HALF_Z, LANE_OFFSET, MEDIAN_LANE_OFFSET, OUTER_COLS, OUTER_HALF_X, OUTER_MIN_Z, PITCH, ROAD_HALF, WOODWARD_INDEX, isMedianLine, lightIsGreen, outerRoadLinesX, outerRoadLinesZ } from "./layout";
 import { mulberry32, pick, range } from "./rng";
 import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
 import { VEHICLE_SPECS, type VehicleKind } from "./vehicles";
 
 const CAR_COLORS = ["#f4f1ea", "#1d1d3f", "#c8102e", "#2a3a7a", "#9a95a8", "#d6b56e", "#3f3f4f", "#ffb02e", "#49d2f2", "#ff4d6d", "#2f6ea8", "#e8e8f2", "#4a2c3a", "#7a8c3a"];
 const FOLLOW_GAP = 3.5;
+const CAR_Y = 0.4;
 const ROAD_OVERRUN = 16;
 const Z_ROAD_MIN = OUTER_MIN_Z - ROAD_OVERRUN;
 const Z_ROAD_MAX = CITY_HALF_Z + 3;
@@ -87,6 +90,10 @@ function laneKey(axis: "x" | "z", line: number, dir: 1 | -1) {
   return `${axis}|${line}|${dir}`;
 }
 
+function laneOffset(axis: "x" | "z", line: number) {
+  return isMedianLine(axis === "z" ? "x" : "z", line) ? MEDIAN_LANE_OFFSET : LANE_OFFSET;
+}
+
 function buildWorld(): World {
   const rand = mulberry32(77);
   const cars: Car[] = [];
@@ -106,7 +113,7 @@ function buildWorld(): World {
       axis,
       line,
       lineIndex,
-      lane: -dir * LANE_OFFSET,
+      lane: -dir * laneOffset(axis, line),
       dir,
       along: range(rand, min, max),
       speed: kind === "bus" ? range(rand, 5, 7) : kind === "police" ? range(rand, 9, 14) : range(rand, 7, 13),
@@ -257,7 +264,8 @@ function stepWorld(w: World, time: number) {
   for (const c of w.cars) markOccupied(w, c.axis, c.lineIndex, c.along, c.len);
   for (const t of w.trams) markOccupied(w, "z", WOODWARD_OUTER, t.along, TRAM_LEN);
   for (const t of w.trams) stepTram(w, t, dt, time);
-  w.cars.forEach((c, i) => {
+  for (let i = 0; i < w.cars.length; i++) {
+    const c = w.cars[i];
     const min = c.axis === "z" ? Z_ROAD_MIN : X_ROAD_MIN;
     const max = c.axis === "z" ? Z_ROAD_MAX : X_ROAD_MAX;
     let target = c.speed;
@@ -273,7 +281,7 @@ function stepWorld(w: World, time: number) {
       c.vel = 0;
       clearEntry(w.lanes[i], c);
     }
-  });
+  }
 }
 
 function clearEntry(lane: Car[], c: Car) {
@@ -286,13 +294,17 @@ function clearEntry(lane: Car[], c: Car) {
   }
 }
 
+function laneFrame(c: Car, along: number, out: { x: number; z: number; yaw: number }) {
+  out.x = c.axis === "z" ? c.line + c.lane : along;
+  out.z = c.axis === "z" ? along : c.line - c.lane;
+  out.yaw = c.axis === "z" ? (c.dir === 1 ? 0 : Math.PI) : c.dir === 1 ? Math.PI / 2 : -Math.PI / 2;
+}
+
 function poseCar(w: World, i: number, out: VehiclePose, time: number) {
   if (i === 0) stepWorld(w, time);
   const c = w.cars[i];
-  out.x = c.axis === "z" ? c.line + c.lane : c.along;
-  out.z = c.axis === "z" ? c.along : c.line - c.lane;
-  out.y = 0.4;
-  out.yaw = c.axis === "z" ? (c.dir === 1 ? 0 : Math.PI) : c.dir === 1 ? Math.PI / 2 : -Math.PI / 2;
+  laneFrame(c, c.along, out);
+  out.y = CAR_Y;
   out.spin = c.spin;
   out.brake = c.brake;
 }
@@ -347,13 +359,74 @@ function Streetcars({ world }: { world: World }) {
   );
 }
 
+const TRAIL = gradientColors(new BoxGeometry(1, 1, 1).translate(0, 0, -0.5), "z", -1, 1);
+const TRAIL_EXPOSURE_SECONDS = 0.8;
+const TRAIL_MAX = 11;
+const TRAIL_FROM_NIGHT = 0.15;
+const trailFrame = { x: 0, z: 0, yaw: 0 };
+const HEAD_TRAIL = new Color(1, 0.86, 0.62).multiplyScalar(0.6);
+const TAIL_TRAIL = new Color(1, 0.1, 0.06).multiplyScalar(1.8);
+
+function placeTrail(m: InstancedMesh, d: Object3D, slot: number, c: Car, end: number, y: number, width: number, length: number) {
+  laneFrame(c, c.along + c.dir * end, trailFrame);
+  d.position.set(trailFrame.x, y, trailFrame.z);
+  d.rotation.set(0, trailFrame.yaw, 0);
+  d.scale.set(width, 0.12, Math.max(length, 0.001));
+  d.updateMatrix();
+  m.setMatrixAt(slot, d.matrix);
+}
+
+function placeTrails(m: InstancedMesh, d: Object3D, w: World) {
+  for (let i = 0; i < w.cars.length; i++) {
+    const c = w.cars[i];
+    const length = Math.min(TRAIL_MAX, c.vel * TRAIL_EXPOSURE_SECONDS);
+    const lampY = CAR_Y + VEHICLE_SPECS[c.kind].lamp.y;
+    placeTrail(m, d, i * 2, c, c.len / 2, lampY, 0.5, length + c.len);
+    placeTrail(m, d, i * 2 + 1, c, -c.len / 2, lampY + 0.04, 0.7, length);
+  }
+  m.instanceMatrix.needsUpdate = true;
+}
+
+function trailColors(count: number) {
+  const colors = new Float32Array(count * 6);
+  for (let i = 0; i < count; i++) {
+    HEAD_TRAIL.toArray(colors, i * 6);
+    TAIL_TRAIL.toArray(colors, i * 6 + 3);
+  }
+  return colors;
+}
+
+function LightTrails({ world }: { world: World }) {
+  const dn = useDayNight();
+  const ref = useRef<InstancedMesh>(null);
+  const mat = useRef<MeshBasicMaterial>(null);
+  const [dummy] = useState(() => new Object3D());
+  const count = world.cars.length;
+  const [colors] = useState(() => trailColors(count));
+  useEffect(() => {
+    if (mat.current) mat.current.opacity = Math.max(0, dn.night - TRAIL_FROM_NIGHT) * 1.1;
+  }, [dn.night]);
+  const lit = dn.night > TRAIL_FROM_NIGHT;
+  useFrame(() => {
+    if (lit && ref.current) placeTrails(ref.current, dummy, world);
+  });
+  return (
+    <instancedMesh ref={ref} args={[TRAIL, undefined, count * 2]} visible={lit} frustumCulled={false} name="light-trails">
+      <instancedBufferAttribute attach="instanceColor" args={[colors, 3]} />
+      <meshBasicMaterial ref={mat} vertexColors transparent opacity={0} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+    </instancedMesh>
+  );
+}
+
 export default function Traffic() {
   const [world] = useState(() => buildWorld());
   const pose = useCallback<PoseFn>((i, out, time) => poseCar(world, i, out, time), [world]);
+  const { quality } = useCity();
   return (
     <group>
       <VehicleFleet items={world.items} pose={pose} dynamic castShadow />
       <Streetcars world={world} />
+      {quality === "high" && <LightTrails world={world} />}
     </group>
   );
 }

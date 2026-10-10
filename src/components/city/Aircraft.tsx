@@ -3,22 +3,26 @@
 import { Float, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
-import { AdditiveBlending, CatmullRomCurve3, DoubleSide, Group, MathUtils, Mesh, MeshStandardMaterial, PlaneGeometry, Vector3 } from "three";
+import { AdditiveBlending, CatmullRomCurve3, ConeGeometry, DoubleSide, Group, MathUtils, Mesh, MeshStandardMaterial, PlaneGeometry, Vector3 } from "three";
+import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
+import { gradientColors } from "./instancing";
 import { labelTexture } from "./labels";
 import { enableReflection } from "./layers";
 import { SCRIPT_FONT } from "./NeonSign";
 
-function Searchlight({ length, radius, color, intensity }: { length: number; radius: number; color: string; intensity: number }) {
+const SEARCHLIGHT_LENGTH = 60;
+
+const SEARCHLIGHT_CONE = gradientColors(new ConeGeometry(3.2, SEARCHLIGHT_LENGTH, 18, 1, true), "y", -SEARCHLIGHT_LENGTH / 2, SEARCHLIGHT_LENGTH, 2.2);
+
+function Searchlight({ color, intensity }: { color: string; intensity: number }) {
   return (
     <group>
-      <mesh position={[0, -length / 2, 0]} userData={{ noReflect: true }}>
-        <coneGeometry args={[radius, length, 18, 1, true]} />
-        <meshBasicMaterial color={color} transparent opacity={0.04 * intensity} blending={AdditiveBlending} depthWrite={false} side={DoubleSide} toneMapped={false} />
+      <mesh geometry={SEARCHLIGHT_CONE} position={[0, -SEARCHLIGHT_LENGTH / 2, 0]} userData={{ noReflect: true }}>
+        <meshBasicMaterial color={color} vertexColors transparent opacity={0.07 * intensity} blending={AdditiveBlending} depthWrite={false} side={DoubleSide} toneMapped={false} />
       </mesh>
-      <mesh position={[0, -length * 0.5, 0]} scale={[0.45, 1, 0.45]} userData={{ noReflect: true }}>
-        <coneGeometry args={[radius, length, 14, 1, true]} />
-        <meshBasicMaterial color={color} transparent opacity={0.06 * intensity} blending={AdditiveBlending} depthWrite={false} side={DoubleSide} toneMapped={false} />
+      <mesh geometry={SEARCHLIGHT_CONE} position={[0, -SEARCHLIGHT_LENGTH / 2, 0]} scale={[0.45, 1, 0.45]} userData={{ noReflect: true }}>
+        <meshBasicMaterial color={color} vertexColors transparent opacity={0.1 * intensity} blending={AdditiveBlending} depthWrite={false} side={DoubleSide} toneMapped={false} />
       </mesh>
       <mesh>
         <sphereGeometry args={[0.3, 8, 8]} />
@@ -30,8 +34,9 @@ function Searchlight({ length, radius, color, intensity }: { length: number; rad
 
 function Strobe({ position, color, rate, offset = 0, size = 0.22, base = 0.3 }: { position: [number, number, number]; color: string; rate: number; offset?: number; size?: number; base?: number }) {
   const mat = useRef<MeshStandardMaterial>(null);
+  const { reducedMotion } = useCity();
   useFrame(({ clock }) => {
-    if (mat.current) mat.current.emissiveIntensity = Math.sin(clock.elapsedTime * rate + offset) > 0.75 ? 7 : base;
+    if (mat.current) mat.current.emissiveIntensity = !reducedMotion && Math.sin(clock.elapsedTime * rate + offset) > 0.75 ? 7 : base;
   });
   return (
     <mesh position={position}>
@@ -85,12 +90,14 @@ function Blimp() {
     g.position.set(x, 78 + Math.sin(clock.elapsedTime * 0.3) * 1.5, z);
     const heading = Math.atan2(-Math.sin(t) * r, Math.cos(t) * r * 0.55);
     g.rotation.y = MathUtils.lerp(g.rotation.y, heading + Math.PI / 2, 0.05);
-    props.current.forEach((p) => {
+    for (let k = 0; k < props.current.length; k++) {
+      const p = props.current[k];
       if (p) p.rotation.x = clock.elapsedTime * 22;
-    });
-    surfaces.current.forEach((s, i) => {
+    }
+    for (let i = 0; i < surfaces.current.length; i++) {
+      const s = surfaces.current[i];
       if (s) s.rotation.y = Math.sin(clock.elapsedTime * 0.7 + i) * 0.18;
-    });
+    }
   });
   return (
     <group ref={rig} name="blimp">
@@ -251,7 +258,7 @@ function Helicopter() {
   const path = useMemo(
     () =>
       new CatmullRomCurve3(
-        [new Vector3(-220, 70, 40), new Vector3(-80, 85, -120), new Vector3(120, 78, -90), new Vector3(200, 72, 60), new Vector3(40, 66, 110)],
+        [new Vector3(-230, 76, 0), new Vector3(-80, 85, -120), new Vector3(120, 78, -90), new Vector3(200, 72, 60), new Vector3(40, 72, 125)],
         true,
         "catmullrom",
         0.4,
@@ -465,7 +472,7 @@ function Helicopter() {
         <Strobe position={[0, 2.6, -7.5]} color="#ffffff" rate={7} size={0.16} base={0.5} />
         <Strobe position={[0, -1.15, 0.4]} color="#ff2a3c" rate={10} size={0.2} />
         <group ref={beam} position={[0, -1.0, 1.6]}>
-          <Searchlight length={60} radius={3.2} color="#eaf4ff" intensity={0.3 + dn.night} />
+          <Searchlight color="#eaf4ff" intensity={0.15 + dn.night} />
         </group>
       </group>
     </group>
@@ -487,6 +494,7 @@ function BannerPlane() {
   const prop = useRef<Group>(null);
   const banner = useRef<Group>(null);
   const bannerGeo = useMemo(() => new PlaneGeometry(30, 4, 30, 1), []);
+  useEffect(() => () => bannerGeo.dispose(), [bannerGeo]);
   const tex = useMemo(() => labelTexture("J. ADAMS · LIVE AT CLUB ADAMS · DETROIT", { width: 2048, height: 256, bg: "#07060f", fg: "#f3dfae", border: "#d6b56e", size: 150 }), []);
   const nav = 0.4 + dn.night * 3;
   useFrame(({ clock }) => {

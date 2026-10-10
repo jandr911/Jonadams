@@ -53,9 +53,9 @@ const DUSK = {
 
 const NIGHT = {
   zenith: new Color("#04071c"),
-  horizon: new Color("#1a2648"),
-  ground: new Color("#283250"),
-  fog: new Color("#121a2e"),
+  horizon: new Color("#45332f"),
+  ground: new Color("#3a2c2a"),
+  fog: new Color("#4a352e"),
   sun: new Color("#b9c8ff"),
   hemiSky: new Color("#1f2738"),
   hemiGround: new Color("#0c0b0a"),
@@ -117,7 +117,7 @@ export function computeDayNight(hour: number, cloud = OVERCAST_BASELINE): DayNig
     hemiSky: mix3("hemiSky"),
     hemiGround: mix3("hemiGround"),
     bloom: 0.3 + night * 0.5,
-    starAlpha: smooth(0.55, 1, night),
+    starAlpha: smooth(0.55, 1, night) * (1 - cloud * 0.7),
   };
 }
 

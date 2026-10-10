@@ -16,13 +16,14 @@ const LOOP_SCALE = 0.72;
 const LOOP_SEGMENTS = 48;
 const LAMP_EVERY = 3;
 const TREE_COUNT = 64;
-const GRASS = "#3a7a4c";
+const GRASS = "#4b6043";
 const BANK = "#7a7262";
 const SAND = "#c9b98c";
 const PATH = "#6a6a72";
 const CONSERVATORY = { x: 2, z: -2 };
 const FOUNTAIN = { x: -42, z: -1 };
 const LANDING = { x: -62, z: 1 };
+export const BRIDGE_LANDING = { x: X + LANDING.x, z: Z + LANDING.z };
 const LIGHTHOUSE = { x: 82, z: 0 };
 const SLIDE = { x: 46, z: 4 };
 

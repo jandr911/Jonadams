@@ -1,7 +1,7 @@
 "use client";
 
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Color,
   HalfFloatType,
@@ -68,10 +68,12 @@ const frag = /* glsl */ `
     float far = smoothstep(30.0, 420.0, length(cameraPosition - vWorld));
     vec4 uv = vMirror;
     uv.x += ((n1 - 0.5) * 0.005 + (n3 - 0.5) * 0.003) * uv.w;
-    uv.y += ((n2 - 0.5) * (0.006 + far * 0.008) + (n3 - 0.5) * 0.003) * uv.w;
+    uv.y += ((n2 - 0.5) * (0.006 + far * 0.008) * (1.0 + uNight * 1.6) + (n3 - 0.5) * 0.003) * uv.w;
     vec3 refl = texture2DProj(uMirror, uv, far * 0.5).rgb;
     refl = refl / (1.0 + refl * 0.45);
-    refl = mix(vec3(dot(refl, vec3(0.3, 0.59, 0.11))), refl, 0.7);
+    float reflLum = dot(refl, vec3(0.3, 0.59, 0.11));
+    refl = mix(vec3(reflLum), refl, 0.7);
+    refl *= mix(1.0, smoothstep(0.1, 0.5, reflLum), uNight * 0.9);
 
     vec3 v = normalize(cameraPosition - vWorld);
     vec3 n = normalize(vec3((n1 - 0.5) * 0.25 + (n3 - 0.5) * 0.35, 1.0, (n2 - 0.5) * 0.25 + (n3 - 0.5) * 0.35));
@@ -101,6 +103,10 @@ const frag = /* glsl */ `
 const MIRROR_SCALE = 0.4;
 const MIRROR_EVERY = 3;
 
+function resizeTarget(rt: WebGLRenderTarget, width: number, height: number) {
+  rt.setSize(width, height);
+}
+
 export default function RiverMirror({
   width,
   depth,
@@ -118,17 +124,19 @@ export default function RiverMirror({
   const mesh = useRef<Mesh>(null);
   const frame = useRef(0);
 
-  const rt = useMemo(
+  const mirrorWidth = Math.max(256, Math.floor(size.width * MIRROR_SCALE));
+  const mirrorHeight = Math.max(144, Math.floor(size.height * MIRROR_SCALE));
+  const [rt] = useState(
     () =>
-      new WebGLRenderTarget(Math.max(256, Math.floor(size.width * MIRROR_SCALE)), Math.max(144, Math.floor(size.height * MIRROR_SCALE)), {
+      new WebGLRenderTarget(mirrorWidth, mirrorHeight, {
         type: HalfFloatType,
         minFilter: LinearMipmapLinearFilter,
         magFilter: LinearFilter,
         generateMipmaps: true,
         depthBuffer: true,
       }),
-    [size.width, size.height],
   );
+  useEffect(() => resizeTarget(rt, mirrorWidth, mirrorHeight), [rt, mirrorWidth, mirrorHeight]);
   useEffect(() => () => rt.dispose(), [rt]);
 
   const material = useMemo(
@@ -164,7 +172,7 @@ export default function RiverMirror({
   useEffect(() => {
     const m = mesh.current?.material as ShaderMaterial | undefined;
     if (!m) return;
-    m.uniforms.uColor.value.set("#4b5046").lerp(new Color("#0e1436"), dn.night);
+    m.uniforms.uColor.value.set("#4b5046").lerp(new Color("#080c1c"), dn.night);
     m.uniforms.uStrength.value = 0.8 + dn.night * 0.2;
     m.uniforms.uNight.value = dn.night;
     m.uniforms.uSunDir.value.set(...dn.sunDir);

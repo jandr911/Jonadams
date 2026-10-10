@@ -110,6 +110,7 @@ export default function Loader({ ready, returning }: { ready: boolean; returning
   const [gone, setGone] = useState(false);
   const start = useRef(0);
   const assetsRef = useRef(0);
+  const shownRef = useRef(0);
 
   useEffect(() => {
     assetsRef.current = assets;
@@ -124,7 +125,11 @@ export default function Loader({ ready, returning }: { ready: boolean; returning
       const ramp = (1 - Math.pow(1 - t, 3)) * 88;
       const target = ready ? 100 : Math.max(ramp, assetsRef.current * 0.88);
       const ease = ready ? 0.3 : 0.12;
-      setShown((p) => (target - p < 0.05 ? target : p + (target - p) * ease));
+      const p = shownRef.current;
+      const next = target - p < 0.05 ? target : p + (target - p) * ease;
+      shownRef.current = next;
+      setShown(next);
+      if (ready && next >= 100) return;
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -147,12 +152,10 @@ export default function Loader({ ready, returning }: { ready: boolean; returning
   const stage = ready ? welcome : STAGES.find(([max]) => pct < max)?.[1] ?? "Opening the doors";
 
   return (
-    <div
-      className={`loader ${returning ? "loader--quick" : ""} ${done ? "is-done" : ""}`}
-      role="status"
-      aria-live="polite"
-      aria-label={`Loading, ${pct} percent`}
-    >
+    <div className={`loader ${returning ? "loader--quick" : ""} ${done ? "is-done" : ""}`} aria-busy={!ready}>
+      <span className="sr-only" role="status">
+        {stage}
+      </span>
       <div className="loader__glow" />
       <Stars />
       <div className="loader__beam loader__beam--a" />
@@ -166,13 +169,13 @@ export default function Loader({ ready, returning }: { ready: boolean; returning
       <div className="loader__grain" />
       <div className="loader__frame" />
 
-      <span className="loader__corner loader__corner--tl">
+      <span className="loader__corner loader__corner--tl" aria-hidden>
         <i className="loader__dot" />
         Est. {SITE.year} · {SITE.city}
       </span>
-      <span className="loader__corner loader__corner--tr">Now entering</span>
+      <span className="loader__corner loader__corner--tr" aria-hidden>Now entering</span>
 
-      <div className="loader__center">
+      <div className="loader__center" aria-hidden>
         <span className="loader__eyebrow">{SITE.artist} presents</span>
         <div className="loader__title">
           <span style={{ animationDelay: "0.1s" }}>Adams</span>
@@ -195,8 +198,8 @@ export default function Loader({ ready, returning }: { ready: boolean; returning
         </div>
       </div>
 
-      <span className="loader__corner loader__corner--bl">Music · Art · The Creatives</span>
-      <span className="loader__corner loader__corner--br">42.33° N, 83.05° W</span>
+      <span className="loader__corner loader__corner--bl" aria-hidden>Music · Art · The Creatives</span>
+      <span className="loader__corner loader__corner--br" aria-hidden>42.33° N, 83.05° W</span>
     </div>
   );
 }

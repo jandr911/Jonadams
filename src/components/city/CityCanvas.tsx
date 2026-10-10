@@ -17,7 +17,9 @@ const CityStage = dynamic(() => import("./CityStage"), { ssr: false });
 
 const PRESETS: TimePreset[] = ["auto", "day", "dusk", "night"];
 const OVERCAST_DEFAULT = 0.6;
-const DISTRICTS_HINT = "Five districts · Hover to preview · Click to fly in";
+const DISTRICTS_HINT = `${DESTINATIONS.length} districts · Hover to preview · Click to fly in`;
+const LOCKED_HINT = `${DESTINATIONS.length} districts · Opening soon`;
+const READOUT = "All districts online · Sky lanes active";
 
 function subscribeMinute(cb: () => void) {
   const id = setInterval(cb, 60_000);
@@ -88,13 +90,22 @@ function NavPad({ camRef, reducedMotion }: { camRef: React.MutableRefObject<Came
       onPointerUp={stop}
       onPointerCancel={stop}
       onPointerLeave={stop}
+      onKeyDown={(e) => {
+        if ((e.key !== "Enter" && e.key !== " ") || e.repeat) return;
+        e.preventDefault();
+        start(m);
+      }}
+      onKeyUp={(e) => {
+        if (e.key === "Enter" || e.key === " ") stop();
+      }}
+      onBlur={stop}
       onContextMenu={(e) => e.preventDefault()}
     >
       {label}
     </button>
   );
   return (
-    <div className="city-pad" aria-label="Camera controls">
+    <div className="city-pad" role="group" aria-label="Camera controls">
       <div className="city-pad__grid">
         <span />
         {btn("forward", "↑", "Move forward (W / ↑)")}
@@ -211,6 +222,7 @@ export default function CityCanvas() {
     [hovered, navigating, flyTo, quality, reducedMotion],
   );
 
+  const pillLabel = preset === "auto" ? "Detroit time" : "Preview";
   const cyclePreset = () => setOverride(PRESETS[(PRESETS.indexOf(preset) + 1) % PRESETS.length]);
 
   return (
@@ -218,45 +230,69 @@ export default function CityCanvas() {
       <CityContext.Provider value={api}>
         <div className={`city-root ${ready ? "is-live" : ""}`}>
           <CityStage onQuality={setQuality} onReady={() => setStageUp(true)} />
+          <div className="city-frame" aria-hidden>
+            <i />
+            <i />
+            <i />
+            <i />
+          </div>
 
           <nav aria-label="City districts" className="city-hud city-hud--districts">
-            <span className="districts__hint">{hovered ? hovered.blurb : DISTRICTS_HINT}</span>
+            <span className="districts__hint">{hovered ? hovered.blurb : SITE.navLocked ? LOCKED_HINT : DISTRICTS_HINT}</span>
             <div className="districts">
-              <div ref={trackRef} className="districts__track">
-              {DESTINATIONS.map((d, i) => (
-              <Link
-                key={d.id}
-                href={SITE.navLocked ? "#" : d.href}
-                className={`district ${hovered?.id === d.id ? "is-hot" : ""}`}
-                style={{ ["--c" as string]: d.color, ["--i" as string]: i }}
-                onMouseEnter={() => !navigating && setHovered(d)}
-                onMouseLeave={() => setHovered(null)}
-                onClick={(e) => {
-                  if (SITE.navLocked) {
-                    e.preventDefault();
-                    return;
-                  }
-                  if (reducedMotion) return;
-                  e.preventDefault();
-                  void flyTo(d);
-                }}
-              >
-                <span className="district__index">{String(i + 1).padStart(2, "0")}</span>
-                <span className="district__name">{d.label}</span>
-                <span className="district__sub">{d.sub}</span>
-              </Link>
-              ))}
+              <div ref={trackRef} className="districts__track" role={SITE.navLocked ? "list" : undefined}>
+              {DESTINATIONS.map((d, i) => {
+                const style = { ["--c" as string]: d.accent, ["--i" as string]: i };
+                const className = `district ${hovered?.id === d.id ? "is-hot" : ""}`;
+                const preview = {
+                  onMouseEnter: () => !navigating && setHovered(d),
+                  onMouseLeave: () => setHovered(null),
+                };
+                const label = (
+                  <>
+                    <span className="district__index">{String(i + 1).padStart(2, "0")}</span>
+                    <span className="district__name">{d.label}</span>
+                    <span className="district__sub">{d.sub}</span>
+                  </>
+                );
+                if (SITE.navLocked) {
+                  return (
+                    <div key={d.id} role="listitem" className={className} style={style} {...preview}>
+                      {label}
+                    </div>
+                  );
+                }
+                return (
+                  <Link
+                    key={d.id}
+                    href={d.href}
+                    className={className}
+                    style={style}
+                    {...preview}
+                    onFocus={preview.onMouseEnter}
+                    onBlur={preview.onMouseLeave}
+                    onClick={(e) => {
+                      if (reducedMotion) return;
+                      e.preventDefault();
+                      void flyTo(d);
+                    }}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
               </div>
             </div>
           </nav>
 
           <div className="city-hud city-hud--status">
-            <button type="button" className="city-pill" onClick={cyclePreset} aria-label={`Time of day: ${labelFor(hour)}. Click to change.`}>
+            <button type="button" className="city-pill" onClick={cyclePreset} aria-label={`${pillLabel} ${labelFor(hour)}, change time of day`}>
               <span className="city-pill__dot" data-night={dn.night > 0.5} />
-              <span>{preset === "auto" ? "Detroit time" : preset}</span>
+              <span>{pillLabel}</span>
               <small>{labelFor(hour)}</small>
             </button>
             <span className="city-geo">Downtown Detroit · 42.33° N, 83.05° W</span>
+            <span className="city-readout">{READOUT}</span>
           </div>
 
           <div className="city-hud city-hud--pad">

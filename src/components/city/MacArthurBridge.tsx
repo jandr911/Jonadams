@@ -2,16 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Color, ExtrudeGeometry, InstancedMesh, MeshStandardMaterial, Object3D, Path, Shape } from "three";
+import { BRIDGE_LANDING } from "./BelleIsle";
 import { useDayNight } from "./DayNightContext";
 import { fillInstances } from "./instancing";
-import { CITY_HALF_X, CITY_HALF_Z, RIVER_NEAR } from "./layout";
+import { CITY_HALF_X, CITY_HALF_Z } from "./layout";
 import { mulberry32, pick, range } from "./rng";
 import { makeConcreteTexture } from "./textures";
 import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
 import { FLEET_COLORS, type VehicleKind } from "./vehicles";
 
 const A = { x: CITY_HALF_X + 90, z: CITY_HALF_Z + 3 };
-const B = { x: CITY_HALF_X + 156, z: RIVER_NEAR + 24 };
+const B = BRIDGE_LANDING;
 const DX = B.x - A.x;
 const DZ = B.z - A.z;
 const LEN = Math.hypot(DX, DZ);

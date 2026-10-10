@@ -1,7 +1,7 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useDayNight } from "./DayNightContext";
 import {
   applyDayNight,
@@ -12,7 +12,7 @@ import {
 
 export function useWindowMaterial(opts: WindowMaterialOptions = {}) {
   const dn = useDayNight();
-  const mat = useMemo(() => createWindowMaterial(opts), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [mat] = useState(() => createWindowMaterial(opts));
   useEffect(() => {
     applyDayNight(mat, dn);
   }, [mat, dn]);

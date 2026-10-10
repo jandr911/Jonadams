@@ -15,3 +15,9 @@ export function range(rand: () => number, min: number, max: number) {
 export function pick<T>(rand: () => number, items: readonly T[]): T {
   return items[Math.floor(rand() * items.length)];
 }
+
+export function seedOf(text: string) {
+  let h = 7;
+  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) >>> 0;
+  return h;
+}

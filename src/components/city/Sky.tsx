@@ -20,6 +20,7 @@ import {
   Vector3,
 } from "three";
 import { useDayNight } from "./DayNightContext";
+import { CAMERA_CEILING } from "./layout";
 import { mulberry32, range } from "./rng";
 import { enableReflection } from "./layers";
 
@@ -53,7 +54,7 @@ const skyFrag = /* glsl */ `
     vec3 col = h > 0.0
       ? mix(uHorizon, uZenith, pow(h, 0.5))
       : mix(uHorizon, uGround, pow(-h, 0.5));
-    float haze = 1.0 - smoothstep(0.0, 0.16, h);
+    float haze = 1.0 - smoothstep(0.0, 0.16 + 0.22 * uNight, h);
     col = mix(col, uFog, haze * 0.95);
     float s = max(dot(d, normalize(uSunDir)), 0.0);
     float glow = pow(s, 64.0) * 1.4 + pow(s, 8.0) * 0.22 + pow(s, 2.0) * 0.04;
@@ -63,10 +64,10 @@ const skyFrag = /* glsl */ `
       float sil = 0.003 + hash(vec2(floor(az * 70.0), 1.0)) * 0.012 + hash(vec2(floor(az * 230.0), 2.0)) * 0.005;
       float stack = step(0.985, hash(vec2(floor(az * 400.0), 3.0))) * 0.02;
       float city = 1.0 - step(sil + stack, h);
-      vec3 silCol = uFog * mix(0.8, 0.6, uNight);
+      vec3 silCol = uFog * mix(0.93, 0.6, uNight);
       float lit = uNight * step(0.93, hash(vec2(floor(az * 900.0), floor(h * 900.0)))) * step(h, sil + stack - 0.002);
       silCol = mix(silCol, vec3(1.0, 0.85, 0.6), lit);
-      col = mix(col, silCol, city * 0.85);
+      col = mix(col, silCol, city * mix(0.55, 0.85, uNight) * (1.0 - smoothstep(66.0, 110.0, cameraPosition.y)));
     }
     gl_FragColor = vec4(col, 1.0);
     #include <tonemapping_fragment>
@@ -82,7 +83,7 @@ const starVert = /* glsl */ `
   varying float vA;
   void main() {
     float tw = 0.65 + 0.35 * sin(uTime * 1.7 + aPhase * 6.28318);
-    vA = uAlpha * tw;
+    vA = uAlpha * tw * smoothstep(0.08, 0.5, normalize(position).y);
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     gl_PointSize = aSize * (0.8 + 0.4 * tw);
     gl_Position = projectionMatrix * mv;
@@ -147,7 +148,7 @@ function Stars() {
   const dn = useDayNight();
   const { geometry, material } = useMemo(() => {
     const rand = mulberry32(7);
-    const n = 2200;
+    const n = 900;
     const pos = new Float32Array(n * 3);
     const phase = new Float32Array(n);
     const size = new Float32Array(n);
@@ -161,7 +162,7 @@ function Stars() {
       pos[i * 3 + 1] = r * Math.cos(phi) + 20;
       pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
       phase[i] = rand();
-      size[i] = range(rand, 2.2, 5.2);
+      size[i] = range(rand, 1.6, 3.6);
     }
     const geometry = new BufferGeometry();
     geometry.setAttribute("position", new Float32BufferAttribute(pos, 3));
@@ -281,6 +282,19 @@ function HighBirds() {
   );
 }
 
+const CLOUD_DRIFT = 0.7;
+const CLOUD_WRAP = 1200;
+const COVER_Y = 560;
+
+function aboveCeiling(y: number, w: number) {
+  return Math.max(y, CAMERA_CEILING + 12 + 0.8 * w);
+}
+
+function driftX(x: number, t: number) {
+  const span = CLOUD_WRAP * 2;
+  return ((((x - t * CLOUD_DRIFT + CLOUD_WRAP) % span) + span) % span) - CLOUD_WRAP;
+}
+
 const CLOUD_SPECS = (() => {
   const rand = mulberry32(21);
   const out: { x: number; y: number; z: number; w: number; seed: number; segments: number }[] = [];
@@ -291,40 +305,48 @@ const CLOUD_SPECS = (() => {
     out.push({ x: range(rand, -300, 300), y: range(rand, 340, 390), z: range(rand, 200, 420), w: range(rand, 80, 130), seed: 100 + i * 3, segments: 20 });
   }
   for (let i = 0; i < 4; i++) {
-    out.push({ x: range(rand, -900, 900), y: range(rand, 300, 330), z: range(rand, -1100, -700), w: range(rand, 140, 220), seed: 200 + i * 5, segments: 18 });
+    out.push({ x: range(rand, -900, 900), y: range(rand, 300, 330), z: range(rand, -1100, -700), w: range(rand, 140, 180), seed: 200 + i * 5, segments: 18 });
   }
-  return out;
+  return out.map((c) => ({ ...c, y: aboveCeiling(c.y, c.w) }));
 })();
 
 function Cumulus() {
   const dn = useDayNight();
-  const group = useRef<Group>(null);
+  const drifting = useRef<(Group | null)[]>([]);
   const tint = useMemo(() => {
     const dusk = Math.max(0, 1 - Math.abs(dn.night - 0.5) * 2.4);
     return new Color("#dfe2e6").lerp(new Color("#ffb48c"), dusk * 0.6).lerp(new Color("#2a2a58"), dn.night);
   }, [dn]);
   useFrame(({ clock }) => {
-    const g = group.current;
-    if (!g) return;
-    g.position.x = -((clock.elapsedTime * 0.7) % 500) + 250;
+    for (let i = 0; i < drifting.current.length; i++) {
+      const g = drifting.current[i];
+      if (g) g.position.x = driftX(CLOUD_SPECS[i].x, clock.elapsedTime);
+    }
   });
   return (
-    <group ref={group} name="cumulus">
+    <group name="cumulus">
       <Clouds material={MeshBasicMaterial} limit={300} frustumCulled={false}>
         {CLOUD_SPECS.map((c, i) => (
-          <Cloud
+          <group
             key={i}
-            seed={c.seed}
-            segments={c.segments}
-            bounds={[c.w, c.w * 0.32, c.w * 0.55]}
-            volume={c.w * 0.95}
-            position={[c.x, c.y, c.z]}
-            color={tint}
-            opacity={(0.78 - dn.night * 0.3) * (0.45 + dn.cloud * 0.55)}
-            speed={0.06}
-            growth={14}
-            fade={140}
-          />
+            ref={(g) => {
+              drifting.current[i] = g;
+            }}
+            position-x={c.x}
+          >
+            <Cloud
+              seed={c.seed}
+              segments={c.segments}
+              bounds={[c.w, c.w * 0.32, c.w * 0.55]}
+              volume={c.w * 0.95}
+              position={[0, c.y, c.z]}
+              color={tint}
+              opacity={(0.78 - dn.night * 0.3) * (0.45 + dn.cloud * 0.55)}
+              speed={0.06}
+              growth={14}
+              fade={140}
+            />
+          </group>
         ))}
       </Clouds>
     </group>
@@ -382,7 +404,7 @@ const coverFrag = /* glsl */ `
     float lit = clamp(0.55 + (n2 - n) * 9.0, 0.3, 1.15);
     vec3 col = mix(uShade, uTint, lit);
     float dist = length(vWorld.xz - cameraPosition.xz);
-    float far = 1.0 - smoothstep(1800.0, 3600.0, dist);
+    float far = 1.0 - smoothstep(1400.0, 2400.0, dist);
     gl_FragColor = vec4(col, cover * uAlpha * far);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -427,7 +449,7 @@ function CloudCover() {
     (p.material as ShaderMaterial).uniforms.uTime.value = clock.elapsedTime;
   });
   return (
-    <mesh ref={ref} material={mat} rotation-x={-Math.PI / 2} position={[0, 520, 0]} frustumCulled={false} renderOrder={-5}>
+    <mesh ref={ref} material={mat} rotation-x={-Math.PI / 2} position={[0, COVER_Y, 0]} frustumCulled={false} renderOrder={-5}>
       <planeGeometry args={[9000, 9000, 1, 1]} />
     </mesh>
   );

@@ -95,9 +95,11 @@ export function renderMirror(
   const prevTarget = gl.getRenderTarget();
   const prevXr = gl.xr.enabled;
   const prevShadow = gl.shadowMap.autoUpdate;
+  const prevShadowNeeded = gl.shadowMap.needsUpdate;
   mesh.visible = false;
   gl.xr.enabled = false;
   gl.shadowMap.autoUpdate = false;
+  gl.shadowMap.needsUpdate = false;
   gl.setRenderTarget(rt);
   gl.state.buffers.depth.setMask(true);
   gl.clear();
@@ -105,6 +107,7 @@ export function renderMirror(
   gl.setRenderTarget(prevTarget);
   gl.xr.enabled = prevXr;
   gl.shadowMap.autoUpdate = prevShadow;
+  gl.shadowMap.needsUpdate = prevShadowNeeded;
   mesh.visible = true;
 }
 
