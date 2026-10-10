@@ -46,7 +46,7 @@ const vertexShader = /* glsl */ `
     #endif
     vec3 scale = vec3(length(m[0].xyz), length(m[1].xyz), length(m[2].xyz));
     vSize = scale;
-    vNormalW = normalize(mat3(m) * normal);
+    vNormalW = normalize(mat3(m) * (normal / (scale * scale)));
     vec3 p = position;
     if (uCylindrical > 0.5) vFace = vec2(atan(p.z, p.x) * scale.x, p.y * scale.y);
     else if (abs(normal.x) > 0.5) vFace = vec2(p.z * scale.z, p.y * scale.y);
@@ -242,7 +242,10 @@ const fragmentShader = /* glsl */ `
 
     float h = hash(cell + vSeed * 13.17);
     float floorDark = step(0.12, hash(vec2(cell.y, vSeed * 3.7)));
-    float lit = max(step(1.0 - uLitDensity * uNight, h) * floorDark, shop * step(0.25, h) * uNight);
+    float occupancy = hash(vec2(vSeed * 5.3, 11.0));
+    float density = uLitDensity * mix(0.3, 1.4, occupancy);
+    float wholeFloor = step(0.93, hash(vec2(cell.y * 1.7, vSeed * 2.1))) * step(0.35, occupancy);
+    float lit = max(max(step(1.0 - density * uNight, h) * floorDark, wholeFloor * uNight), shop * step(0.25, h) * uNight);
     float flick = 1.0 - 0.45 * step(0.992, hash(cell + floor(uTime * 0.7) + vSeed));
     vec3 tint = mix(uWarm, uCool, step(COOL_WINDOW_THRESHOLD, hash(cell * 1.71 + vSeed)));
     float hue = hash(cell * 0.77 + vSeed * 2.3);
@@ -271,9 +274,11 @@ const fragmentShader = /* glsl */ `
     vec3 dayGlass = (mix(vColor * 0.4, uHemiSky * 0.95, 0.6) * (0.55 + 0.6 * ndl)
                 + uSunColor * spec * 2.5 + uHemiSky * fres * 0.6 + uHemiSky * (0.05 + 0.25 * skyGrad))
                 * (0.85 + 0.15 * bright);
+    vec3 tintedGlass = vColor * 0.5 + uHemiSky * (0.08 + 0.55 * fres + 0.14 * skyGrad) + uSunColor * spec * 2.5;
+    dayGlass = mix(dayGlass, tintedGlass, isGlass);
     vec3 dayDark = vColor * 0.18 + uHemiSky * (0.06 + 0.1 * fres);
     vec3 dayLit = tint * 0.55 * dressing + uHemiSky * 0.1;
-    vec3 dayWin = mix(mix(dayGlass, dayDark, step(0.6, dayKind)), dayLit, step(0.9, dayKind) * (1.0 - shop));
+    vec3 dayWin = mix(mix(dayGlass, dayDark, step(mix(0.6, 0.86, isGlass), dayKind)), dayLit, step(0.9, dayKind) * (1.0 - shop));
     dayWin = mix(dayWin, dayGlass, sMid * (1.0 - shop));
     dayWin = dayWin * lintel * reveal * (1.0 - 0.35 * shade);
     vec3 nightUnlit = ((facade * 0.5 + vColor * 0.06) * lintel + uHemiSky * 0.05 * skyGrad) * reveal;
@@ -335,6 +340,7 @@ const fragmentShader = /* glsl */ `
     }
     float flood = vArch.z * uNight * smoothstep(vSize.y - FLOOD_REACH, vSize.y, vLocalY) * (1.0 - vTop);
     col += vColor * vec3(1.0, 0.8, 0.52) * flood * 2.2;
+
 
     // roof: gravel, parapet rim, slight AO
     vec2 rim = vSize.xz * 0.5 - abs(vTopXZ);

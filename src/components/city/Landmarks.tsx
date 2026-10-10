@@ -3,7 +3,9 @@
 import { Html, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AdditiveBlending, Color, CylinderGeometry, Group, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
+import { AdditiveBlending, BoxGeometry, Color, ConeGeometry, CylinderGeometry, Group, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { SITE } from "@/content/site";
 import AmbassadorBridge from "./AmbassadorBridge";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
@@ -14,7 +16,7 @@ import {
   blockCenter,
   destinationPosition,
 } from "./layout";
-import { carvedStoneTexture, handPaintedBillboardTexture } from "./labels";
+import { carvedStoneTexture, handPaintedBillboardTexture, wheatpastePosterTexture } from "./labels";
 import NeonSign, { DISPLAY_FONT, SCRIPT_FONT } from "./NeonSign";
 import PaintedSign from "./PaintedSign";
 import { useWindowMaterial } from "./useWindowMaterial";
@@ -521,13 +523,21 @@ function Fan({ position, r }: { position: [number, number, number]; r: number })
   );
 }
 
+const WATER_TANK = (() => {
+  const legs = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => new BoxGeometry(0.35, 4, 0.35).translate(sx * 1.6, 2, sz * 1.6)));
+  const merged = mergeGeometries([
+    ...legs,
+    new BoxGeometry(4, 0.3, 4).translate(0, 4.15, 0),
+    new CylinderGeometry(2.3, 2.3, 4.2, 14, 1).translate(0, 6.4, 0),
+    new ConeGeometry(2.5, 1.6, 14, 1).translate(0, 9.3, 0),
+  ].map((g) => g.toNonIndexed()));
+  if (!merged) throw new Error("water tank parts could not be merged");
+  return merged;
+})();
+
 function MerchWarehouse() {
   const d = DESTINATIONS[3];
   const [x, z] = destinationPosition(d);
-  const eyes = useRef<MeshStandardMaterial>(null);
-  useFrame(({ clock }) => {
-    if (eyes.current) eyes.current.emissiveIntensity = 2.5 + Math.sin(clock.elapsedTime * 3) * 1.5;
-  });
   return (
     <Hotspot dest={d} position={[x, PAD, z]}>
       <WindowedBox w={19} h={14} d={17} color="#8a4a3a" winSize={[2.6, 3]} seed={31} cool="#d6fbff" />
@@ -544,33 +554,9 @@ function MerchWarehouse() {
       <Fan position={[-5.5, 7.5, 8.8]} r={2} />
       <NeonSign text="MERCH" color="#ffb02e" width={11} height={3.6} fontSize={2.8} position={[2.5, 9.6, 8.9]} rotation={[0, 0, -0.06]} blink="fast" />
       <PaintedSign text="RIVERTOWN" bg="#2f4a3a" fg="#e6dbc2" width={12} height={2.2} position={[0, 17.4, 0]} doubleSided depth={0.8} />
-      <group position={[6, 15.2, 2]}>
-        <mesh position={[0, 3.5, 0]}>
-          <boxGeometry args={[4.4, 5, 4.4]} />
-          <meshStandardMaterial color="#1f6b8a" roughness={0.5} />
-        </mesh>
-        <mesh position={[0, 8, 0]}>
-          <boxGeometry args={[3.6, 3, 3.6]} />
-          <meshStandardMaterial color="#2e86a8" roughness={0.5} />
-        </mesh>
-        {[-0.9, 0.9].map((ex) => (
-          <mesh key={ex} position={[ex, 8.3, 1.85]}>
-            <boxGeometry args={[0.9, 0.5, 0.2]} />
-            <meshStandardMaterial ref={ex < 0 ? eyes : undefined} color="#ffd27a" emissive="#ffb02e" emissiveIntensity={3} toneMapped={false} />
-          </mesh>
-        ))}
-        <mesh position={[0, 10.4, 0]}>
-          <cylinderGeometry args={[0.1, 0.14, 1.8, 5]} />
-          <meshStandardMaterial color="#1d1d3f" />
-        </mesh>
-        <Beacon position={[0, 11.5, 0]} color="#49d2f2" size={0.35} rate={2} />
-        {[-1, 1].map((s) => (
-          <mesh key={s} position={[s * 2.9, 4.4, 0]} rotation={[0, 0, s * 0.5]}>
-            <boxGeometry args={[1, 3.6, 1]} />
-            <meshStandardMaterial color="#1f6b8a" />
-          </mesh>
-        ))}
-      </group>
+      <mesh geometry={WATER_TANK} position={[6, 15.2, 2]}>
+        <meshStandardMaterial color="#5a4632" roughness={0.95} />
+      </mesh>
     </Hotspot>
   );
 }
@@ -1018,20 +1004,20 @@ function CadillacTower() {
 function Fisher() {
   const dn = useDayNight();
   const [x, z] = blockCenter(3, 0);
-  const crown = useRef<MeshStandardMaterial>(null);
+  const roof = useRef<MeshStandardMaterial>(null);
   useEffect(() => {
-    if (crown.current) crown.current.emissiveIntensity = 0.3 + dn.night * 2.2;
+    if (roof.current) roof.current.emissiveIntensity = dn.night * 1.1;
   }, [dn]);
   return (
     <Landmark name="Fisher Building" note="1928 · New Center · golden tower" position={[x, PAD, z]} labelHeight={66}>
       <WindowedBox w={15} h={48} d={15} color="#b8a070" winSize={[1.8, 2.3]} seed={81} />
-      <mesh position={[0, 51, 0]}>
-        <boxGeometry args={[11, 6, 11]} />
-        <meshStandardMaterial ref={crown} color="#ffb02e" emissive="#ffb02e" emissiveIntensity={2} toneMapped={false} />
+      <mesh position={[0, 50.5, 0]}>
+        <boxGeometry args={[11, 5, 11]} />
+        <meshStandardMaterial color="#a8925f" roughness={0.85} />
       </mesh>
-      <mesh position={[0, 55.5, 0]}>
-        <boxGeometry args={[7, 3, 7]} />
-        <meshStandardMaterial color="#ffd27a" emissive="#ffd27a" emissiveIntensity={1.2} toneMapped={false} />
+      <mesh position={[0, 57.5, 0]} rotation={[0, Math.PI / 4, 0]}>
+        <coneGeometry args={[7.6, 9, 4]} />
+        <meshStandardMaterial ref={roof} color="#9c8a3c" metalness={0.55} roughness={0.42} emissive="#ffb02e" emissiveIntensity={0} />
       </mesh>
     </Landmark>
   );
@@ -1233,11 +1219,12 @@ function Carousel() {
 
 function AdBoard() {
   const [x, z] = blockCenter(6, 4);
+  const poster = useMemo(() => wheatpastePosterTexture(SITE.artist.toUpperCase(), "Live at Club Adams", "DETROIT · ONE NIGHT ONLY"), []);
   return (
     <Landmark name="Rivertown Lofts" note="Converted warehouse" position={[x, PAD, z]} labelHeight={32}>
       <WindowedBox w={16} h={18} d={16} color="#a3563f" winSize={[2.4, 2.6]} seed={171} />
       <group position={[0, 24, 2]} rotation={[0, 0, -0.1]}>
-        <PaintedSign text="YOUR AD HERE" bg="#e6dbc2" fg="#1f1d1b" width={12} height={6.4} />
+        <PaintedSign texture={poster} width={12} height={6.4} />
       </group>
       {[-5, 5].map((px) => (
         <mesh key={px} position={[px, 19.5, 2]}>
@@ -1251,8 +1238,8 @@ function AdBoard() {
 
 function Welcome() {
   return (
-    <group position={[0, PAD, CITY_HALF_Z + 6]}>
-      <Text font={DISPLAY_FONT} fontSize={6} color={new Color("#f3dfae").multiplyScalar(1.5)} anchorX="center" anchorY="bottom" rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.55, 0]} letterSpacing={0.18} material-toneMapped={false}>
+    <group position={[0, PAD, CITY_HALF_Z + 10.2]}>
+      <Text font={DISPLAY_FONT} fontSize={3.4} color={new Color("#f3dfae").multiplyScalar(1.5)} anchorX="center" anchorY="bottom" rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.55, 0]} letterSpacing={0.18} material-toneMapped={false}>
         DETROIT · ADAMS UNIVERSECITY
       </Text>
     </group>

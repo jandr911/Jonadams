@@ -63,10 +63,10 @@ const skyFrag = /* glsl */ `
       float sil = 0.003 + hash(vec2(floor(az * 70.0), 1.0)) * 0.012 + hash(vec2(floor(az * 230.0), 2.0)) * 0.005;
       float stack = step(0.985, hash(vec2(floor(az * 400.0), 3.0))) * 0.02;
       float city = 1.0 - step(sil + stack, h);
-      vec3 silCol = uFog * mix(0.8, 0.6, uNight);
+      vec3 silCol = uFog * mix(0.93, 0.6, uNight);
       float lit = uNight * step(0.93, hash(vec2(floor(az * 900.0), floor(h * 900.0)))) * step(h, sil + stack - 0.002);
       silCol = mix(silCol, vec3(1.0, 0.85, 0.6), lit);
-      col = mix(col, silCol, city * 0.85);
+      col = mix(col, silCol, city * mix(0.55, 0.85, uNight) * (1.0 - smoothstep(66.0, 110.0, cameraPosition.y)));
     }
     gl_FragColor = vec4(col, 1.0);
     #include <tonemapping_fragment>
@@ -82,7 +82,7 @@ const starVert = /* glsl */ `
   varying float vA;
   void main() {
     float tw = 0.65 + 0.35 * sin(uTime * 1.7 + aPhase * 6.28318);
-    vA = uAlpha * tw;
+    vA = uAlpha * tw * smoothstep(0.08, 0.5, normalize(position).y);
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     gl_PointSize = aSize * (0.8 + 0.4 * tw);
     gl_Position = projectionMatrix * mv;
@@ -147,7 +147,7 @@ function Stars() {
   const dn = useDayNight();
   const { geometry, material } = useMemo(() => {
     const rand = mulberry32(7);
-    const n = 2200;
+    const n = 900;
     const pos = new Float32Array(n * 3);
     const phase = new Float32Array(n);
     const size = new Float32Array(n);
@@ -161,7 +161,7 @@ function Stars() {
       pos[i * 3 + 1] = r * Math.cos(phi) + 20;
       pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
       phase[i] = rand();
-      size[i] = range(rand, 2.2, 5.2);
+      size[i] = range(rand, 1.6, 3.6);
     }
     const geometry = new BufferGeometry();
     geometry.setAttribute("position", new Float32BufferAttribute(pos, 3));

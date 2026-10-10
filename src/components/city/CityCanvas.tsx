@@ -253,7 +253,7 @@ export default function CityCanvas() {
           <div className="city-hud city-hud--status">
             <button type="button" className="city-pill" onClick={cyclePreset} aria-label={`Time of day: ${labelFor(hour)}. Click to change.`}>
               <span className="city-pill__dot" data-night={dn.night > 0.5} />
-              <span>{preset === "auto" ? "Detroit time" : preset}</span>
+              <span>{preset === "auto" ? "Detroit time" : "Preview"}</span>
               <small>{labelFor(hour)}</small>
             </button>
             <span className="city-geo">Downtown Detroit · 42.33° N, 83.05° W</span>

@@ -117,7 +117,7 @@ export function computeDayNight(hour: number, cloud = OVERCAST_BASELINE): DayNig
     hemiSky: mix3("hemiSky"),
     hemiGround: mix3("hemiGround"),
     bloom: 0.3 + night * 0.5,
-    starAlpha: smooth(0.55, 1, night),
+    starAlpha: smooth(0.55, 1, night) * (1 - cloud * 0.7),
   };
 }
 

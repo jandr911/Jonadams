@@ -225,6 +225,51 @@ export function handPaintedBillboardTexture(script: string, headline: string, fo
   });
 }
 
+export function wheatpastePosterTexture(headline: string, script: string, footer: string) {
+  const w = 1024;
+  const h = 544;
+  const sheets = 3;
+  return cached(`wheatpaste|${headline}|${script}|${footer}`, w, h, (ctx) => {
+    const rand = mulberry32(seedOf(headline + footer));
+    ctx.fillStyle = "#3a3733";
+    ctx.fillRect(0, 0, w, h);
+    const sw = w / sheets;
+    for (let i = 0; i < sheets; i++) {
+      ctx.save();
+      ctx.translate(sw * i + sw / 2 + (rand() - 0.5) * 10, h / 2 + (rand() - 0.5) * 8);
+      ctx.rotate((rand() - 0.5) * 0.03);
+      const pw = sw - 10;
+      const ph = h - 18;
+      ctx.fillStyle = i === 1 ? "#d9cfb6" : "#15130f";
+      ctx.fillRect(-pw / 2, -ph / 2, pw, ph);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = i === 1 ? "#15130f" : "#d6b56e";
+      ctx.font = `italic ${ph * 0.1}px CityScript, Georgia, serif`;
+      ctx.fillText(script, 0, -ph * 0.33, pw * 0.84);
+      ctx.font = `${ph * 0.24}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+      const [first, ...rest] = headline.split(" ");
+      ctx.fillText(first, 0, -ph * 0.12, pw * 0.9);
+      ctx.fillText(rest.join(" "), 0, ph * 0.12, pw * 0.9);
+      ctx.fillRect(-pw * 0.3, ph * 0.27, pw * 0.6, 3);
+      ctx.font = `${ph * 0.06}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+      ctx.fillText(footer, 0, ph * 0.36, pw * 0.84);
+      ctx.restore();
+    }
+    ctx.fillStyle = "#3a3733";
+    for (let i = 0; i < 7; i++) {
+      const x = rand() * w;
+      const y = rand() < 0.5 ? rand() * h * 0.15 : h - rand() * h * 0.15;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      for (let k = 0; k < 6; k++) ctx.lineTo(x + (rand() - 0.3) * 70, y + (rand() - 0.5) * 50);
+      ctx.closePath();
+      ctx.fill();
+    }
+    weather(ctx, w, h, rand, 1.4);
+  });
+}
+
 export function ghostAdTexture(lines: string[], ground: string, ink: string) {
   const w = 512;
   const h = 320;
