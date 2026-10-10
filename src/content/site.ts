@@ -2,6 +2,7 @@ export const SITE = {
   name: "Adams UniverseCity",
   cityName: "UniverseCity",
   artist: "Jonathan Adams",
+  nickname: "Jonn",
   city: "Detroit, Michigan",
   year: 2026,
   submitEmail: "",
@@ -9,6 +10,11 @@ export const SITE = {
   pressEmail: "",
   joinHref: "/listen#join-list",
   navLocked: true,
+};
+
+export const MUSIC = {
+  src: "",
+  title: "",
 };
 
 export const DESCRIPTION = "Step into the world of Jonathan Adams. Music, art, and the creatives of Detroit.";
