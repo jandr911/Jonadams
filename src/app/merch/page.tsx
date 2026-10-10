@@ -1,17 +1,12 @@
 import type { Metadata } from "next";
-import Room from "@/components/Room";
-import { MERCH } from "@/content/site";
+import Room, { roomMetadata } from "@/components/Room";
+import { MERCH, ROOMS } from "@/content/site";
 
-export const metadata: Metadata = { title: "Merch" };
+export const metadata: Metadata = roomMetadata("merch", ROOMS.merch.description);
 
 export default function MerchPage() {
   return (
-    <Room
-      index="04"
-      title="Merch"
-      lead="The rack is being stocked. Drop 01 arrives with the next single."
-      accent="var(--blue)"
-    >
+    <Room district="merch" lead={ROOMS.merch.lead}>
       <div className="grid-4">
         {MERCH.map((m, i) => (
           <article key={m.name} className="product-card">
@@ -20,7 +15,7 @@ export default function MerchPage() {
             </div>
             <span className="product-card__name">{m.name}</span>
             <span className="product-card__note">{m.note}</span>
-            <span className="product-card__status">Coming soon</span>
+            <span className="product-card__status">{ROOMS.merch.status}</span>
           </article>
         ))}
       </div>

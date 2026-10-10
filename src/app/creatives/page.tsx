@@ -1,17 +1,12 @@
 import type { Metadata } from "next";
-import Room from "@/components/Room";
-import { CREATIVE_SLOTS, SITE } from "@/content/site";
+import Room, { roomMetadata } from "@/components/Room";
+import { CREATIVE_SLOTS, ROOMS, SITE } from "@/content/site";
 
-export const metadata: Metadata = { title: "The Creatives" };
+export const metadata: Metadata = roomMetadata("creatives", ROOMS.creatives.description);
 
 export default function CreativesPage() {
   return (
-    <Room
-      index="05"
-      title="The Creatives"
-      lead="A curated wall for up-and-coming artists, builders, and makers from the city and beyond. Jonathan picks the lineup."
-      accent="var(--violet)"
-    >
+    <Room district="creatives" lead={ROOMS.creatives.lead}>
       <div className="grid-3">
         {CREATIVE_SLOTS.map((s, i) => (
           <article key={s.name} className="creative-card">
@@ -25,15 +20,13 @@ export default function CreativesPage() {
       </div>
       <section className="cta-panel">
         <span className="eyebrow">Want on the wall?</span>
-        <p className="cta-panel__text">
-          Send your work by email. No uploads, no forms — a short note and a link is enough.
-        </p>
+        <p className="cta-panel__text">{SITE.submitEmail ? ROOMS.creatives.pitch : ROOMS.creatives.pitchEmpty}</p>
         {SITE.submitEmail ? (
           <a className="btn-solid" href={`mailto:${SITE.submitEmail}?subject=Feature%20me%20on%20The%20Creatives`}>
             Email your work
           </a>
         ) : (
-          <span className="cta-panel__soon">Submissions open soon</span>
+          <span className="cta-panel__soon">{ROOMS.creatives.soon}</span>
         )}
       </section>
     </Room>

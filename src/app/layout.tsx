@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Space_Grotesk } from "next/font/google";
+import { DESCRIPTION, SITE } from "@/content/site";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -15,9 +16,10 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Adams UniverseCity",
-  description:
-    "Step into the world of Jonathan Adams. Music, art, and the creatives of Detroit.",
+  title: { default: SITE.name, template: `%s · ${SITE.name}` },
+  description: DESCRIPTION,
+  openGraph: { type: "website", siteName: SITE.name, title: SITE.name, description: DESCRIPTION },
+  twitter: { card: "summary_large_image", title: SITE.name, description: DESCRIPTION },
 };
 
 export default function RootLayout({

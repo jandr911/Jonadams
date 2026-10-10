@@ -42,13 +42,13 @@ export default function SiteHeader({ back = false, current }: { back?: boolean; 
           ),
         )}
       </nav>
-      {!SITE.navLocked && (
+      {(back || !SITE.navLocked) && (
         <div className="site-header__end">
           <Link href={cta.href} className="btn-outline site-header__cta">
             <span className="site-header__cta-long">{cta.label}</span>
             <span className="site-header__cta-short">{cta.short}</span>
           </Link>
-          <SiteMenu links={NAV} cta={cta} current={current} />
+          {!SITE.navLocked && <SiteMenu links={NAV} cta={cta} current={current} />}
         </div>
       )}
     </header>

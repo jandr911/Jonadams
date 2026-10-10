@@ -294,28 +294,28 @@ body {
   outline: 1px solid color-mix(in srgb, var(--c) 70%, transparent);
   outline-offset: -1px;
 }
-.site-nav__link:hover::before,
+a.site-nav__link:hover::before,
 .site-nav__link:focus-visible::before,
 .site-nav__link[aria-current="page"]::before {
   opacity: 1;
 }
-.site-nav__link:hover::after,
+a.site-nav__link:hover::after,
 .site-nav__link:focus-visible::after,
 .site-nav__link[aria-current="page"]::after {
   transform: scaleX(1);
 }
-.site-nav__link:hover .site-nav__index,
+a.site-nav__link:hover .site-nav__index,
 .site-nav__link:focus-visible .site-nav__index,
 .site-nav__link[aria-current="page"] .site-nav__index {
   opacity: 1;
   text-shadow: 0 0 14px color-mix(in srgb, var(--c) 80%, transparent);
 }
-.site-nav__link:hover .site-nav__name,
+a.site-nav__link:hover .site-nav__name,
 .site-nav__link:focus-visible .site-nav__name,
 .site-nav__link[aria-current="page"] .site-nav__name {
   color: var(--gold-2);
 }
-.site-nav__link:hover .site-nav__sub,
+a.site-nav__link:hover .site-nav__sub,
 .site-nav__link:focus-visible .site-nav__sub,
 .site-nav__link[aria-current="page"] .site-nav__sub {
   color: color-mix(in srgb, var(--c) 75%, var(--paper));
@@ -1602,6 +1602,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  scroll-margin-top: calc(var(--header-h) + 24px);
   margin-top: clamp(56px, 9vh, 96px);
   padding-top: clamp(28px, 4vh, 40px);
   border-top: 1px solid var(--line);
