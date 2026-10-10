@@ -1924,20 +1924,17 @@ a.site-nav__link:hover .site-nav__sub,
   padding: 5px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--ink) 35%, transparent);
-  opacity: 0.5;
-  transition: opacity 0.2s;
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--amber) 12%, transparent);
   user-select: none;
   touch-action: none;
 }
-.city-pad:hover,
-.city-pad:focus-within {
-  opacity: 1;
-}
-@media (hover: none) {
-  .city-pad {
-    opacity: 0.8;
-  }
+.city-pad__cue {
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--amber);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--amber) 70%, transparent);
 }
 .city-pad__grid {
   display: grid;
@@ -1958,20 +1955,52 @@ a.site-nav__link:hover .site-nav__sub,
   place-items: center;
   width: 26px;
   height: 26px;
-  border: 1px solid transparent;
+  border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent);
   border-radius: 7px;
-  background: transparent;
-  color: var(--muted);
+  background: radial-gradient(circle, color-mix(in srgb, var(--amber) 22%, transparent), transparent 72%);
+  color: var(--amber);
   font-size: 13px;
   line-height: 1;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--amber) 90%, transparent), 0 0 14px color-mix(in srgb, var(--amber) 55%, transparent);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  animation: city-lamp-hum 7s steps(1, end) infinite;
+}
+.city-pad__btn:nth-of-type(3n + 1) {
+  animation-delay: -2.3s;
+}
+.city-pad__btn:nth-of-type(3n + 2) {
+  animation-delay: -4.9s;
 }
 .city-pad__btn:hover,
-.city-pad__btn:active {
-  border-color: var(--gold);
-  background: rgba(214, 181, 110, 0.16);
+.city-pad__btn:focus-visible {
+  border-color: var(--amber);
   color: var(--gold-2);
+}
+.city-pad__btn:active {
+  border-color: var(--amber);
+  background: radial-gradient(circle, color-mix(in srgb, var(--amber) 55%, transparent), color-mix(in srgb, var(--amber) 12%, transparent) 80%);
+  color: var(--paper);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--amber) 65%, transparent);
+  animation: none;
+}
+@keyframes city-lamp-hum {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  91% {
+    opacity: 0.55;
+  }
+  92% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 0.7;
+  }
+  95% {
+    opacity: 1;
+  }
 }
 .city-pad__btn--home {
   color: var(--gold);
@@ -1986,6 +2015,9 @@ a.site-nav__link:hover .site-nav__sub,
 @media (prefers-reduced-motion: reduce) {
   .city-root .city-frame {
     transition: none;
+  }
+  .city-pad__btn {
+    animation: none;
   }
   .districts,
   .districts__hint,

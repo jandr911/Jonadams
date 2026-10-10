@@ -80,7 +80,7 @@ function NavPad({ camRef, reducedMotion }: { camRef: React.MutableRefObject<Came
     <button
       type="button"
       className={`city-pad__btn ${cls}`}
-      aria-label={title}
+      aria-label={`${title}, press and hold`}
       title={title}
       onPointerDown={(e) => {
         e.preventDefault();
@@ -298,6 +298,9 @@ export default function CityCanvas() {
           <div className="city-hud city-hud--pad">
             <span className="city-hint city-hint--mouse">Drag to orbit · Scroll to zoom · Shift‑drag or arrows to move · Q/E up and down</span>
             <span className="city-hint city-hint--touch">One finger to look · Two fingers to move · Pinch to zoom</span>
+            <span className="city-pad__cue" aria-hidden>
+              Press &amp; hold to move
+            </span>
             <NavPad camRef={camRef} reducedMotion={reducedMotion} />
           </div>
 
