@@ -3,6 +3,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { AdditiveBlending, CanvasTexture, Color, Euler, InstancedMesh, Matrix4, MeshBasicMaterial, MeshStandardMaterial, Quaternion, Vector3 } from "three";
+import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import { labelTexture } from "./labels";
 import {
@@ -141,7 +142,15 @@ interface Scratch {
   brakes: Uint8Array;
 }
 
-function runUpdate(meshes: Map<string, InstancedMesh>, items: FleetItem[], groups: { slot: number[] }, pose: PoseFn, time: number, s: Scratch) {
+function runUpdate(
+  meshes: Map<string, InstancedMesh>,
+  bodies: Map<VehicleKind, InstancedMesh[]>,
+  items: FleetItem[],
+  groups: { slot: number[] },
+  pose: PoseFn,
+  time: number,
+  s: Scratch,
+) {
   const tire = meshes.get("tire");
   const rim = meshes.get("rim");
   const head = meshes.get("head");
@@ -161,10 +170,8 @@ function runUpdate(meshes: Map<string, InstancedMesh>, items: FleetItem[], group
     pos.set(p.x, p.y, p.z);
     q.setFromEuler(e.set(p.pitch, p.yaw, 0, "YXZ"));
     M.compose(pos, q, ONE);
-    for (const part of PARTS) {
-      const im = meshes.get(`${kind}:${part}`);
-      if (im) im.setMatrixAt(gi, M);
-    }
+    const parts = bodies.get(kind);
+    if (parts) for (let k = 0; k < parts.length; k++) parts[k].setMatrixAt(gi, M);
     const loc = locals(kind);
     spin.makeRotationX(p.spin);
     for (let w = 0; w < 4; w++) {
@@ -190,6 +197,23 @@ function runUpdate(meshes: Map<string, InstancedMesh>, items: FleetItem[], group
   }
   for (const im of meshes.values()) im.instanceMatrix.needsUpdate = true;
   if (tailColorDirty && tail?.instanceColor) tail.instanceColor.needsUpdate = true;
+}
+
+function indexBodyParts(meshes: Map<string, InstancedMesh>, bodies: Map<VehicleKind, InstancedMesh[]>, key: string) {
+  const sep = key.indexOf(":");
+  if (sep < 0) return;
+  const kind = key.slice(0, sep) as VehicleKind;
+  const list: InstancedMesh[] = [];
+  for (const part of PARTS) {
+    const im = meshes.get(`${kind}:${part}`);
+    if (im) list.push(im);
+  }
+  bodies.set(kind, list);
+}
+
+function indexStrobes(mats: Map<string, MeshStandardMaterial | MeshBasicMaterial>, out: MeshStandardMaterial[]) {
+  out.length = 0;
+  for (const [key, m] of mats) if (key.endsWith(":strobe") && m instanceof MeshStandardMaterial) out.push(m);
 }
 
 function applyNight(mats: Map<string, MeshStandardMaterial | MeshBasicMaterial>, night: number) {
@@ -222,6 +246,7 @@ export default function VehicleFleet({
   castShadow?: boolean;
 }) {
   const dn = useDayNight();
+  const { reducedMotion } = useCity();
   const groups = useMemo(() => {
     const map = new Map<VehicleKind, number[]>();
     const slot = new Array<number>(items.length);
@@ -236,7 +261,9 @@ export default function VehicleFleet({
 
   const geo = useMemo(() => sharedGeometry(), []);
   const meshes = useRef(new Map<string, InstancedMesh>());
+  const bodies = useRef(new Map<VehicleKind, InstancedMesh[]>());
   const mats = useRef(new Map<string, MeshStandardMaterial | MeshBasicMaterial>());
+  const strobes = useRef<MeshStandardMaterial[]>([]);
   const scratch = useRef<Scratch>({
     p: { x: 0, y: 0, z: 0, yaw: 0, spin: 0, brake: false, pitch: 0 },
     pos: new Vector3(),
@@ -254,6 +281,7 @@ export default function VehicleFleet({
     (key: string) => (m: InstancedMesh | null) => {
       if (m) meshes.current.set(key, m);
       else meshes.current.delete(key);
+      indexBodyParts(meshes.current, bodies.current, key);
     },
     [],
   );
@@ -261,6 +289,7 @@ export default function VehicleFleet({
     (key: string) => (m: MeshStandardMaterial | MeshBasicMaterial | null) => {
       if (m) mats.current.set(key, m);
       else mats.current.delete(key);
+      if (key.endsWith(":strobe")) indexStrobes(mats.current, strobes.current);
     },
     [],
   );
@@ -283,18 +312,18 @@ export default function VehicleFleet({
   useEffect(() => {
     scratch.current.night = dn.night;
     applyNight(mats.current, dn.night);
-    if (!dynamic) runUpdate(meshes.current, items, groups, pose, 0, scratch.current);
+    if (!dynamic) runUpdate(meshes.current, bodies.current, items, groups, pose, 0, scratch.current);
   }, [dn.night, dynamic, items, groups, pose]);
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    if (dynamic) runUpdate(meshes.current, items, groups, pose, t, scratch.current);
-    const c = Math.floor(t * 5) % 2 === 0 ? RED : BLUE;
-    for (const [key, m] of mats.current) {
-      if (key.endsWith(":strobe") && m instanceof MeshStandardMaterial && !m.emissive.equals(c)) {
-        m.emissive.copy(c);
-        m.color.copy(c);
-      }
+    if (dynamic) runUpdate(meshes.current, bodies.current, items, groups, pose, t, scratch.current);
+    const c = reducedMotion || Math.floor(t * 5) % 2 === 0 ? RED : BLUE;
+    const list = strobes.current;
+    for (let k = 0; k < list.length; k++) {
+      if (list[k].emissive.equals(c)) continue;
+      list[k].emissive.copy(c);
+      list[k].color.copy(c);
     }
   });
 

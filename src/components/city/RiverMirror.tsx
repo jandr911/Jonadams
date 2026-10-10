@@ -1,7 +1,7 @@
 "use client";
 
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Color,
   HalfFloatType,
@@ -73,7 +73,7 @@ const frag = /* glsl */ `
     refl = refl / (1.0 + refl * 0.45);
     float reflLum = dot(refl, vec3(0.3, 0.59, 0.11));
     refl = mix(vec3(reflLum), refl, 0.7);
-    refl *= mix(1.0, smoothstep(0.04, 0.3, reflLum), uNight * 0.75);
+    refl *= mix(1.0, smoothstep(0.1, 0.5, reflLum), uNight * 0.9);
 
     vec3 v = normalize(cameraPosition - vWorld);
     vec3 n = normalize(vec3((n1 - 0.5) * 0.25 + (n3 - 0.5) * 0.35, 1.0, (n2 - 0.5) * 0.25 + (n3 - 0.5) * 0.35));
@@ -103,6 +103,10 @@ const frag = /* glsl */ `
 const MIRROR_SCALE = 0.4;
 const MIRROR_EVERY = 3;
 
+function resizeTarget(rt: WebGLRenderTarget, width: number, height: number) {
+  rt.setSize(width, height);
+}
+
 export default function RiverMirror({
   width,
   depth,
@@ -120,17 +124,19 @@ export default function RiverMirror({
   const mesh = useRef<Mesh>(null);
   const frame = useRef(0);
 
-  const rt = useMemo(
+  const mirrorWidth = Math.max(256, Math.floor(size.width * MIRROR_SCALE));
+  const mirrorHeight = Math.max(144, Math.floor(size.height * MIRROR_SCALE));
+  const [rt] = useState(
     () =>
-      new WebGLRenderTarget(Math.max(256, Math.floor(size.width * MIRROR_SCALE)), Math.max(144, Math.floor(size.height * MIRROR_SCALE)), {
+      new WebGLRenderTarget(mirrorWidth, mirrorHeight, {
         type: HalfFloatType,
         minFilter: LinearMipmapLinearFilter,
         magFilter: LinearFilter,
         generateMipmaps: true,
         depthBuffer: true,
       }),
-    [size.width, size.height],
   );
+  useEffect(() => resizeTarget(rt, mirrorWidth, mirrorHeight), [rt, mirrorWidth, mirrorHeight]);
   useEffect(() => () => rt.dispose(), [rt]);
 
   const material = useMemo(

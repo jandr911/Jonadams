@@ -3,6 +3,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef, useState } from "react";
 import { BoxGeometry, Color, CylinderGeometry, InstancedMesh, Matrix4, Object3D, Quaternion, SphereGeometry, Vector3 } from "three";
+import { useCity } from "./CityContext";
 import { mergeParts } from "./instancing";
 
 const DRONE = mergeParts(
@@ -114,13 +115,13 @@ function poseCraft(c: Craft, time: number, d: Object3D) {
 const lightMatrix = new Matrix4();
 const HIDDEN = new Matrix4().makeScale(0, 0, 0);
 
-function placeFleet(crafts: Craft[], specs: LightSpec[], body: InstancedMesh, lights: InstancedMesh, firstLight: number, time: number, d: Object3D) {
+function placeFleet(crafts: Craft[], specs: LightSpec[], body: InstancedMesh, lights: InstancedMesh, firstLight: number, time: number, d: Object3D, steady: boolean) {
   let slot = firstLight;
   for (let i = 0; i < crafts.length; i++) {
     poseCraft(crafts[i], time, d);
     body.setMatrixAt(i, d.matrix);
     for (const s of specs) {
-      const on = !s.blink || Math.sin(time * 6 + i * 1.7) > 0.6;
+      const on = !s.blink || steady || Math.sin(time * 6 + i * 1.7) > 0.6;
       lights.setMatrixAt(slot++, on ? lightMatrix.multiplyMatrices(d.matrix, s.offset) : HIDDEN);
     }
   }
@@ -134,11 +135,12 @@ export default function SkyTraffic() {
   const drones = useRef<InstancedMesh>(null);
   const taxis = useRef<InstancedMesh>(null);
   const lights = useRef<InstancedMesh>(null);
+  const { reducedMotion } = useCity();
   useFrame(({ clock }) => {
     if (!drones.current || !taxis.current || !lights.current) return;
     const t = clock.elapsedTime;
-    const next = placeFleet(fleet.drones, DRONE_LIGHTS, drones.current, lights.current, 0, t, dummy);
-    placeFleet(fleet.taxis, TAXI_LIGHTS, taxis.current, lights.current, next, t, dummy);
+    const next = placeFleet(fleet.drones, DRONE_LIGHTS, drones.current, lights.current, 0, t, dummy, reducedMotion);
+    placeFleet(fleet.taxis, TAXI_LIGHTS, taxis.current, lights.current, next, t, dummy, reducedMotion);
     lights.current.instanceMatrix.needsUpdate = true;
   });
   return (

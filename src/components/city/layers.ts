@@ -1,6 +1,9 @@
-import { Mesh, Vector3, type Object3D } from "three";
+import { Layers, Mesh, Vector3, type Object3D } from "three";
 
 export const REFLECT_LAYER = 1;
+
+export const LIT_IN_REFLECTION = new Layers();
+LIT_IN_REFLECTION.enable(REFLECT_LAYER);
 
 const MIN_REFLECTED_RADIUS = 1.4;
 const scale = new Vector3();

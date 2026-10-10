@@ -3,7 +3,8 @@
 import { useFrame } from "@react-three/fiber";
 import { useCity } from "./CityContext";
 
-const PERIOD_SECONDS = 3600;
+// Spin (0.5, 0.6), bob (2.2) and flicker (23) rates all complete whole cycles in this period, so the wrap is seamless.
+const PERIOD_SECONDS = 1140 * Math.PI;
 
 export const HOLOGRAM_TIME = { value: 0 };
 

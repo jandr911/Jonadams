@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SITE } from "@/content/site";
 
 const BARS: [number, number, number][] = [
   [0.55, 1.7, 0],
@@ -8,16 +9,16 @@ const BARS: [number, number, number][] = [
   [0.6, 1.9, 0.6],
 ];
 
-export default function Wordmark({ compact = false }: { compact?: boolean }) {
+export default function Wordmark() {
   return (
-    <Link href="/" className="wordmark" aria-label="Adams UniverseCity, home">
+    <Link href="/" className="wordmark" aria-label={`${SITE.name}, home`}>
       <span className="wordmark__bars" aria-hidden>
         {BARS.map(([h, t, d]) => (
           <i key={`${h}-${t}`} style={{ ["--h" as string]: h, ["--t" as string]: `${t}s`, ["--d" as string]: `${-d}s` }} />
         ))}
       </span>
       <span className="wordmark__serif">Adams</span>
-      {!compact && <span className="wordmark__caps">UniverseCity</span>}
+      <span className="wordmark__caps">{SITE.cityName}</span>
     </Link>
   );
 }

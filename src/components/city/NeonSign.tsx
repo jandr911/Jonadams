@@ -2,8 +2,9 @@
 
 import { Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Color, Group, MeshStandardMaterial } from "three";
+import { useCity } from "./CityContext";
 import { seedOf } from "./rng";
 
 export const DISPLAY_FONT = "/fonts/BebasNeue-Regular.ttf";
@@ -26,6 +27,10 @@ interface NeonSignProps {
   doubleSided?: boolean;
 }
 
+function setGlow(mat: MeshStandardMaterial, intensity: number) {
+  mat.emissiveIntensity = intensity;
+}
+
 export default function NeonSign({
   text,
   color,
@@ -42,8 +47,10 @@ export default function NeonSign({
   depth = 0.6,
   doubleSided = false,
 }: NeonSignProps) {
-  const frameMat = useRef<MeshStandardMaterial>(null);
-  const textGroup = useRef<Group>(null);
+  const { reducedMotion } = useCity();
+  const frameMat = useMemo(() => new MeshStandardMaterial({ color, emissive: color, emissiveIntensity: glow, toneMapped: false }), [color, glow]);
+  useEffect(() => () => frameMat.dispose(), [frameMat]);
+  const textGroups = useRef<(Group | null)[]>([]);
   const bright = useMemo(() => new Color(color).multiplyScalar(glow), [color, glow]);
   const phase = useMemo(() => ((seedOf(text) % 9973) / 9973) * 10, [text]);
   const content = vertical ? text.split("").join("\n") : text;
@@ -53,12 +60,16 @@ export default function NeonSign({
     if (blink === "none") return;
     const t = clock.elapsedTime + phase;
     let on = 1;
-    if (blink === "slow") on = Math.sin(t * 1.6) > -0.6 ? 1 : 0.15;
-    else if (blink === "fast") on = Math.sin(t * 7) > 0 ? 1 : 0.2;
-    else if (blink === "marquee") on = 0.75 + 0.25 * Math.sin(t * 3.2);
-    if (frameMat.current) frameMat.current.emissiveIntensity = glow * on;
-    if (textGroup.current) textGroup.current.scale.setScalar(0.96 + 0.04 * on);
-    if (textGroup.current) textGroup.current.visible = on > 0.3;
+    if (!reducedMotion && blink === "slow") on = Math.sin(t * 1.6) > -0.6 ? 1 : 0.15;
+    else if (!reducedMotion && blink === "fast") on = Math.sin(t * 7) > 0 ? 1 : 0.2;
+    else if (!reducedMotion && blink === "marquee") on = 0.75 + 0.25 * Math.sin(t * 3.2);
+    setGlow(frameMat, glow * on);
+    for (let i = 0; i < textGroups.current.length; i++) {
+      const g = textGroups.current[i];
+      if (!g) continue;
+      g.scale.setScalar(0.96 + 0.04 * on);
+      g.visible = on > 0.3;
+    }
   });
 
   const bar = 0.12;
@@ -69,7 +80,7 @@ export default function NeonSign({
         <boxGeometry args={[width, height, depth]} />
         <meshStandardMaterial color={backing} roughness={0.7} />
       </mesh>
-      {faces.map((ry) => (
+      {faces.map((ry, f) => (
         <group key={ry} rotation={[0, ry, 0]}>
           <group position={[0, 0, depth / 2 + 0.02]}>
             {[
@@ -78,19 +89,16 @@ export default function NeonSign({
               [-width / 2 + bar / 2, 0, bar, height],
               [width / 2 - bar / 2, 0, bar, height],
             ].map(([x, y, w, h], i) => (
-              <mesh key={i} position={[x, y, 0]}>
+              <mesh key={i} position={[x, y, 0]} material={frameMat}>
                 <boxGeometry args={[w, h, 0.08]} />
-                <meshStandardMaterial
-                  ref={i === 0 ? frameMat : undefined}
-                  color={color}
-                  emissive={color}
-                  emissiveIntensity={glow}
-                  toneMapped={false}
-                />
               </mesh>
             ))}
           </group>
-          <group ref={ry === 0 ? textGroup : undefined} position={[0, 0, depth / 2 + 0.08]}>
+          <group
+            ref={(g) => {
+              textGroups.current[f] = g;
+            }}
+            position={[0, 0, depth / 2 + 0.08]}>
             <Text
               font={font}
               fontSize={size}

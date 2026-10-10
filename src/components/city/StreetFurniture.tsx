@@ -207,9 +207,12 @@ function buildItems(): Item[] {
   const zs = outerRoadLinesZ();
   const cx = xs[9] ?? 0;
   const cz = zs[4] ?? 0;
-  for (let k = 0; k < 7; k++) out.push({ kind: "cone", x: cx + 1.2 + k * 0.9, z: cz - 3.2 + (k % 2) * 0.6, rot: 0 });
+  for (let k = 0; k < 7; k++) out.push({ kind: "cone", x: cx + ROAD_HALF - 1.5, z: cz - ROAD_HALF - 4 - k * 1.4, rot: 0 });
   return out;
 }
+
+const SHELTER_KERB = ROAD_HALF + 0.4;
+const SHELTER_ALONG = 11;
 
 function BusShelter({ position, rotation }: { position: [number, number, number]; rotation: number }) {
   const dn = useDayNight();
@@ -302,9 +305,9 @@ export default function StreetFurniture() {
   const xs = outerRoadLinesX();
   const zs = outerRoadLinesZ();
   const shelters: { position: [number, number, number]; rotation: number }[] = [
-    { position: [xs[10] + 6, 0.4, zs[12] + 2.4], rotation: 0 },
-    { position: [xs[8] - 6, 0.4, zs[11] - 2.4], rotation: Math.PI },
-    { position: [xs[12] + 2.4, 0.4, zs[10] + 6], rotation: Math.PI / 2 },
+    { position: [xs[10] + SHELTER_ALONG, 0.4, zs[12] + SHELTER_KERB], rotation: 0 },
+    { position: [xs[8] - SHELTER_ALONG, 0.4, zs[11] - SHELTER_KERB], rotation: Math.PI },
+    { position: [xs[12] + SHELTER_KERB, 0.4, zs[10] + SHELTER_ALONG], rotation: Math.PI / 2 },
   ];
   return (
     <group>

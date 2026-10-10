@@ -4,6 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BoxGeometry, BufferGeometry, Color, InstancedMesh, Matrix4, MeshStandardMaterial, Quaternion, SphereGeometry, TorusGeometry, Vector3 } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import { labelTexture } from "./labels";
 import { BLOCK, CITY_HALF_X, CITY_HALF_Z, DESTINATIONS, allBlocks, blockCenter, destinationPosition } from "./layout";
@@ -128,19 +129,19 @@ function buildPeople(): { people: Person[]; extras: Extras } {
     out.push(person(rand, { mode: "stand", x: range(rand, -CITY_HALF_X, CITY_HALF_X), z: CITY_HALF_Z + 9.5, yaw: range(rand, -0.4, 0.4), phone: rand() < 0.3 }));
   }
   const [clubX, clubZ] = destinationPosition(DESTINATIONS[0]);
-  crowd(rand, out, clubX, clubZ + 12.9, 9.5, 0.5, 44, 0.4, 0.2);
-  out.push(person(rand, { mode: "stand", x: clubX, z: clubZ + 11.9, yaw: 0, scale: 1.2, wide: 1.3, hair: 4, jacket: true, jacketC: new Color("#0e0e14"), topC: new Color("#0e0e14"), legsC: new Color("#0e0e14"), skirt: false, bag: false, headphones: false }));
+  crowd(rand, out, clubX, clubZ + 12.1, 9.5, 0.4, 44, 0.4, 0.2);
+  out.push(person(rand, { mode: "stand", x: clubX, z: clubZ + 11.6, yaw: 0, scale: 1.2, wide: 1.3, hair: 4, jacket: true, jacketC: new Color("#0e0e14"), topC: new Color("#0e0e14"), legsC: new Color("#0e0e14"), skirt: false, bag: false, headphones: false }));
   const paparazzi: [number, number, number][] = [
-    [clubX + 11.5, 0.4, clubZ + 13.6],
-    [clubX + 12.4, 0.4, clubZ + 12.4],
-    [clubX - 11.8, 0.4, clubZ + 13.2],
+    [clubX + 11.5, 0.4, clubZ + 12.6],
+    [clubX + 12.4, 0.4, clubZ + 12],
+    [clubX - 11.8, 0.4, clubZ + 12.4],
   ];
-  for (const p of paparazzi) out.push(person(rand, { mode: "stand", x: p[0], z: p[2], yaw: Math.atan2(clubX - p[0], clubZ + 12.5 - p[2]), camera: true, jacket: true, hair: 5, skirt: false }));
+  for (const p of paparazzi) out.push(person(rand, { mode: "stand", x: p[0], z: p[2], yaw: Math.atan2(clubX - p[0], clubZ + 11.5 - p[2]), camera: true, jacket: true, hair: 5, skirt: false }));
   const [foxX, foxZ] = destinationPosition(DESTINATIONS[1]);
-  crowd(rand, out, foxX, foxZ + 12.6, 7.5, 0.55, 30, 0.35, 0.1);
-  const musician: [number, number, number] = [foxX + 11.5, 0.4, foxZ + 12.2];
+  crowd(rand, out, foxX, foxZ + 11.6, 7.5, 0.55, 30, 0.35, 0.1);
+  const musician: [number, number, number] = [foxX + 11.5, 0.4, foxZ + 10.9];
   out.push(person(rand, { mode: "stand", x: musician[0], z: musician[2], yaw: Math.PI * 0.75, hair: 3, jacket: true, jacketC: new Color("#d6b56e"), skirt: false, bag: false, camera: true }));
-  for (let i = 0; i < 4; i++) out.push(person(rand, { mode: "stand", x: musician[0] + range(rand, -2.5, 1.5), z: musician[2] + range(rand, 1.2, 2.8), yaw: Math.PI + range(rand, -0.4, 0.4) }));
+  for (let i = 0; i < 4; i++) out.push(person(rand, { mode: "stand", x: musician[0] + range(rand, -2.5, 1.5), z: musician[2] + range(rand, 1, 1.9), yaw: Math.PI + range(rand, -0.4, 0.4) }));
   const vendor: [number, number, number] = [-38, 0.4, CITY_HALF_Z + 8.6];
   out.push(person(rand, { mode: "stand", x: vendor[0], z: vendor[2] - 1.4, yaw: 0, jacket: false, topC: new Color("#f4f1ea"), hair: 5, hairC: new Color("#c8102e"), skirt: false, bag: false }));
   for (let i = 0; i < 3; i++) out.push(person(rand, { mode: "stand", x: vendor[0] + range(rand, -2, 2), z: vendor[2] + 1.6 + rand(), yaw: Math.PI + range(rand, -0.3, 0.3) }));
@@ -209,6 +210,7 @@ interface Scratch {
   out: Matrix4;
   zero: Matrix4;
   frame: number;
+  limbs: Limbs | null;
 }
 
 const PHONE_C = new Color("#e8fbff");
@@ -252,6 +254,22 @@ interface Limb {
   e: InstancedMesh;
 }
 
+interface Limbs {
+  armL: Limb;
+  armR: Limb;
+  legL: Limb;
+  legR: Limb;
+}
+
+function limbsOf(m: Map<PartKey, InstancedMesh>): Limbs {
+  return {
+    armL: { u: m.get("uArmL")!, l: m.get("lArmL")!, e: m.get("handL")! },
+    armR: { u: m.get("uArmR")!, l: m.get("lArmR")!, e: m.get("handR")! },
+    legL: { u: m.get("uLegL")!, l: m.get("lLegL")!, e: m.get("shoeL")! },
+    legR: { u: m.get("uLegR")!, l: m.get("lLegR")!, e: m.get("shoeR")! },
+  };
+}
+
 function limb(out: Matrix4, s: Scratch, M: Matrix4, px: number, py: number, upper: number, lower: number, upperPart: Matrix4, lowerPart: Matrix4, endPart: Matrix4, joint: Matrix4, dest: Limb, i: number) {
   s.T.makeTranslation(px, py, 0);
   s.R.makeRotationX(upper);
@@ -267,25 +285,22 @@ function limb(out: Matrix4, s: Scratch, M: Matrix4, px: number, py: number, uppe
 }
 
 function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: number, s: Scratch, camX: number, camZ: number) {
-  for (const k of PART_KEYS) if (!m.get(k)) return;
-  const get = (k: PartKey) => m.get(k)!;
-  const head = get("head");
-  const eyes = get("eyes");
-  const hair = get("hair");
-  const hairBack = get("hairBack");
-  const bun = get("bun");
-  const brim = get("brim");
-  const torso = get("torso");
-  const jacket = get("jacket");
-  const hips = get("hips");
-  const skirt = get("skirt");
-  const bag = get("bag");
-  const headphones = get("headphones");
-  const phone = get("phone");
-  const armL: Limb = { u: get("uArmL"), l: get("lArmL"), e: get("handL") };
-  const armR: Limb = { u: get("uArmR"), l: get("lArmR"), e: get("handR") };
-  const legL: Limb = { u: get("uLegL"), l: get("lLegL"), e: get("shoeL") };
-  const legR: Limb = { u: get("uLegR"), l: get("lLegR"), e: get("shoeR") };
+  for (let k = 0; k < PART_KEYS.length; k++) if (!m.get(PART_KEYS[k])) return;
+  const head = m.get("head")!;
+  const eyes = m.get("eyes")!;
+  const hair = m.get("hair")!;
+  const hairBack = m.get("hairBack")!;
+  const bun = m.get("bun")!;
+  const brim = m.get("brim")!;
+  const torso = m.get("torso")!;
+  const jacket = m.get("jacket")!;
+  const hips = m.get("hips")!;
+  const skirt = m.get("skirt")!;
+  const bag = m.get("bag")!;
+  const headphones = m.get("headphones")!;
+  const phone = m.get("phone")!;
+  s.limbs ??= limbsOf(m);
+  const { armL, armR, legL, legR } = s.limbs;
   const { pos, q, sc, M, out, zero } = s;
   s.frame++;
   for (let i = 0; i < people.length; i++) {
@@ -376,11 +391,14 @@ function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: numbe
   for (const im of m.values()) im.instanceMatrix.needsUpdate = true;
 }
 
+const ROPE_POSTS = [-10, -7.5, -5, -2.5, 2.5, 5, 7.5, 10];
+const ROPE_SPANS = ROPE_POSTS.filter((x, i) => i > 0 && x - ROPE_POSTS[i - 1] === 2.5);
+
 function VelvetRope({ at }: { at: [number, number] }) {
   const [cx, cz] = at;
-  const posts = Array.from({ length: 9 }, (_, i) => -10 + i * 2.5);
+  const posts = ROPE_POSTS;
   return (
-    <group position={[cx, 0.4, cz + 12.1]}>
+    <group position={[cx, 0.4, cz + 10.9]}>
       {posts.map((x) => (
         <group key={x} position={[x, 0, 0]}>
           <mesh position={[0, 0.5, 0]}>
@@ -397,14 +415,14 @@ function VelvetRope({ at }: { at: [number, number] }) {
           </mesh>
         </group>
       ))}
-      {posts.slice(1).map((x) => (
+      {ROPE_SPANS.map((x) => (
         <mesh key={x} position={[x - 1.25, 0.9, 0]} rotation={[0, 0, Math.PI]} scale={[1, 0.22, 1]}>
           <torusGeometry args={[1.25, 0.035, 5, 14, Math.PI]} />
           <meshStandardMaterial color="#8b0f2a" roughness={0.9} />
         </mesh>
       ))}
-      <mesh position={[0, 0.0, 3.2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[21, 2.2]} />
+      <mesh position={[0, 0.0, 1.2]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[21, 2]} />
         <meshStandardMaterial color="#6b0f24" roughness={1} />
       </mesh>
     </group>
@@ -413,13 +431,16 @@ function VelvetRope({ at }: { at: [number, number] }) {
 
 function Flashes({ spots }: { spots: [number, number, number][] }) {
   const mats = useRef<(MeshStandardMaterial | null)[]>([]);
+  const { reducedMotion } = useCity();
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    mats.current.forEach((m, i) => {
-      if (!m) return;
+    const list = mats.current;
+    for (let i = 0; i < list.length; i++) {
+      const m = list[i];
+      if (!m) continue;
       const phase = (t * 0.9 + i * 0.37) % 1;
-      m.emissiveIntensity = phase < 0.06 ? 14 : 0.1;
-    });
+      m.emissiveIntensity = !reducedMotion && phase < 0.06 ? 14 : 0.1;
+    }
   });
   return (
     <group>
@@ -533,8 +554,10 @@ export default function People() {
   const [{ people, extras }] = useState(() => buildPeople());
   const refs = useRef(new Map<PartKey, InstancedMesh>());
   const phoneMat = useRef<MeshStandardMaterial>(null);
+  const scratch = useRef<Scratch>({ pos: new Vector3(), q: new Quaternion(), sc: new Vector3(), M: new Matrix4(), T: new Matrix4(), R: new Matrix4(), J: new Matrix4(), out: new Matrix4(), zero: new Matrix4().makeScale(0, 0, 0), frame: 0, limbs: null });
   const bind = useCallback(
     (key: PartKey) => (m: InstancedMesh | null) => {
+      if (refs.current.get(key) !== (m ?? undefined)) scratch.current.limbs = null;
       if (m) refs.current.set(key, m);
       else refs.current.delete(key);
     },
@@ -544,7 +567,7 @@ export default function People() {
     () => ({ box: new BoxGeometry(1, 1, 1), sphere: new SphereGeometry(1, 7, 5), eyes: eyesGeometry(), headphones: headphoneGeometry() }) as Record<string, BufferGeometry>,
     [],
   );
-  const scratch = useRef<Scratch>({ pos: new Vector3(), q: new Quaternion(), sc: new Vector3(), M: new Matrix4(), T: new Matrix4(), R: new Matrix4(), J: new Matrix4(), out: new Matrix4(), zero: new Matrix4().makeScale(0, 0, 0), frame: 0 });
+  useEffect(() => () => Object.values(geo).forEach((g) => g.dispose()), [geo]);
 
   useEffect(() => {
     applyColors(refs.current, people);

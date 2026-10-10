@@ -20,11 +20,9 @@ import {
 import { useDayNight } from "./DayNightContext";
 import type { DayNight } from "./dayNight";
 import { fillInstances } from "./instancing";
-import { CITY_HALF_X, RIVER_FAR, RIVER_NEAR, WOODWARD_INDEX, roadLinesX, roadLinesZ } from "./layout";
+import { CITY_HALF_X, PEOPLE_MOVER_X, PEOPLE_MOVER_Z, RIVER_FAR, RIVER_NEAR, WOODWARD_INDEX, roadLinesX, roadLinesZ } from "./layout";
 import { mulberry32 } from "./rng";
 
-const PEOPLE_MOVER_X = [2, 7];
-const PEOPLE_MOVER_Z = [1, 5];
 const PUFFS_PER_VENT = 12;
 const PLUME_HEIGHT = 14;
 const STEAM_DAY = new Color("#d6d4cf");
@@ -200,9 +198,10 @@ function lightSteam(mat: ShaderMaterial, dn: DayNight) {
   mat.uniforms.uOpacity.value = 0.45 - dn.night * 0.1;
 }
 
-function lightMist(mat: ShaderMaterial, layers: (Mesh | null)[], night: number) {
-  mat.uniforms.uOpacity.value = night * 0.32;
-  for (const m of layers) if (m) m.visible = night > 0.05;
+function lightMist(mat: ShaderMaterial, layers: (Mesh | null)[], dn: DayNight) {
+  (mat.uniforms.uColor.value as Color).copy(dn.fog).multiplyScalar(1.3);
+  mat.uniforms.uOpacity.value = dn.night * 0.22;
+  for (const m of layers) if (m) m.visible = dn.night > 0.05;
 }
 
 function StreetSteam() {
@@ -238,7 +237,7 @@ function RiverMist() {
   const layers = useRef<(Mesh | null)[]>([]);
   const [material] = useState(() => makeShader(mistVertex, mistFragment, MIST_COLOR));
   useEffect(() => () => material.dispose(), [material]);
-  useEffect(() => lightMist(material, layers.current, dn.night), [dn, material]);
+  useEffect(() => lightMist(material, layers.current, dn), [dn, material]);
   useFrame(({ clock }) => setTime(material, clock.elapsedTime));
   const width = CITY_HALF_X * 2 + 600;
   const depth = RIVER_FAR - RIVER_NEAR;

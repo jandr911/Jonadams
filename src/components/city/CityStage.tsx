@@ -1,8 +1,8 @@
 "use client";
 
-import { AdaptiveDpr, PerformanceMonitor } from "@react-three/drei";
+import { PerformanceMonitor } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { ACESFilmicToneMapping } from "three";
+import { NoToneMapping } from "three";
 import Scene from "./Scene";
 
 export default function CityStage({ onQuality, onReady }: { onQuality: (q: "high" | "low") => void; onReady: () => void }) {
@@ -11,7 +11,7 @@ export default function CityStage({ onQuality, onReady }: { onQuality: (q: "high
       dpr={1}
       shadows
       camera={{ fov: 40, near: 1, far: 2600, position: [0, 80, 260] }}
-      gl={{ antialias: false, powerPreference: "high-performance", toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
+      gl={{ antialias: false, powerPreference: "high-performance", toneMapping: NoToneMapping }}
       style={{ position: "absolute", inset: 0 }}
       aria-hidden
       onCreated={({ gl, scene }) => {
@@ -31,7 +31,6 @@ export default function CityStage({ onQuality, onReady }: { onQuality: (q: "high
         bounds={() => [30, 60]}
         onFallback={() => onQuality("low")}
       />
-      <AdaptiveDpr />
       <Scene onReady={onReady} />
     </Canvas>
   );

@@ -23,6 +23,7 @@ const PATH = "#6a6a72";
 const CONSERVATORY = { x: 2, z: -2 };
 const FOUNTAIN = { x: -42, z: -1 };
 const LANDING = { x: -62, z: 1 };
+export const BRIDGE_LANDING = { x: X + LANDING.x, z: Z + LANDING.z };
 const LIGHTHOUSE = { x: 82, z: 0 };
 const SLIDE = { x: 46, z: 4 };
 

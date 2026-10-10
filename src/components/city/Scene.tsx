@@ -18,6 +18,7 @@ import Ground from "./Ground";
 import HoloBillboards from "./HoloBillboards";
 import HologramClock from "./HologramClock";
 import Landmarks from "./Landmarks";
+import { LIT_IN_REFLECTION } from "./layers";
 import { requestShadowUpdate, setShadowManual } from "./mirrorRender";
 import PeopleMover from "./PeopleMover";
 import Roads from "./Roads";
@@ -41,7 +42,9 @@ function Ambience() {
   const dn = useDayNight();
   useEffect(() => {
     const pmrem = new PMREMGenerator(gl);
-    const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    const room = new RoomEnvironment();
+    const env = pmrem.fromScene(room, 0.04).texture;
+    room.dispose();
     applyEnvironment(scene, env);
     return () => {
       applyEnvironment(scene, null);
@@ -88,9 +91,10 @@ export default function Scene({ onReady }: { onReady: () => void }) {
   return (
     <>
       <fog attach="fog" args={[fogColor, 420 + dn.night * 60, 1250 + dn.night * 150]} />
-      <ambientLight intensity={dn.ambient * 0.6} color={dn.hemiSky} />
-      <hemisphereLight args={[dn.hemiSky, dn.hemiGround, dn.ambient * 1.6]} />
+      <ambientLight layers={LIT_IN_REFLECTION} intensity={dn.ambient * 0.6} color={dn.hemiSky} />
+      <hemisphereLight layers={LIT_IN_REFLECTION} args={[dn.hemiSky, dn.hemiGround, dn.ambient * 1.6]} />
       <directionalLight
+        layers={LIT_IN_REFLECTION}
         position={dn.sunDir.map((v) => v * 300) as [number, number, number]}
         intensity={dn.sunIntensity}
         color={dn.sunColor}

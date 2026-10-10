@@ -122,8 +122,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
     };
   }, [local]);
 
-  useFrame(({ clock }, dt) => {
-    const t = clock.elapsedTime;
+  useFrame((_, dt) => {
     const k = 1 - Math.exp(-dt * 10);
     if (inner.current) {
       const s = MathUtils.lerp(inner.current.scale.x, isHovered ? 1.035 : 1, k);
@@ -141,7 +140,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
       const target = isHovered ? 1 : 0;
       const s = MathUtils.lerp(ring.current.scale.x, target, k);
       ring.current.scale.set(s, s, s);
-      ring.current.rotation.z = t * 0.6;
+      ring.current.rotation.z = HOLOGRAM_TIME.value * 0.6;
     }
   });
 

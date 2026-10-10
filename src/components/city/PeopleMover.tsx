@@ -18,7 +18,7 @@ import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import { fillInstances } from "./instancing";
 import { labelTexture } from "./labels";
-import { roadLinesX, roadLinesZ } from "./layout";
+import { PEOPLE_MOVER_X, PEOPLE_MOVER_Z, ROAD_HALF, roadLinesX, roadLinesZ } from "./layout";
 import { enableReflection } from "./layers";
 import { makeStainedConcreteTexture } from "./textures";
 
@@ -27,10 +27,8 @@ const TRACK_Y = 9;
 function buildLoop() {
   const xs = roadLinesX();
   const zs = roadLinesZ();
-  const x0 = xs[2];
-  const x1 = xs[7];
-  const z0 = zs[1];
-  const z1 = zs[5];
+  const [x0, x1] = PEOPLE_MOVER_X.map((i) => xs[i]);
+  const [z0, z1] = PEOPLE_MOVER_Z.map((i) => zs[i]);
   const r = 7;
   const pts = [
     new Vector3(x0 + r, TRACK_Y, z0),
@@ -45,29 +43,49 @@ function buildLoop() {
   return new CatmullRomCurve3(pts, true, "catmullrom", 0.15);
 }
 
+const PYLON_CANDIDATES = 64;
+const INTERSECTION_CLEAR = ROAD_HALF + 1.5;
+
+function distanceToNearest(v: number, lines: number[]) {
+  let best = Infinity;
+  for (const l of lines) best = Math.min(best, Math.abs(v - l));
+  return best;
+}
+
+function pylonSpots(curve: CatmullRomCurve3) {
+  const xs = roadLinesX();
+  const zs = roadLinesZ();
+  const spots: { u: number; p: Vector3 }[] = [];
+  for (let i = 0; i < PYLON_CANDIDATES; i++) {
+    const u = i / PYLON_CANDIDATES;
+    const p = curve.getPointAt(u);
+    const inIntersection = distanceToNearest(p.x, xs) < INTERSECTION_CLEAR && distanceToNearest(p.z, zs) < INTERSECTION_CLEAR;
+    if (!inIntersection) spots.push({ u, p });
+  }
+  return spots;
+}
+
 function Pylons({ curve, concrete }: { curve: CatmullRomCurve3; concrete: CanvasTexture }) {
   const ref = useRef<InstancedMesh>(null);
   const caps = useRef<InstancedMesh>(null);
   const feet = useRef<InstancedMesh>(null);
   const dummy = useMemo(() => new Object3D(), []);
-  const count = 64;
+  const spots = useMemo(() => pylonSpots(curve), [curve]);
+  const count = spots.length;
   useEffect(() => {
     const t = new Vector3();
     fillInstances(ref.current, dummy, count, (i, d) => {
-      const p = curve.getPointAt(i / count);
-      d.position.set(p.x, TRACK_Y / 2 - 0.3, p.z);
+      d.position.set(spots[i].p.x, TRACK_Y / 2 - 0.3, spots[i].p.z);
     });
     fillInstances(caps.current, dummy, count, (i, d) => {
-      const p = curve.getPointAt(i / count);
-      curve.getTangentAt(i / count, t);
-      d.position.set(p.x, TRACK_Y - 0.85, p.z);
+      curve.getTangentAt(spots[i].u, t);
+      d.position.set(spots[i].p.x, TRACK_Y - 0.85, spots[i].p.z);
       d.rotation.y = Math.atan2(t.x, t.z);
     });
     fillInstances(feet.current, dummy, count, (i, d) => {
-      const p = curve.getPointAt(i / count);
-      d.position.set(p.x, 0.55, p.z);
+      d.position.set(spots[i].p.x, 0.55, spots[i].p.z);
     });
-  }, [curve, dummy]);
+  }, [curve, dummy, spots, count]);
   return (
     <group>
       <instancedMesh ref={ref} args={[undefined, undefined, count]} castShadow frustumCulled={false}>
@@ -310,15 +328,16 @@ function Train({ curve }: { curve: CatmullRomCurve3 }) {
   }, [dn]);
   useFrame(({ clock }) => {
     const base = (clock.elapsedTime * 0.028) % 1;
-    cars.current.forEach((g, i) => {
-      if (!g) return;
+    for (let i = 0; i < cars.current.length; i++) {
+      const g = cars.current[i];
+      if (!g) continue;
       const u = ((base - i * spacing) % 1 + 1) % 1;
       curve.getPointAt(u, tmp.p);
       curve.getTangentAt(u, tmp.t);
       g.position.copy(tmp.p);
       tmp.look.copy(tmp.p).add(tmp.t);
       g.lookAt(tmp.look);
-    });
+    }
   });
   return (
     <group>
@@ -347,6 +366,8 @@ function StationSign({ name }: { name: string }) {
     </mesh>
   );
 }
+
+const STAIR_X = ROAD_HALF + 1.6;
 
 function Stations({ curve }: { curve: CatmullRomCurve3 }) {
   const dn = useDayNight();
@@ -385,7 +406,11 @@ function Stations({ curve }: { curve: CatmullRomCurve3 }) {
             </mesh>
           ))}
           <StationSign name={STATION_NAMES[i]} />
-          <group position={[2.6, -0.6 - stairDrop / 2, 6.2 + stairRun / 2]} rotation={[Math.atan2(stairDrop, stairRun), 0, 0]}>
+          <mesh position={[(4.2 + STAIR_X - 1.1) / 2, -0.4, 5.6]}>
+            <boxGeometry args={[STAIR_X - 1.1 - 4.2 + 0.4, 0.4, 2.4]} />
+            <meshStandardMaterial color="#8f8c86" />
+          </mesh>
+          <group position={[STAIR_X, -0.6 - stairDrop / 2, 6.2 + stairRun / 2]} rotation={[Math.atan2(stairDrop, stairRun), 0, 0]}>
             <mesh>
               <boxGeometry args={[2.2, 0.5, stairLen]} />
               <meshStandardMaterial color="#7a776f" roughness={1} />
