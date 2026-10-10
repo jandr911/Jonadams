@@ -1,33 +1,40 @@
 "use client";
 
 import { Html, useTexture } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
-import { DoubleSide, Group, Mesh, MeshBasicMaterial, PlaneGeometry, Quaternion, SRGBColorSpace, Vector3, type Texture } from "three";
+import { Color, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, Quaternion, SRGBColorSpace, Vector3, type Texture } from "three";
 import { ALTER_EGO } from "@/content/site";
 import { DETROIT_POLICE, HELI_PITCH, HELI_SKID_DROP, HELI_SKID_X, HelicopterBody, spinHelicopter, type HelicopterParts } from "./Aircraft";
 import { useCity } from "./CityContext";
+import { type DayNight } from "./dayNight";
 import { useDayNight } from "./DayNightContext";
 import { LISTEN_ROOF_Y, PAD } from "./Landmarks";
 import { destinationById, destinationPosition } from "./layout";
+import { makeShadowBlobTexture } from "./textures";
 
-const STANDING = { src: ALTER_EGO.art.standing, aspect: 225 / 512 };
-const WALKING = { src: ALTER_EGO.art.walking, aspect: 221 / 512 };
-const HEIGHT = 24;
-const WALK_HAND = { x: 0.09, y: 0.55 };
+const STAND_H = 20;
+const WALK_H = STAND_H * 1.075;
+const STANDING = { src: ALTER_EGO.art.standing, aspect: 430 / 775, anchor: { x: -0.0721, y: 0 } };
+const SMOKE = { src: ALTER_EGO.art.smoke, aspect: 314 / 298, height: 0.3845 * STAND_H, anchor: { x: -0.4108, y: 0 } };
+const SMOKE_ROOT = new Vector3(-0.0942 * STAND_H, 0.9626 * STAND_H, 0.02);
+const WALKING = { src: ALTER_EGO.art.walking, aspect: 394 / 913, anchor: { x: 0.04, y: 0.62 } };
+const ROPE_END = new Vector3(0, (0.9 - WALKING.anchor.y) * WALK_H, -0.8);
 const ROPE = 12;
 
 const CHOPPER_SCALE = 2.4;
 const GRIP = new Vector3(HELI_SKID_X, -HELI_SKID_DROP, 0);
 const ROOF_SPOT = { x: -6, z: 4.5 };
+const SHADOW = { x: 0.6, width: 5.2, depth: 4.4 };
+const ROPE_COLOR = "#c8582a";
 const HOTSPOT_GROW = 0.035;
 
 const [FOX_X, FOX_Z] = destinationPosition(destinationById("listen"));
 const STAND = new Vector3(FOX_X + ROOF_SPOT.x, LISTEN_ROOF_Y, FOX_Z + ROOF_SPOT.z);
-const HAND_HEIGHT = WALK_HAND.y * HEIGHT;
+const HOOK_HEIGHT = WALKING.anchor.y * WALK_H;
 const HOVER = new Vector3(
   STAND.x - HELI_SKID_X * CHOPPER_SCALE,
-  STAND.y + HAND_HEIGHT + ROPE + HELI_SKID_DROP * Math.cos(HELI_PITCH) * CHOPPER_SCALE,
+  STAND.y + HOOK_HEIGHT + ROPE + HELI_SKID_DROP * Math.cos(HELI_PITCH) * CHOPPER_SCALE,
   STAND.z + HELI_SKID_DROP * Math.sin(HELI_PITCH) * CHOPPER_SCALE,
 );
 
@@ -68,6 +75,19 @@ const FLIGHT: { t: number; p: Vector3 }[] = [
 ];
 
 const BEAT_HZ = 1.53;
+const PUFF_SECONDS = 9;
+const SMOKE_OPACITY = 0.94;
+const PUFF_DRIFT = 1.2;
+const PUFF_RISE = 3.2;
+const PUFF_SWELL = 0.18;
+const TAG_Y = SMOKE_ROOT.y + PUFF_RISE + SMOKE.height * (1 + PUFF_SWELL) * 1.02 + 1.5;
+
+const GRAVITY = 50;
+const AIR_DRAG = 0.35;
+const HOLD_SETTLE = 5;
+const SOFT_SWING = 0.3;
+const SWING_STIFFNESS = 1000;
+const MAX_SWING = 0.5;
 
 interface Flight {
   pos: Vector3;
@@ -139,23 +159,91 @@ function steerFlight(f: Flight, t: number) {
   return dt > 0 ? wrapAngle(f.yaw - before) / dt : 0;
 }
 
-function spriteGeometry(aspect: number, anchor: { x: number; y: number }) {
-  return new PlaneGeometry(HEIGHT * aspect, HEIGHT).translate(-anchor.x * HEIGHT * aspect, HEIGHT / 2 - anchor.y * HEIGHT, 0);
+interface Swing {
+  pos: Vector3;
+  vel: Vector3;
+  grip: Vector3;
+  active: boolean;
 }
 
-function spriteMaterial(map: Texture) {
+const swingWas = new Vector3();
+const swingArm = new Vector3();
+const swingGrip = new Vector3();
+
+function settleSwing(s: Swing, grip: Vector3) {
+  s.pos.set(grip.x, grip.y - ROPE, grip.z);
+  s.vel.set(0, 0, 0);
+  s.grip.copy(grip);
+  s.active = true;
+}
+
+function releaseSwing(s: Swing) {
+  s.active = false;
+}
+
+function stepSwing(s: Swing, grip: Vector3, dt: number, hold: boolean) {
+  const steps = Math.min(4, Math.max(1, Math.ceil(dt * 120)));
+  const h = dt / steps;
+  for (let i = 0; i < steps; i++) {
+    const g = swingGrip.lerpVectors(s.grip, grip, (i + 1) / steps);
+    swingWas.copy(s.pos);
+    swingArm.subVectors(s.pos, g);
+    const reach = Math.hypot(swingArm.x, swingArm.z);
+    const excess = Math.atan2(reach, -swingArm.y) - SOFT_SWING;
+    if (excess > 0 && reach > 1e-6) {
+      const push = (SWING_STIFFNESS * excess * h) / reach;
+      s.vel.x -= swingArm.x * push;
+      s.vel.z -= swingArm.z * push;
+    }
+    s.vel.y -= GRAVITY * h;
+    s.vel.multiplyScalar(Math.exp(-h * (AIR_DRAG + (hold ? HOLD_SETTLE : 0))));
+    s.pos.addScaledVector(s.vel, h);
+    if (hold) s.pos.lerp(swingArm.set(g.x, g.y - ROPE, g.z), 1 - Math.exp(-h * HOLD_SETTLE));
+    swingArm.subVectors(s.pos, g);
+    const across = Math.hypot(swingArm.x, swingArm.z);
+    const lean = Math.min(Math.atan2(across, -swingArm.y), MAX_SWING);
+    const k = across > 1e-6 ? (ROPE * Math.sin(lean)) / across : 0;
+    s.pos.set(g.x + swingArm.x * k, g.y - ROPE * Math.cos(lean), g.z + swingArm.z * k);
+    if (h > 0) s.vel.subVectors(s.pos, swingWas).divideScalar(h);
+  }
+  s.grip.copy(grip);
+}
+
+function spriteGeometry(height: number, aspect: number, anchor: { x: number; y: number }) {
+  const width = height * aspect;
+  return new PlaneGeometry(width, height).translate(-anchor.x * width, height / 2 - anchor.y * height, 0);
+}
+
+function spriteMaterial(map: Texture, maxAnisotropy: number, wisp = false) {
   map.colorSpace = SRGBColorSpace;
-  return new MeshBasicMaterial({ map, alphaTest: 0.5, side: DoubleSide, toneMapped: false });
+  map.anisotropy = Math.min(4, maxAnisotropy);
+  return new MeshBasicMaterial({ map, transparent: true, alphaTest: wisp ? 0.02 : 0.3, depthWrite: !wisp, side: DoubleSide, toneMapped: false });
 }
 
-function dimForNight(mats: MeshBasicMaterial[], night: number) {
-  for (const m of mats) m.color.setScalar(1 - night * 0.45);
+const light = new Color();
+
+interface Art {
+  standing: MeshBasicMaterial;
+  smoke: MeshBasicMaterial;
+  walking: MeshBasicMaterial;
+  shadow: MeshBasicMaterial;
+  rope: MeshStandardMaterial;
+}
+
+function matchTimeOfDay(art: Art, dn: DayNight) {
+  light.setRGB(1, 1, 1).lerp(dn.sunColor, 0.3).multiplyScalar(0.94 - 0.36 * dn.night);
+  art.standing.color.copy(light);
+  art.smoke.color.copy(light);
+  art.walking.color.copy(light);
+  art.shadow.opacity = 0.85 - 0.35 * dn.night;
+  art.rope.emissiveIntensity = 0.08 + 0.17 * (1 - dn.night);
 }
 
 const up = new Vector3(0, 1, 0);
 
 function ignoreRaycast() {}
 const gripWorld = new Vector3();
+const ropeEnd = new Vector3();
 const ropeDir = new Vector3();
 const ropeQuat = new Quaternion();
 
@@ -165,30 +253,68 @@ function faceCamera(obj: Group, camera: Vector3) {
 
 interface RoofLift {
   value: number;
+  hang: number;
 }
 
-function liftWithHotspot(lift: RoofLift, listenHovered: boolean, dt: number) {
+function liftWithHotspot(lift: RoofLift, listenHovered: boolean, dt: number, carried: boolean, held: boolean) {
   const target = listenHovered ? (LISTEN_ROOF_Y - PAD) * HOTSPOT_GROW : 0;
   lift.value += (target - lift.value) * (1 - Math.exp(-dt * 10));
+  lift.hang = carried ? lift.hang + ((held ? lift.value : 0) - lift.hang) * (1 - Math.exp(-dt * 4)) : lift.value;
 }
 
-function poseRoof(roof: Group, camera: Vector3, t: number, still: boolean, lift: number) {
+function poseRoof(roof: Group, shadow: Mesh | null, camera: Vector3, t: number, still: boolean, lift: number) {
   const beat = still ? 0 : t * BEAT_HZ * Math.PI * 2;
   roof.position.copy(STAND);
   roof.position.y += lift;
   roof.rotation.set(0, faceCamera(roof, camera), still ? 0 : Math.sin(beat * 0.5) * 0.035, "YXZ");
   const bounce = still ? 0 : Math.abs(Math.sin(beat));
   roof.scale.set(1 - bounce * 0.012, 1 + bounce * 0.025, 1);
+  if (shadow) {
+    shadow.position.set(STAND.x + SHADOW.x, STAND.y + lift + 0.05, STAND.z);
+    shadow.scale.setScalar(1 - bounce * 0.04);
+  }
 }
 
-function poseHanging(hang: Group | null, rope: Mesh | null, body: Group | null, camera: Vector3, t: number, still: boolean, lift: number) {
+function smoothstep(a: number, b: number, x: number) {
+  const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return k * k * (3 - 2 * k);
+}
+
+function poseSmoke(smoke: Group, mat: MeshBasicMaterial, t: number, still: boolean) {
+  if (still) {
+    smoke.position.copy(SMOKE_ROOT);
+    smoke.rotation.set(0, 0, 0);
+    smoke.scale.setScalar(1);
+    mat.opacity = SMOKE_OPACITY;
+    smoke.visible = true;
+    return;
+  }
+  const p = (t % PUFF_SECONDS) / PUFF_SECONDS;
+  const born = smoothstep(0, 0.14, p);
+  const gone = smoothstep(0.66, 0.95, p);
+  mat.opacity = SMOKE_OPACITY * born * (1 - gone);
+  smoke.visible = mat.opacity > 0.01;
+  smoke.position.set(SMOKE_ROOT.x + gone * PUFF_DRIFT, SMOKE_ROOT.y + gone * PUFF_RISE, SMOKE_ROOT.z);
+  smoke.rotation.set(0, 0, Math.sin(t * 0.8) * 0.05 - gone * 0.1);
+  smoke.scale.setScalar((0.55 + 0.45 * born + PUFF_SWELL * gone) * (1 + Math.sin(t * 2.1) * 0.015));
+}
+
+function poseHanging(hang: Group | null, rope: Mesh | null, body: Group | null, swing: Swing, camera: Vector3, dt: number, hold: boolean, still: boolean, lift: number) {
   if (!hang || !rope || !body) return;
   body.updateWorldMatrix(true, false);
   gripWorld.copy(GRIP).applyMatrix4(body.matrixWorld);
-  hang.position.set(gripWorld.x, gripWorld.y - ROPE + lift, gripWorld.z);
-  hang.rotation.set(0, faceCamera(hang, camera), still ? 0 : Math.sin(t * 1.4) * 0.07, "YXZ");
-  ropeDir.subVectors(gripWorld, hang.position);
-  rope.position.copy(hang.position).addScaledVector(ropeDir, 0.5);
+  if (!swing.active || still) settleSwing(swing, gripWorld);
+  else stepSwing(swing, gripWorld, dt, hold);
+  hang.position.copy(swing.pos);
+  hang.position.y += lift;
+  const yaw = faceCamera(hang, camera);
+  ropeDir.subVectors(gripWorld, swing.pos);
+  const across = ropeDir.x * Math.cos(yaw) - ropeDir.z * Math.sin(yaw);
+  hang.rotation.set(0, yaw, -Math.atan2(across, ropeDir.y), "YXZ");
+  hang.updateMatrix();
+  ropeEnd.copy(ROPE_END).applyMatrix4(hang.matrix);
+  ropeDir.subVectors(gripWorld, ropeEnd);
+  rope.position.copy(ropeEnd).addScaledVector(ropeDir, 0.5);
   rope.scale.set(1, ropeDir.length(), 1);
   ropeQuat.setFromUnitVectors(up, ropeDir.normalize());
   rope.quaternion.copy(ropeQuat);
@@ -197,28 +323,46 @@ function poseHanging(hang: Group | null, rope: Mesh | null, body: Group | null, 
 export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
   const dn = useDayNight();
   const { reducedMotion, navigating, hovered } = useCity();
-  const [lift] = useState<RoofLift>(() => ({ value: 0 }));
-  const [standingMap, walkingMap] = useTexture([STANDING.src, WALKING.src]);
-  const [art] = useState(() => ({
-    standingGeo: spriteGeometry(STANDING.aspect, { x: 0, y: 0 }),
-    walkingGeo: spriteGeometry(WALKING.aspect, { x: WALK_HAND.x, y: WALK_HAND.y }),
-    standing: spriteMaterial(standingMap),
-    walking: spriteMaterial(walkingMap),
-  }));
+  const [lift] = useState<RoofLift>(() => ({ value: 0, hang: 0 }));
+  const [standingMap, smokeMap, walkingMap] = useTexture([STANDING.src, SMOKE.src, WALKING.src]);
+  const gl = useThree((s) => s.gl);
+  const [art] = useState(() => {
+    const maxAnisotropy = gl.capabilities.getMaxAnisotropy();
+    const shadowMap = makeShadowBlobTexture();
+    return {
+      standingGeo: spriteGeometry(STAND_H, STANDING.aspect, STANDING.anchor),
+      smokeGeo: spriteGeometry(SMOKE.height, SMOKE.aspect, SMOKE.anchor),
+      walkingGeo: spriteGeometry(WALK_H, WALKING.aspect, WALKING.anchor),
+      standing: spriteMaterial(standingMap, maxAnisotropy),
+      smoke: spriteMaterial(smokeMap, maxAnisotropy, true),
+      walking: spriteMaterial(walkingMap, maxAnisotropy),
+      shadowMap,
+      shadow: new MeshBasicMaterial({ map: shadowMap, transparent: true, depthWrite: false, opacity: 0.85 }),
+      rope: new MeshStandardMaterial({ color: ROPE_COLOR, emissive: ROPE_COLOR, emissiveIntensity: 0.25, roughness: 0.85 }),
+    };
+  });
   useEffect(
     () => () => {
       art.standingGeo.dispose();
+      art.smokeGeo.dispose();
       art.walkingGeo.dispose();
       art.standing.dispose();
+      art.smoke.dispose();
       art.walking.dispose();
+      art.shadowMap.dispose();
+      art.shadow.dispose();
+      art.rope.dispose();
     },
     [art],
   );
-  useEffect(() => dimForNight([art.standing, art.walking], dn.night), [art, dn.night]);
+  useEffect(() => matchTimeOfDay(art, dn), [art, dn]);
 
   const [flight] = useState<Flight>(() => ({ pos: new Vector3(), ahead: new Vector3(), yaw: ENTRY_YAW, lastT: -1 }));
+  const [swing] = useState<Swing>(() => ({ pos: new Vector3(), vel: new Vector3(), grip: new Vector3(), active: false }));
   const [hover, setHover] = useState(false);
   const roof = useRef<Group>(null);
+  const smoke = useRef<Group>(null);
+  const shadow = useRef<Mesh>(null);
   const hang = useRef<Group>(null);
   const rope = useRef<Mesh>(null);
   const chopper = useRef<Group>(null);
@@ -228,11 +372,13 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
   const beam = useRef<Group>(null);
   const [parts] = useState<HelicopterParts>(() => ({ body, rotor, tail, beam }));
 
-  useFrame(({ clock, camera }, dt) => {
+  useFrame(({ clock, camera }, delta) => {
     const t = clock.elapsedTime;
+    const dt = Math.min(0.1, delta);
     const c = t % CYCLE;
     const flying = flyBy && c >= VISIBLE[0] && c <= VISIBLE[1];
     const hanging = flying && c >= PICKUP && c < DROP;
+    const hold = inHold(c);
     const heli = chopper.current;
     if (heli) {
       heli.visible = flying;
@@ -240,7 +386,6 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
         const yawRate = steerFlight(flight, c);
         heli.position.copy(flight.pos);
         heli.rotation.set(0, flight.yaw, 0);
-        const hold = inHold(c);
         spinHelicopter(parts, t, hold ? 0 : -yawRate * 0.83, hold);
       } else {
         resetFlight(flight);
@@ -249,13 +394,16 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
     const onRoof = roof.current;
     if (onRoof) {
       onRoof.visible = !hanging;
-      liftWithHotspot(lift, hovered?.id === "listen", dt);
-      if (!hanging) poseRoof(onRoof, camera.position, t, reducedMotion, lift.value);
+      liftWithHotspot(lift, hovered?.id === "listen", dt, hanging, hold);
+      if (!hanging) poseRoof(onRoof, shadow.current, camera.position, t, reducedMotion, lift.value);
     }
+    if (shadow.current) shadow.current.visible = !hanging;
+    if (smoke.current && !hanging) poseSmoke(smoke.current, art.smoke, t, reducedMotion);
     if (hanging && hover) setHover(false);
     if (hang.current) hang.current.visible = hanging;
     if (rope.current) rope.current.visible = hanging;
-    if (hanging) poseHanging(hang.current, rope.current, body.current, camera.position, t, reducedMotion, inHold(c) ? lift.value : 0);
+    if (hanging) poseHanging(hang.current, rope.current, body.current, swing, camera.position, dt, hold, reducedMotion, lift.hang);
+    else releaseSwing(swing);
   });
 
   const named = ALTER_EGO.name.length > 0;
@@ -269,6 +417,9 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
           </group>
         </group>
       )}
+      <mesh ref={shadow} position={[STAND.x + SHADOW.x, STAND.y + 0.05, STAND.z]} rotation={[-Math.PI / 2, 0, 0]} material={art.shadow} renderOrder={-1} raycast={ignoreRaycast}>
+        <planeGeometry args={[SHADOW.width, SHADOW.depth]} />
+      </mesh>
       <group
         ref={roof}
         position={STAND.toArray()}
@@ -278,8 +429,11 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
         onPointerOut={() => setHover(false)}
       >
         <mesh geometry={art.standingGeo} material={art.standing} />
+        <group ref={smoke} position={SMOKE_ROOT.toArray()}>
+          <mesh geometry={art.smokeGeo} material={art.smoke} renderOrder={1} raycast={ignoreRaycast} />
+        </group>
         {hover && named && !navigating && (
-          <Html position={[0, HEIGHT + 1.5, 0]} center distanceFactor={90} style={{ pointerEvents: "none" }} zIndexRange={[40, 0]}>
+          <Html position={[0, TAG_Y, 0]} center distanceFactor={90} style={{ pointerEvents: "none" }} zIndexRange={[40, 0]}>
             <div className="landmark-label">
               <strong>{ALTER_EGO.name}</strong>
               <span>{ALTER_EGO.note}</span>
@@ -290,9 +444,8 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
       <group ref={hang} visible={false}>
         <mesh geometry={art.walkingGeo} material={art.walking} raycast={ignoreRaycast} />
       </group>
-      <mesh ref={rope} visible={false} raycast={ignoreRaycast}>
-        <cylinderGeometry args={[0.09, 0.09, 1, 6]} />
-        <meshStandardMaterial color="#2a2622" roughness={0.9} />
+      <mesh ref={rope} visible={false} material={art.rope} raycast={ignoreRaycast}>
+        <cylinderGeometry args={[0.13, 0.13, 1, 6]} />
       </mesh>
     </group>
   );
