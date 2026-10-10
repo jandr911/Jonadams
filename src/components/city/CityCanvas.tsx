@@ -10,7 +10,8 @@ import { DayNightContext } from "./DayNightContext";
 import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
 import { useDetroitWeather } from "./DetroitWeather";
 import EntranceMusic from "./EntranceMusic";
-import { MUSIC, SITE } from "@/content/site";
+import StageBoundary from "./StageBoundary";
+import { CITY_FALLBACK, MUSIC, SITE } from "@/content/site";
 import { DESTINATIONS, homeCamera, type Destination } from "./layout";
 import Loader, { markVisited, useReturningVisitor } from "./Loader";
 
@@ -223,14 +224,24 @@ export default function CityCanvas() {
     [hovered, navigating, flyTo, quality, reducedMotion],
   );
 
-  const pillLabel = preset === "auto" ? "Detroit time" : "Preview";
+  const pillLabel = preset === "auto" ? "Local time" : "Preview";
   const cyclePreset = () => setOverride(PRESETS[(PRESETS.indexOf(preset) + 1) % PRESETS.length]);
 
   return (
     <DayNightContext.Provider value={dn}>
       <CityContext.Provider value={api}>
         <div className={`city-root ${ready ? "is-live" : ""}`}>
-          <CityStage onQuality={setQuality} onReady={() => setStageUp(true)} />
+          <StageBoundary
+            name="The 3D city"
+            onFail={() => setStageUp(true)}
+            fallback={
+              <div className="city-fallback">
+                <p>{CITY_FALLBACK}</p>
+              </div>
+            }
+          >
+            <CityStage onQuality={setQuality} onReady={() => setStageUp(true)} />
+          </StageBoundary>
           <div className="city-frame" aria-hidden>
             <i />
             <i />

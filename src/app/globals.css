@@ -1929,6 +1929,17 @@ a.site-nav__link:hover .site-nav__sub,
   user-select: none;
   touch-action: none;
 }
+.city-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(120% 80% at 50% 110%, color-mix(in srgb, var(--gold) 18%, transparent), var(--ink) 65%);
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
 .city-music__bars {
   display: inline-flex;
   align-items: flex-end;
@@ -1937,8 +1948,10 @@ a.site-nav__link:hover .site-nav__sub,
 }
 .city-music__bars i {
   width: 2px;
-  height: 3px;
+  height: 10px;
   background: var(--muted);
+  transform: scaleY(0.3);
+  transform-origin: bottom;
 }
 .city-music__bars[data-on="true"] i {
   background: var(--amber);
@@ -1953,13 +1966,16 @@ a.site-nav__link:hover .site-nav__sub,
 @keyframes city-music-eq {
   0%,
   100% {
-    height: 3px;
+    transform: scaleY(0.3);
   }
   50% {
-    height: 10px;
+    transform: scaleY(1);
   }
 }
 .city-pad__cue {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
   font-size: 9px;
   letter-spacing: 0.24em;
   text-transform: uppercase;

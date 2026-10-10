@@ -17,8 +17,8 @@ function loadFont() {
             const face = new FontFace(family, `url(${src})`, descriptors);
             await face.load();
             document.fonts.add(face);
-          } catch {
-            /* fall back to the system font */
+          } catch (err) {
+            console.warn("City font failed to load", family, err);
           }
         }),
       );

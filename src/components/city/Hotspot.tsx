@@ -17,6 +17,7 @@ import {
   UniformsLib,
   UniformsUtils,
 } from "three";
+import { SITE } from "@/content/site";
 import { useCity } from "./CityContext";
 import { HOLOGRAM_TIME } from "./HologramClock";
 import { gradientColors } from "./instancing";
@@ -147,7 +148,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
   const over = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     if (navigating) return;
-    setLocal(true);
+    if (!SITE.navLocked) setLocal(true);
     setHovered(dest);
   };
   const out = () => {

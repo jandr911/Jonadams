@@ -63,11 +63,12 @@ export default function CameraRig() {
     const down = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
       const action = ACTIONS[key];
-      if (isTyping(e) || !action) return;
+      if (isTyping(e) || !action || e.metaKey || e.ctrlKey || e.altKey) return;
       keys.current.add(action);
       if (key.startsWith("arrow") || key.startsWith("page")) e.preventDefault();
     };
     const up = (e: KeyboardEvent) => {
+      if (e.key === "Meta") keys.current.clear();
       const action = ACTIONS[e.key.toLowerCase()];
       if (action) keys.current.delete(action);
     };
