@@ -1,9 +1,9 @@
 "use client";
 
-import { useFrame } from "@react-three/fiber";
 import { useEffect, useState } from "react";
 import { Color, DoubleSide, PlaneGeometry, ShaderMaterial, type Texture, UniformsLib, UniformsUtils } from "three";
 import { SITE } from "@/content/site";
+import { HOLOGRAM_TIME } from "./HologramClock";
 import { hologramTexture } from "./labels";
 import { destinationById, destinationPosition } from "./layout";
 
@@ -29,7 +29,7 @@ const frag = /* glsl */ `
   #include <fog_pars_fragment>
   void main() {
     vec2 uv = vec2(gl_FrontFacing ? vUv.x : 1.0 - vUv.x, vUv.y);
-    float jitter = step(0.97, fract(sin(floor(uTime * 9.0) * 37.1 + uSeed) * 4375.5));
+    float jitter = step(0.97, fract(sin(mod(floor(uTime * 9.0), 613.0) * 37.1 + uSeed) * 4375.5)) * step(0.0001, uTime);
     uv.x += jitter * 0.008 * sin(uv.y * 90.0);
     float alpha = texture2D(uMap, uv).a;
     float glyph = smoothstep(0.45, 0.9, alpha);
@@ -42,6 +42,7 @@ const frag = /* glsl */ `
     #ifdef USE_FOG
       a *= 1.0 - smoothstep(fogNear, fogFar, vFogDepth);
     #endif
+    if (a < 0.02) discard;
     gl_FragColor = vec4(col, a * 0.92);
     #include <colorspace_fragment>
   }
@@ -57,16 +58,13 @@ function makeHoloMaterial(map: Texture, color: string, seed: number) {
     ]),
     fog: true,
     transparent: true,
-    depthWrite: false,
+    depthWrite: true,
     side: DoubleSide,
     toneMapped: false,
   });
   mat.uniforms.uMap.value = map;
+  mat.uniforms.uTime = HOLOGRAM_TIME;
   return mat;
-}
-
-function tickHolo(mat: ShaderMaterial, time: number) {
-  mat.uniforms.uTime.value = time;
 }
 
 interface Holo {
@@ -98,7 +96,6 @@ const HOLOS: Holo[] = [
 function HoloPanel({ holo, seed }: { holo: Holo; seed: number }) {
   const [mat] = useState(() => makeHoloMaterial(hologramTexture(holo.kicker, holo.headline, holo.footer), holo.color, seed));
   useEffect(() => () => mat.dispose(), [mat]);
-  useFrame(({ clock }) => tickHolo(mat, clock.elapsedTime));
   return (
     <mesh
       geometry={PANEL}

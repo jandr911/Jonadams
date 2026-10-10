@@ -5,7 +5,6 @@ import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
 import {
   AdditiveBlending,
-  BufferAttribute,
   Color,
   CylinderGeometry,
   DoubleSide,
@@ -19,26 +18,14 @@ import {
   UniformsUtils,
 } from "three";
 import { useCity } from "./CityContext";
+import { HOLOGRAM_TIME } from "./HologramClock";
+import { gradientColors } from "./instancing";
 import { seedOf } from "./rng";
 import type { Destination } from "./layout";
 
 const BEACON_HEIGHT = 10;
 
-function makeBeaconColumn() {
-  const geo = new CylinderGeometry(0.12, 0.12, BEACON_HEIGHT, 8, 1, true);
-  const pos = geo.attributes.position;
-  const colors = new Float32Array(pos.count * 3);
-  for (let i = 0; i < pos.count; i++) {
-    const a = Math.pow((pos.getY(i) + BEACON_HEIGHT / 2) / BEACON_HEIGHT, 1.4);
-    colors[i * 3] = a;
-    colors[i * 3 + 1] = a;
-    colors[i * 3 + 2] = a;
-  }
-  geo.setAttribute("color", new BufferAttribute(colors, 3));
-  return geo;
-}
-
-const BEACON_COLUMN = makeBeaconColumn();
+const BEACON_COLUMN = gradientColors(new CylinderGeometry(0.12, 0.12, BEACON_HEIGHT, 8, 1, true), "y", -BEACON_HEIGHT / 2, BEACON_HEIGHT, 1.4);
 const CRYSTAL = new OctahedronGeometry(1, 0).scale(1.1, 2.1, 1.1);
 
 const hologramVert = /* glsl */ `
@@ -69,7 +56,7 @@ const hologramFrag = /* glsl */ `
   void main() {
     float fres = pow(1.0 - abs(dot(normalize(vNormalV), normalize(vViewDir))), 1.6);
     float scan = 0.45 + 0.55 * step(0.45, fract(vY * 2.4 - uTime * uScanSpeed));
-    float glitch = 1.0 - 0.6 * step(0.985, fract(sin(floor(uTime * 14.0) * 91.7 + uSeed * 17.3) * 43758.5));
+    float glitch = 1.0 - 0.6 * step(0.985, fract(sin(mod(floor(uTime * 14.0), 613.0) * 91.7 + uSeed * 17.3) * 43758.5)) * step(0.0001, uTime);
     float a = (0.22 + 0.78 * fres) * scan * glitch * uIntensity;
     #ifdef USE_FOG
       a *= 1.0 - smoothstep(fogNear, fogFar, vFogDepth);
@@ -80,7 +67,7 @@ const hologramFrag = /* glsl */ `
 `;
 
 function makeHologramMaterial(color: string, seed: number) {
-  return new ShaderMaterial({
+  const mat = new ShaderMaterial({
     vertexShader: hologramVert,
     fragmentShader: hologramFrag,
     uniforms: UniformsUtils.merge([
@@ -100,11 +87,12 @@ function makeHologramMaterial(color: string, seed: number) {
     side: DoubleSide,
     toneMapped: false,
   });
+  mat.uniforms.uTime = HOLOGRAM_TIME;
+  return mat;
 }
 
-function tickHologram(mat: ShaderMaterial, time: number, hot: boolean, k: number) {
+function tickHologram(mat: ShaderMaterial, hot: boolean, k: number) {
   const u = mat.uniforms;
-  u.uTime.value = time;
   u.uIntensity.value = MathUtils.lerp(u.uIntensity.value, hot ? 1.6 : 0.8, k);
   u.uScanSpeed.value = MathUtils.lerp(u.uScanSpeed.value, hot ? 2.2 : 0.6, k);
 }
@@ -137,16 +125,15 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
   useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime;
     const k = 1 - Math.exp(-dt * 10);
-    const pulse = 0.5 + 0.5 * Math.sin(t * 2.2);
     if (inner.current) {
       const s = MathUtils.lerp(inner.current.scale.x, isHovered ? 1.035 : 1, k);
       inner.current.scale.setScalar(s);
     }
     if (crystal.current) {
-      crystal.current.rotation.y = t * 0.5;
-      crystal.current.position.y = BEACON_HEIGHT + 2.4 + pulse * 0.5;
+      crystal.current.rotation.y = HOLOGRAM_TIME.value * 0.5;
+      crystal.current.position.y = BEACON_HEIGHT + 2.65 + Math.sin(HOLOGRAM_TIME.value * 2.2) * 0.25;
     }
-    tickHologram(hologram, t, isHovered, k);
+    tickHologram(hologram, isHovered, k);
     if (columnMat.current) {
       columnMat.current.opacity = MathUtils.lerp(columnMat.current.opacity, isHovered ? 0.9 : 0.55, k);
     }

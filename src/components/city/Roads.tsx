@@ -218,7 +218,7 @@ function Streetlights() {
         <meshStandardMaterial color="#4d4f4f" roughness={0.6} metalness={0.5} />
       </instancedMesh>
       <instancedMesh ref={heads} args={[undefined, undefined, items.length]}>
-        <sphereGeometry args={[0.36, 6, 4]} />
+        <sphereGeometry args={[0.3, 10, 6]} />
         <meshStandardMaterial
           ref={headMat}
           color="#ffd27a"

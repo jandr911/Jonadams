@@ -2,16 +2,10 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useRef, useState } from "react";
-import { BoxGeometry, type BufferGeometry, Color, CylinderGeometry, InstancedMesh, Matrix4, Object3D, Quaternion, SphereGeometry, Vector3 } from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { BoxGeometry, Color, CylinderGeometry, InstancedMesh, Matrix4, Object3D, Quaternion, SphereGeometry, Vector3 } from "three";
+import { mergeParts } from "./instancing";
 
-function merged(parts: BufferGeometry[], label: string) {
-  const g = mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)));
-  if (!g) throw new Error(`${label} parts could not be merged`);
-  return g;
-}
-
-const DRONE = merged(
+const DRONE = mergeParts(
   [
     new BoxGeometry(1.2, 0.34, 1.2),
     new BoxGeometry(3.4, 0.12, 0.2).rotateY(Math.PI / 4),
@@ -22,7 +16,7 @@ const DRONE = merged(
   "drone",
 );
 
-const AIR_TAXI = merged(
+const AIR_TAXI = mergeParts(
   [
     new SphereGeometry(1, 16, 10).scale(1.3, 0.75, 2.8),
     new BoxGeometry(6, 0.16, 1.1).translate(0, -0.1, -0.5),
