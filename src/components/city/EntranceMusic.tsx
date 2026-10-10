@@ -8,7 +8,7 @@ const VOLUME = 0.6;
 const FADE_MS = 1600;
 const GESTURES = ["pointerdown", "keydown", "touchend"] as const;
 
-type Status = "waiting" | "playing" | "stopped";
+type Status = "waiting" | "playing" | "stopped" | "unavailable";
 
 function readStopped() {
   try {
@@ -27,7 +27,7 @@ function writeStopped(stopped: boolean) {
   }
 }
 
-type PlayResult = "playing" | "blocked" | "failed";
+type PlayResult = "playing" | "blocked" | "interrupted" | "failed";
 
 const fades = new WeakMap<HTMLAudioElement, ReturnType<typeof setInterval>>();
 
@@ -56,10 +56,12 @@ function silence(audio: HTMLAudioElement) {
 async function tryPlay(audio: HTMLAudioElement | null): Promise<PlayResult> {
   if (!audio) return "failed";
   if (!audio.paused) return "playing";
+  audio.volume = 0;
   try {
     await audio.play();
   } catch (err) {
     if (err instanceof DOMException && err.name === "NotAllowedError") return "blocked";
+    if (err instanceof DOMException && err.name === "AbortError") return "interrupted";
     console.error("Entrance music could not play", err);
     return "failed";
   }
@@ -86,15 +88,17 @@ export default function EntranceMusic() {
     const onGesture = (e: Event) => {
       if (e.target instanceof Element && e.target.closest(".city-music")) return;
       void tryPlay(a).then((result) => {
-        if (result === "blocked" || !alive) return;
+        if (result === "blocked" || result === "interrupted" || !alive) return;
         disarm();
         if (result === "playing") setStatus("playing");
+        if (result === "failed") setStatus("unavailable");
       });
     };
     void tryPlay(a).then((result) => {
       if (!alive) return;
       if (result === "playing") setStatus("playing");
-      if (result !== "blocked") return;
+      if (result === "failed") setStatus("unavailable");
+      if (result !== "blocked" && result !== "interrupted") return;
       armed = true;
       for (const g of GESTURES) window.addEventListener(g, onGesture);
     });
@@ -118,14 +122,28 @@ export default function EntranceMusic() {
     writeStopped(false);
     void tryPlay(a).then((result) => {
       if (result === "playing") setStatus("playing");
+      if (result === "failed") setStatus("unavailable");
     });
   };
+
+  if (status === "unavailable") return null;
 
   const playing = status === "playing";
   return (
     <>
-      <audio ref={audio} src={MUSIC.src} loop preload="auto" />
-      <button type="button" className="city-pill city-music" onClick={toggle} aria-pressed={playing}>
+      <audio
+        ref={audio}
+        src={MUSIC.src}
+        loop
+        preload={status === "stopped" ? "none" : "auto"}
+        onPlay={() => setStatus("playing")}
+        onPause={() => setStatus((s) => (s === "stopped" ? s : "waiting"))}
+        onError={() => {
+          disarmGestures.current();
+          setStatus("unavailable");
+        }}
+      />
+      <button type="button" className="city-pill city-music" onClick={toggle}>
         <span className="city-music__bars" data-on={playing} aria-hidden>
           <i />
           <i />
