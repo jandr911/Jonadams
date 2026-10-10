@@ -99,7 +99,7 @@ function TrafficLights() {
       </instancedMesh>
       <instancedMesh ref={lamps} args={[undefined, undefined, items.length]} frustumCulled={false}>
         <sphereGeometry args={[0.15, 8, 6]} />
-        <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={1} toneMapped={false} />
+        <meshBasicMaterial color="#ffffff" toneMapped={false} />
       </instancedMesh>
     </group>
   );
