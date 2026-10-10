@@ -23,6 +23,8 @@ const DISTRICTS_HINT = `${DESTINATIONS.length} districts · Hover to preview · 
 const LOCKED_HINT = `${DESTINATIONS.length} districts · Opening soon`;
 const READOUT = "All districts online · Sky lanes active";
 
+const LIGHT_STEPS_PER_HOUR = 4;
+
 function subscribeMinute(cb: () => void) {
   const id = setInterval(cb, 60_000);
   return () => clearInterval(id);
@@ -30,7 +32,7 @@ function subscribeMinute(cb: () => void) {
 function clockSnapshot() {
   const q = new URLSearchParams(window.location.search).get("time");
   const preset: TimePreset = q === "day" || q === "dusk" || q === "night" ? q : "auto";
-  return `${preset}|${presetHour("auto").toFixed(2)}`;
+  return `${preset}|${(Math.floor(presetHour("auto") * LIGHT_STEPS_PER_HOUR) / LIGHT_STEPS_PER_HOUR).toFixed(2)}`;
 }
 function serverClockSnapshot() {
   return "auto|12.00";
@@ -240,7 +242,7 @@ export default function CityCanvas() {
               </div>
             }
           >
-            <CityStage onQuality={setQuality} onReady={() => setStageUp(true)} />
+            <CityStage live={ready} onQuality={setQuality} onReady={() => setStageUp(true)} />
           </StageBoundary>
           <div className="city-frame" aria-hidden>
             <i />

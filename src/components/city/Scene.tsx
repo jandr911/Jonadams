@@ -26,6 +26,7 @@ import PeopleMover from "./PeopleMover";
 import Roads from "./Roads";
 import Sky from "./Sky";
 import SkyTraffic from "./SkyTraffic";
+import StaticBatch from "./StaticBatch";
 import Steam from "./Steam";
 import Traffic from "./Traffic";
 import { TreeWind } from "./TreeStand";
@@ -116,13 +117,23 @@ export default function Scene({ onReady }: { onReady: () => void }) {
       />
       <Suspense fallback={null}>
         <Sky />
-        <Ground />
-        <Roads />
+        <StaticBatch label="ground">
+          <Ground />
+        </StaticBatch>
+        <StaticBatch label="roads">
+          <Roads />
+        </StaticBatch>
         <Buildings />
-        <Landmarks />
-        <PeopleMover />
+        <StaticBatch label="landmarks">
+          <Landmarks />
+        </StaticBatch>
+        <StaticBatch label="people-mover">
+          <PeopleMover />
+        </StaticBatch>
         <Traffic />
-        <Aircraft />
+        <StaticBatch label="aircraft">
+          <Aircraft />
+        </StaticBatch>
         <StageBoundary name="The alter ego" fallback={null} onFail={ignoreFailure}>
           <Suspense fallback={null}>
             <AlterEgo flyBy={extras} />
@@ -130,10 +141,16 @@ export default function Scene({ onReady }: { onReady: () => void }) {
         </StageBoundary>
         {extras && <SkyTraffic />}
         {extras && <HoloBillboards />}
-        <Watercraft />
-        <Details />
+        <StaticBatch label="watercraft">
+          <Watercraft />
+        </StaticBatch>
+        <StaticBatch label="details">
+          <Details />
+        </StaticBatch>
         <Steam />
-        <Suburbs />
+        <StaticBatch label="suburbs">
+          <Suburbs />
+        </StaticBatch>
         <TreeWind />
         <Preload all />
         <FirstFrames onReady={onReady} />
