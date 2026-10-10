@@ -21,7 +21,7 @@ export const CITY_FALLBACK = "This browser can't draw the 3D city. The districts
 
 export const ALTER_EGO = {
   name: "",
-  art: { standing: "/alter-ego/standing.png", walking: "/alter-ego/walking.png" },
+  art: { standing: "/alter-ego/standing.png", smoke: "/alter-ego/smoke.png", walking: "/alter-ego/walking.png" },
   note: "Jonathan Adams' alter ego",
 };
 
