@@ -53,7 +53,7 @@ const skyFrag = /* glsl */ `
     vec3 col = h > 0.0
       ? mix(uHorizon, uZenith, pow(h, 0.5))
       : mix(uHorizon, uGround, pow(-h, 0.5));
-    float haze = 1.0 - smoothstep(0.0, 0.16, h);
+    float haze = 1.0 - smoothstep(0.0, 0.16 + 0.22 * uNight, h);
     col = mix(col, uFog, haze * 0.95);
     float s = max(dot(d, normalize(uSunDir)), 0.0);
     float glow = pow(s, 64.0) * 1.4 + pow(s, 8.0) * 0.22 + pow(s, 2.0) * 0.04;

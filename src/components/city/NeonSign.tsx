@@ -4,6 +4,7 @@ import { Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { Color, Group, MeshStandardMaterial } from "three";
+import { seedOf } from "./rng";
 
 export const DISPLAY_FONT = "/fonts/BebasNeue-Regular.ttf";
 export const SCRIPT_FONT = "/fonts/CormorantGaramond-Italic.ttf";
@@ -44,11 +45,7 @@ export default function NeonSign({
   const frameMat = useRef<MeshStandardMaterial>(null);
   const textGroup = useRef<Group>(null);
   const bright = useMemo(() => new Color(color).multiplyScalar(glow), [color, glow]);
-  const phase = useMemo(() => {
-    let h = 0;
-    for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) % 9973;
-    return (h / 9973) * 10;
-  }, [text]);
+  const phase = useMemo(() => ((seedOf(text) % 9973) / 9973) * 10, [text]);
   const content = vertical ? text.split("").join("\n") : text;
   const size = fontSize ?? (vertical ? width * 0.62 : Math.min(height * 0.62, (width / Math.max(text.length, 1)) * 2.1));
 

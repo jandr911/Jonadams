@@ -81,7 +81,8 @@ const AMBER_UNTIL = 0.42;
 
 function lightPhase(axis: "x" | "z", ix: number, iz: number, time: number) {
   const cycle = (time % LIGHT_CYCLE) / LIGHT_CYCLE;
-  const phase = ((ix + iz) % 2) * 0.5 + (axis === "x" ? 0.5 : 0);
+  const offset = (((ix * 0.371 + iz * 0.613) % 1) + 1) % 1;
+  const phase = offset + (axis === "x" ? 0.5 : 0);
   return (cycle + phase) % 1;
 }
 
@@ -200,4 +201,10 @@ export const WOODWARD_INDEX = 4;
 export function destinationPosition(d: Destination): [number, number] {
   const [cx, cz] = blockCenter(d.block[0], d.block[1]);
   return [cx + d.offset[0], cz + d.offset[1]];
+}
+
+export function destinationById(id: string): Destination {
+  const d = DESTINATIONS.find((x) => x.id === id);
+  if (!d) throw new Error(`unknown destination ${id}`);
+  return d;
 }

@@ -19,6 +19,8 @@ import {
 import { carvedStoneTexture, handPaintedBillboardTexture, wheatpastePosterTexture } from "./labels";
 import NeonSign, { DISPLAY_FONT, SCRIPT_FONT } from "./NeonSign";
 import PaintedSign from "./PaintedSign";
+import { mulberry32 } from "./rng";
+import TreeStand, { plantTrees } from "./TreeStand";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { baseBoxGeometry, fillInstances } from "./instancing";
 import { enableReflection } from "./layers";
@@ -554,7 +556,7 @@ function MerchWarehouse() {
       <Fan position={[-5.5, 7.5, 8.8]} r={2} />
       <NeonSign text="MERCH" color="#ffb02e" width={11} height={3.6} fontSize={2.8} position={[2.5, 9.6, 8.9]} rotation={[0, 0, -0.06]} blink="fast" />
       <PaintedSign text="RIVERTOWN" bg="#2f4a3a" fg="#e6dbc2" width={12} height={2.2} position={[0, 17.4, 0]} doubleSided depth={0.8} />
-      <mesh geometry={WATER_TANK} position={[6, 15.2, 2]}>
+      <mesh geometry={WATER_TANK} position={[6.5, 15.2, -3.6]}>
         <meshStandardMaterial color="#5a4632" roughness={0.95} />
       </mesh>
     </Hotspot>
@@ -825,6 +827,12 @@ function SpiritOfDetroit() {
   );
 }
 
+const CAMPUS_TREES = plantTrees(
+  mulberry32(828),
+  Array.from({ length: 6 }, (_, i) => ({ x: Math.cos((i / 6) * Math.PI * 2) * 9, z: Math.sin((i / 6) * Math.PI * 2) * 9, s: 1.1 })),
+  { shade: 0.7, elm: 0.3 },
+);
+
 function CampusMartius() {
   const [x, z] = blockCenter(4, 4);
   const jet = useRef<Mesh>(null);
@@ -848,21 +856,7 @@ function CampusMartius() {
       <mesh ref={jet} geometry={JET_PLUME} position={[0, 0.6, 0]}>
         <meshStandardMaterial color="#dfe9ec" emissive="#ffffff" emissiveIntensity={0.15} transparent opacity={0.55} />
       </mesh>
-      {[0, 1, 2, 3, 4, 5].map((i) => {
-        const a = (i / 6) * Math.PI * 2;
-        return (
-          <group key={i} position={[Math.cos(a) * 9, 0, Math.sin(a) * 9]}>
-            <mesh position={[0, 2.2, 0]}>
-              <cylinderGeometry args={[0.2, 0.3, 4.4, 6]} />
-              <meshStandardMaterial color="#4a2e2a" />
-            </mesh>
-            <mesh position={[0, 5.6, 0]}>
-              <icosahedronGeometry args={[2.2, 0]} />
-              <meshStandardMaterial color="#2f8a5a" flatShading />
-            </mesh>
-          </group>
-        );
-      })}
+      <TreeStand trees={CAMPUS_TREES} quality="near" seed={1879} castShadow />
     </Landmark>
   );
 }
@@ -1119,6 +1113,12 @@ function LittleCaesarsArena() {
   );
 }
 
+const MILLIKEN_TREES = plantTrees(
+  mulberry32(1122),
+  [-7, -2, 3].map((x, i) => ({ x, z: -6 + i * 3, s: 1 })),
+  { shade: 0.5, elm: 0.5 },
+);
+
 function MillikenLighthouse() {
   const [x, z] = blockCenter(7, 5);
   const beam = useRef<Group>(null);
@@ -1153,18 +1153,7 @@ function MillikenLighthouse() {
           <meshBasicMaterial color="#fff2c0" transparent opacity={0.08} blending={2} depthWrite={false} toneMapped={false} />
         </mesh>
       </group>
-      {[-7, -2, 3].map((tx, i) => (
-        <group key={tx} position={[tx, 0, -6 + i * 3]}>
-          <mesh position={[0, 2, 0]}>
-            <cylinderGeometry args={[0.2, 0.3, 4, 6]} />
-            <meshStandardMaterial color="#4a2e2a" />
-          </mesh>
-          <mesh position={[0, 5, 0]}>
-            <icosahedronGeometry args={[2, 0]} />
-            <meshStandardMaterial color="#2f8a5a" flatShading />
-          </mesh>
-        </group>
-      ))}
+      <TreeStand trees={MILLIKEN_TREES} quality="near" seed={1879} castShadow />
     </Landmark>
   );
 }

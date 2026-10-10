@@ -406,6 +406,8 @@ const PULSE_COUNT = 14;
 const PULSE_SPEED = 0.045;
 const PULSE = new BoxGeometry(0.09, 0.16, 3.2);
 const PULSE_SAMPLES = 512;
+const pulseAt = new Vector3();
+const pulseHeading = new Vector3();
 
 function sampleLoop(curve: CatmullRomCurve3) {
   const points = curve.getSpacedPoints(PULSE_SAMPLES);
@@ -421,9 +423,12 @@ function placePulses(m: InstancedMesh, d: Object3D, loop: ReturnType<typeof samp
   for (let i = 0; i < PULSE_COUNT; i++) {
     const side = i % 2 === 0 ? -1 : 1;
     const u = (((i / PULSE_COUNT + time * PULSE_SPEED * side) % 1) + 1) % 1;
-    const k = Math.floor(u * PULSE_SAMPLES) % PULSE_SAMPLES;
-    const p = loop.points[k];
-    const t = loop.tangents[k];
+    const f = u * PULSE_SAMPLES;
+    const k = Math.floor(f) % PULSE_SAMPLES;
+    const next = (k + 1) % PULSE_SAMPLES;
+    const blend = f - Math.floor(f);
+    const p = pulseAt.lerpVectors(loop.points[k], loop.points[next], blend);
+    const t = pulseHeading.lerpVectors(loop.tangents[k], loop.tangents[next], blend).normalize();
     const offset = side * (LED_OFFSET + 0.03);
     d.position.set(p.x + t.z * offset, p.y - 0.38, p.z - t.x * offset);
     d.rotation.set(0, Math.atan2(t.x, t.z), 0);

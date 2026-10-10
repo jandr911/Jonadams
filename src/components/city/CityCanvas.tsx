@@ -17,8 +17,8 @@ const CityStage = dynamic(() => import("./CityStage"), { ssr: false });
 
 const PRESETS: TimePreset[] = ["auto", "day", "dusk", "night"];
 const OVERCAST_DEFAULT = 0.6;
-const DISTRICTS_HINT = "Five districts · Hover to preview · Click to fly in";
-const READOUT = `${DESTINATIONS.length} districts online · Sky lanes active`;
+const DISTRICTS_HINT = `${DESTINATIONS.length} districts · Hover to preview · Click to fly in`;
+const READOUT = "All districts online · Sky lanes active";
 
 function subscribeMinute(cb: () => void) {
   const id = setInterval(cb, 60_000);

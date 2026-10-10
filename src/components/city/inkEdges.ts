@@ -24,6 +24,7 @@ const fragmentShader = /* glsl */ `
     float corner = smoothstep(0.0007, 0.002, crease);
     float reach = 1.0 - smoothstep(uReach * 0.3, uReach, 1.0 / w);
     float ink = max(silhouette, corner * 0.7) * reach * uStrength * step(depth, 0.9999);
+    ink *= 1.0 - smoothstep(1.2, 2.0, dot(inputColor.rgb, vec3(0.2126, 0.7152, 0.0722)));
     outputColor = vec4(mix(inputColor.rgb, uInk, ink), inputColor.a);
   }
 `;
