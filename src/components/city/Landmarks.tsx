@@ -26,7 +26,7 @@ import { baseBoxGeometry, fillInstances, mergeParts } from "./instancing";
 import { enableReflection } from "./layers";
 import type { WindowMaterialOptions } from "./windowMaterial";
 
-const PAD = 0.4;
+export const PAD = 0.4;
 
 const BASE_BOX = baseBoxGeometry();
 const FOUNTAIN_PLUME = new CylinderGeometry(0.6, 1.6, 9.5, 10).translate(0, 4.75, 0);
@@ -217,11 +217,12 @@ function ClubCrownBars() {
     frame.current += 1;
     if (frame.current % CLUB_BAR_STEP_FRAMES !== 0) return;
     const t = clock.elapsedTime;
-    bars.current.forEach((b, i) => {
-      if (!b) return;
+    for (let i = 0; i < bars.current.length; i++) {
+      const b = bars.current[i];
+      if (!b) continue;
       const k = 0.35 + 0.65 * Math.abs(Math.sin(t * (0.9 + i * 0.23) + i));
       b.scale.y = CLUB_BAR_MAX * CLUB_BAR_HEIGHTS[i] * k;
-    });
+    }
   });
   return (
     <group position={[0, CLUB_PODIUM_HEIGHT + CLUB_TOWER_HEIGHT, 0]}>
@@ -462,14 +463,18 @@ function FoxMarquee() {
   return <NeonSign text={FOX_LINES[line]} color="#fff1c4" width={14} height={2.2} fontSize={0.9} position={[0, -1.9, 1.6]} glow={1.8} />;
 }
 
+const LISTEN_TOWER_H = 34;
+const LISTEN_ROOF_SLAB = 0.8;
+export const LISTEN_ROOF_Y = PAD + LISTEN_TOWER_H + LISTEN_ROOF_SLAB;
+
 function ListenTower() {
   const d = DESTINATIONS[1];
   const [x, z] = destinationPosition(d);
   return (
     <Hotspot dest={d} position={[x, PAD, z]}>
-      <WindowedBox w={15} h={34} d={16} color="#b3382c" winSize={[1.8, 2.3]} seed={21} warm="#ffe08a" />
-      <mesh position={[0, 34.4, 0]}>
-        <boxGeometry args={[16.4, 0.8, 17.4]} />
+      <WindowedBox w={15} h={LISTEN_TOWER_H} d={16} color="#b3382c" winSize={[1.8, 2.3]} seed={21} warm="#ffe08a" />
+      <mesh position={[0, LISTEN_TOWER_H + LISTEN_ROOF_SLAB / 2, 0]}>
+        <boxGeometry args={[16.4, LISTEN_ROOF_SLAB, 17.4]} />
         <meshStandardMaterial color="#7d1b18" />
       </mesh>
       {Array.from({ length: 7 }).map((_, i) => (

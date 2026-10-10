@@ -2,6 +2,7 @@ export const SITE = {
   name: "Adams UniverseCity",
   cityName: "UniverseCity",
   artist: "Jonathan Adams",
+  nickname: "Jonn",
   city: "Detroit, Michigan",
   year: 2026,
   submitEmail: "",
@@ -9,6 +10,19 @@ export const SITE = {
   pressEmail: "",
   joinHref: "/listen#join-list",
   navLocked: true,
+};
+
+export const MUSIC = {
+  src: "",
+  title: "",
+};
+
+export const CITY_FALLBACK = "This browser can't draw the 3D city. The districts below still take you everywhere.";
+
+export const ALTER_EGO = {
+  name: "",
+  art: { standing: "/alter-ego/standing.png", smoke: "/alter-ego/smoke.png", walking: "/alter-ego/walking.png" },
+  note: "Jonathan Adams' alter ego",
 };
 
 export const DESCRIPTION = "Step into the world of Jonathan Adams. Music, art, and the creatives of Detroit.";

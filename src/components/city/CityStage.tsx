@@ -1,11 +1,11 @@
 "use client";
 
-import { PerformanceMonitor } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { NoToneMapping } from "three";
+import QualityGovernor from "./QualityGovernor";
 import Scene from "./Scene";
 
-export default function CityStage({ onQuality, onReady }: { onQuality: (q: "high" | "low") => void; onReady: () => void }) {
+export default function CityStage({ live, onQuality, onReady }: { live: boolean; onQuality: (q: "high" | "low") => void; onReady: () => void }) {
   return (
     <Canvas
       dpr={1}
@@ -22,15 +22,7 @@ export default function CityStage({ onQuality, onReady }: { onQuality: (q: "high
         }
       }}
     >
-      <PerformanceMonitor
-        onDecline={() => onQuality("low")}
-        onIncline={() => onQuality("high")}
-        ms={400}
-        iterations={12}
-        flipflops={2}
-        bounds={() => [30, 60]}
-        onFallback={() => onQuality("low")}
-      />
+      <QualityGovernor live={live} onQuality={onQuality} />
       <Scene onReady={onReady} />
     </Canvas>
   );

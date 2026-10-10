@@ -17,6 +17,7 @@ import {
   UniformsLib,
   UniformsUtils,
 } from "three";
+import { SITE } from "@/content/site";
 import { useCity } from "./CityContext";
 import { HOLOGRAM_TIME } from "./HologramClock";
 import { gradientColors } from "./instancing";
@@ -97,6 +98,14 @@ function tickHologram(mat: ShaderMaterial, hot: boolean, k: number) {
   u.uScanSpeed.value = MathUtils.lerp(u.uScanSpeed.value, hot ? 2.2 : 0.6, k);
 }
 
+function easeScale(g: Group, target: number, k: number) {
+  const s = g.scale.x;
+  if (s === target) return;
+  const next = Math.abs(target - s) < 1e-4 ? target : MathUtils.lerp(s, target, k);
+  g.scale.setScalar(next);
+  g.updateMatrix();
+}
+
 interface HotspotProps {
   dest: Destination;
   position: [number, number, number];
@@ -124,10 +133,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
 
   useFrame((_, dt) => {
     const k = 1 - Math.exp(-dt * 10);
-    if (inner.current) {
-      const s = MathUtils.lerp(inner.current.scale.x, isHovered ? 1.035 : 1, k);
-      inner.current.scale.setScalar(s);
-    }
+    if (inner.current) easeScale(inner.current, isHovered ? 1.035 : 1, k);
     if (crystal.current) {
       crystal.current.rotation.y = HOLOGRAM_TIME.value * 0.5;
       crystal.current.position.y = BEACON_HEIGHT + 2.65 + Math.sin(HOLOGRAM_TIME.value * 2.2) * 0.25;
@@ -140,6 +146,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
       const target = isHovered ? 1 : 0;
       const s = MathUtils.lerp(ring.current.scale.x, target, k);
       ring.current.scale.set(s, s, s);
+      ring.current.visible = s > 0.001;
       ring.current.rotation.z = HOLOGRAM_TIME.value * 0.6;
     }
   });
@@ -147,7 +154,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
   const over = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     if (navigating) return;
-    setLocal(true);
+    if (!SITE.navLocked) setLocal(true);
     setHovered(dest);
   };
   const out = () => {
@@ -162,7 +169,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
 
   return (
     <group ref={group} position={position}>
-      <group ref={inner} onPointerOver={over} onPointerOut={out} onClick={click}>
+      <group ref={inner} matrixAutoUpdate={false} onPointerOver={over} onPointerOut={out} onClick={click}>
         {children}
       </group>
       <group position={[0, dest.markerHeight, 0]}>
@@ -181,7 +188,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
         </mesh>
         <mesh ref={crystal} geometry={CRYSTAL} material={hologram} position={[0, BEACON_HEIGHT + 2.4, 0]} userData={{ noReflect: true }} />
       </group>
-      <mesh ref={ring} position={[0, dest.markerHeight + BEACON_HEIGHT + 2.4, 0]} rotation={[Math.PI / 2, 0, 0]} scale={0}>
+      <mesh ref={ring} position={[0, dest.markerHeight + BEACON_HEIGHT + 2.4, 0]} rotation={[Math.PI / 2, 0, 0]} scale={0} visible={false}>
         <torusGeometry args={[3.4, 0.22, 8, 32]} />
         <meshStandardMaterial
           color={dest.color}

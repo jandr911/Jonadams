@@ -475,7 +475,11 @@ function HideAbove({ y, children }: { y: number; children: React.ReactNode }) {
     if (frame.current % HIDE_CHECK_FRAMES !== 0 || !ref.current) return;
     ref.current.visible = camera.position.y < y;
   });
-  return <group ref={ref}>{children}</group>;
+  return (
+    <group ref={ref} userData={{ gate: true }}>
+      {children}
+    </group>
+  );
 }
 
 function Parts({ items, children, geometry, castShadow = false }: { items: Placement[]; children?: React.ReactNode; geometry?: BufferGeometry; castShadow?: boolean }) {

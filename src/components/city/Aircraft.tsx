@@ -2,8 +2,9 @@
 
 import { Float, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
-import { AdditiveBlending, CatmullRomCurve3, ConeGeometry, DoubleSide, Group, MathUtils, Mesh, MeshStandardMaterial, PlaneGeometry, Vector3 } from "three";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { AdditiveBlending, Color, CatmullRomCurve3, ConeGeometry, DoubleSide, Group, MathUtils, Mesh, MeshStandardMaterial, PlaneGeometry, Vector3 } from "three";
+import { SITE } from "@/content/site";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import { gradientColors } from "./instancing";
@@ -72,10 +73,13 @@ function Pilot({ position, top = "#1d1d3f", rotation = 0 }: { position: [number,
 const BLIMP_SKIN = "#c9cbc6";
 const BLIMP_TRIM = "#a8aaa5";
 const BLIMP_INK = "#1f2a3a";
+const BLIMP_NAME = "#f0a81e";
+const BLIMP_NAME_EDGE = "#4a2a06";
 const BLIMP_METAL = "#4a4c50";
 
 function Blimp() {
   const dn = useDayNight();
+  const nameColor = useMemo(() => new Color(BLIMP_NAME).multiplyScalar(0.9 + dn.night * 0.45), [dn.night]);
   const rig = useRef<Group>(null);
   const props = useRef<(Group | null)[]>([]);
   const surfaces = useRef<(Mesh | null)[]>([]);
@@ -227,16 +231,26 @@ function Blimp() {
           ))}
         </group>
         {[1, -1].map((side) => (
-          <Text key={side} font={SCRIPT_FONT} fontSize={4.4} anchorX="center" anchorY="middle" position={[0.6, 0.2, side * 5.08]} rotation={[0, side > 0 ? 0 : Math.PI, 0]}>
-            Adams
-            <meshStandardMaterial attach="material" color={BLIMP_INK} roughness={0.6} />
+          <Text
+            key={side}
+            font={SCRIPT_FONT}
+            fontSize={5.2}
+            anchorX="center"
+            anchorY="middle"
+            position={[0.6, 0.2, side * 5.08]}
+            rotation={[0, side > 0 ? 0 : Math.PI, 0]}
+            outlineWidth="7%"
+            outlineColor={BLIMP_NAME_EDGE}
+          >
+            {SITE.nickname}
+            <meshBasicMaterial attach="material" color={nameColor} toneMapped={false} />
           </Text>
         ))}
-        <mesh position={[0, 0, 5.2]}>
+        <mesh position={[0, -3.2, 3.9]}>
           <sphereGeometry args={[0.22, 6, 6]} />
           <meshStandardMaterial color="#2aff7a" emissive="#2aff7a" emissiveIntensity={nav} toneMapped={false} />
         </mesh>
-        <mesh position={[0, 0, -5.2]}>
+        <mesh position={[0, -3.2, -3.9]}>
           <sphereGeometry args={[0.22, 6, 6]} />
           <meshStandardMaterial color="#ff2a3c" emissive="#ff2a3c" emissiveIntensity={nav} toneMapped={false} />
         </mesh>
@@ -247,18 +261,281 @@ function Blimp() {
   );
 }
 
-function Helicopter() {
+export interface HelicopterLivery {
+  hull: string;
+  trim: string;
+  pilot: string;
+  tail: string;
+  tailBg: string;
+  tailFg: string;
+  tailBorder: string;
+  tailSize: number;
+  lightBar: boolean;
+}
+
+export const ADAMS_AIR: HelicopterLivery = {
+  hull: "#1d1d3f",
+  trim: "#d6b56e",
+  pilot: "#d6b56e",
+  tail: "ADAMS AIR",
+  tailBg: "#1d1d3f",
+  tailFg: "#f3dfae",
+  tailBorder: "#d6b56e",
+  tailSize: 120,
+  lightBar: false,
+};
+export const DETROIT_POLICE: HelicopterLivery = {
+  hull: "#eef0f2",
+  trim: "#1d3f8a",
+  pilot: "#1d3f8a",
+  tail: "DETROIT POLICE",
+  tailBg: "#1d3f8a",
+  tailFg: "#f4f1ea",
+  tailBorder: "#f4f1ea",
+  tailSize: 84,
+  lightBar: true,
+};
+
+export const HELI_SKID_X = 1.05;
+export const HELI_SKID_DROP = 1.75;
+export const HELI_PITCH = 0.1;
+
+export interface HelicopterParts {
+  body: RefObject<Group | null>;
+  rotor: RefObject<Group | null>;
+  tail: RefObject<Group | null>;
+  beam: RefObject<Group | null>;
+}
+
+export function spinHelicopter(parts: HelicopterParts, t: number, turn: number, settle = false) {
+  const body = parts.body.current;
+  if (body) {
+    body.rotation.x = HELI_PITCH;
+    body.rotation.z = MathUtils.lerp(body.rotation.z, MathUtils.clamp(turn * 28, -0.45, 0.45), settle ? 0.2 : 0.05);
+  }
+  if (parts.rotor.current) parts.rotor.current.rotation.y = t * 32;
+  if (parts.tail.current) parts.tail.current.rotation.x = t * 44;
+  if (parts.beam.current) parts.beam.current.rotation.set(0.35 + Math.sin(t * 0.5) * 0.25, 0, Math.sin(t * 0.37) * 0.3);
+}
+
+export function HelicopterBody({
+  livery,
+  bodyRef,
+  rotorRef,
+  tailRef,
+  beamRef,
+}: {
+  livery: HelicopterLivery;
+  bodyRef: HelicopterParts["body"];
+  rotorRef: HelicopterParts["rotor"];
+  tailRef: HelicopterParts["tail"];
+  beamRef: HelicopterParts["beam"];
+}) {
   const dn = useDayNight();
+  const tailTex = useMemo(
+    () => labelTexture(livery.tail, { width: 512, height: 256, bg: livery.tailBg, fg: livery.tailFg, border: livery.tailBorder, size: livery.tailSize }),
+    [livery],
+  );
+  const nav = 0.4 + dn.night * 3;
+  return (
+    <group ref={bodyRef}>
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <capsuleGeometry args={[1.25, 2.6, 8, 16]} />
+        <meshStandardMaterial color={livery.hull} roughness={0.3} metalness={0.55} />
+      </mesh>
+      <mesh position={[0, 0.0, 0.2]}>
+        <boxGeometry args={[2.56, 0.12, 2.6]} />
+        <meshStandardMaterial color={livery.trim} roughness={0.3} metalness={0.7} />
+      </mesh>
+      <mesh position={[0, 0.25, 1.55]}>
+        <sphereGeometry args={[1.12, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.62]} />
+        <Glass />
+      </mesh>
+      <mesh position={[0, 0.3, 1.55]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.1, 0.04, 6, 24, Math.PI]} />
+        <meshStandardMaterial color="#15151c" />
+      </mesh>
+      <Pilot position={[-0.45, -0.4, 0.9]} />
+      <Pilot position={[0.45, -0.4, 0.9]} top={livery.pilot} />
+      <mesh position={[0, 0.1, 1.9]}>
+        <boxGeometry args={[1.2, 0.3, 0.3]} />
+        <meshStandardMaterial color="#15151c" emissive="#ffb02e" emissiveIntensity={dn.night * 0.8} toneMapped={false} />
+      </mesh>
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <mesh position={[s * 1.22, 0.15, -0.3]}>
+            <boxGeometry args={[0.06, 1.2, 1.2]} />
+            <Glass />
+          </mesh>
+          <mesh position={[s * 1.26, -0.2, -0.3]}>
+            <boxGeometry args={[0.03, 1.9, 1.3]} />
+            <meshStandardMaterial color={livery.trim} roughness={0.4} metalness={0.5} />
+          </mesh>
+          <mesh position={[s * 1.29, -0.5, 0.1]}>
+            <boxGeometry args={[0.03, 0.05, 0.25]} />
+            <meshStandardMaterial color="#c8ccd8" metalness={0.9} />
+          </mesh>
+        </group>
+      ))}
+      <mesh position={[0, -0.85, 0.2]}>
+        <boxGeometry args={[2.2, 0.5, 3.4]} />
+        <meshStandardMaterial color="#15151c" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, -1.1, 1.8]}>
+        <boxGeometry args={[0.5, 0.16, 0.3]} />
+        <meshStandardMaterial color="#fff6d8" emissive="#fff2c0" emissiveIntensity={0.3 + dn.night * 4} toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 1.15, -0.4]}>
+        <boxGeometry args={[1.7, 0.6, 2.8]} />
+        <meshStandardMaterial color="#2a2a44" roughness={0.5} metalness={0.5} />
+      </mesh>
+      <mesh position={[0, 1.2, 1.1]}>
+        <boxGeometry args={[1.2, 0.4, 0.4]} />
+        <meshStandardMaterial color="#0e0e14" />
+      </mesh>
+      {[-0.45, 0.45].map((x) => (
+        <mesh key={x} position={[x, 1.25, -1.9]} rotation={[0.5, 0, 0]}>
+          <cylinderGeometry args={[0.12, 0.14, 0.7, 8]} />
+          <meshStandardMaterial color="#3a3a46" metalness={0.8} roughness={0.4} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.5, -4.6]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.28, 0.72, 6.4, 12]} />
+        <meshStandardMaterial color={livery.hull} roughness={0.3} metalness={0.55} />
+      </mesh>
+      <mesh position={[0, 1.4, -7.4]}>
+        <boxGeometry args={[0.14, 2.2, 1.1]} />
+        <meshStandardMaterial color={livery.hull} roughness={0.4} metalness={0.5} />
+      </mesh>
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * 0.08, 1.45, -7.4]} rotation={[0, s * (Math.PI / 2), 0]}>
+          <planeGeometry args={[0.9, 1.2]} />
+          <meshStandardMaterial map={tailTex} roughness={0.5} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.6, -6.2]}>
+        <boxGeometry args={[2.6, 0.1, 0.7]} />
+        <meshStandardMaterial color={livery.hull} />
+      </mesh>
+      {[-1.3, 1.3].map((x) => (
+        <mesh key={x} position={[x, 0.85, -6.2]}>
+          <boxGeometry args={[0.08, 0.5, 0.6]} />
+          <meshStandardMaterial color={livery.trim} metalness={0.6} roughness={0.4} />
+        </mesh>
+      ))}
+      <mesh position={[0, -0.1, -7.6]} rotation={[0.6, 0, 0]}>
+        <cylinderGeometry args={[0.04, 0.04, 0.9, 6]} />
+        <meshStandardMaterial color="#5a5a78" />
+      </mesh>
+      <group ref={tailRef} position={[0.3, 1.5, -7.6]}>
+        <mesh rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.16, 0.16, 0.3, 8]} />
+          <meshStandardMaterial color="#3a3a58" />
+        </mesh>
+        {[0, 1, 2].map((i) => (
+          <mesh key={i} rotation={[(i * Math.PI * 2) / 3, 0, 0]}>
+            <boxGeometry args={[0.06, 1.9, 0.26]} />
+            <meshStandardMaterial color="#9a95a8" />
+          </mesh>
+        ))}
+        <mesh rotation={[0, Math.PI / 2, 0]}>
+          <circleGeometry args={[1.0, 20]} />
+          <meshBasicMaterial color="#c8ccd8" transparent opacity={0.16} side={DoubleSide} />
+        </mesh>
+      </group>
+      <mesh position={[0, 1.65, 0]}>
+        <cylinderGeometry args={[0.14, 0.18, 0.7, 8]} />
+        <meshStandardMaterial color="#3a3a58" metalness={0.6} />
+      </mesh>
+      <mesh position={[0.6, 1.5, -0.6]}>
+        <cylinderGeometry args={[0.02, 0.02, 1.0, 4]} />
+        <meshStandardMaterial color="#c8ccd8" />
+      </mesh>
+      <mesh position={[-0.5, 1.5, 0.8]}>
+        <cylinderGeometry args={[0.12, 0.12, 0.06, 8]} />
+        <meshStandardMaterial color="#f4f1ea" />
+      </mesh>
+      <group ref={rotorRef} position={[0, 2.0, 0]}>
+        <mesh>
+          <cylinderGeometry args={[0.42, 0.42, 0.34, 10]} />
+          <meshStandardMaterial color="#3a3a58" metalness={0.6} />
+        </mesh>
+        {[0, 1, 2, 3].map((i) => (
+          <mesh key={i} rotation={[0, (i * Math.PI) / 2, 0]} position={[Math.cos((i * Math.PI) / 2) * 0.55, 0, -Math.sin((i * Math.PI) / 2) * 0.55]}>
+            <boxGeometry args={[0.4, 0.16, 0.22]} />
+            <meshStandardMaterial color="#15151c" />
+          </mesh>
+        ))}
+        <mesh>
+          <boxGeometry args={[10, 0.07, 0.44]} />
+          <meshStandardMaterial color="#9a95a8" />
+        </mesh>
+        <mesh rotation={[0, Math.PI / 2, 0]}>
+          <boxGeometry args={[10, 0.07, 0.44]} />
+          <meshStandardMaterial color="#9a95a8" />
+        </mesh>
+        {[-4.95, 4.95].map((x) => (
+          <mesh key={x} position={[x, 0, 0]}>
+            <sphereGeometry args={[0.08, 5, 5]} />
+            <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={dn.night * 6} toneMapped={false} />
+          </mesh>
+        ))}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]}>
+          <circleGeometry args={[5, 28]} />
+          <meshBasicMaterial color="#c8ccd8" transparent opacity={0.1} side={DoubleSide} />
+        </mesh>
+      </group>
+      {[-1, 1].map((s) => (
+        <group key={`skid${s}`} position={[s * HELI_SKID_X, -HELI_SKID_DROP, 0]}>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.08, 0.08, 4, 8]} />
+            <meshStandardMaterial color="#5a5a78" metalness={0.5} />
+          </mesh>
+          <mesh position={[0, 0.25, 2.2]} rotation={[0.9, 0, 0]}>
+            <cylinderGeometry args={[0.08, 0.08, 0.7, 8]} />
+            <meshStandardMaterial color="#5a5a78" metalness={0.5} />
+          </mesh>
+          {[-1.1, 1.1].map((z) => (
+            <mesh key={z} position={[-s * 0.3, 0.55, z]} rotation={[0, 0, s * 0.45]}>
+              <cylinderGeometry args={[0.06, 0.06, 1.3, 6]} />
+              <meshStandardMaterial color="#5a5a78" metalness={0.5} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+      <mesh position={[-1.3, 0.3, 0.6]}>
+        <sphereGeometry args={[0.16, 6, 6]} />
+        <meshStandardMaterial color="#ff2a3c" emissive="#ff2a3c" emissiveIntensity={nav} toneMapped={false} />
+      </mesh>
+      <mesh position={[1.3, 0.3, 0.6]}>
+        <sphereGeometry args={[0.16, 6, 6]} />
+        <meshStandardMaterial color="#2aff7a" emissive="#2aff7a" emissiveIntensity={nav} toneMapped={false} />
+      </mesh>
+      <Strobe position={[0, 2.6, -7.5]} color="#ffffff" rate={7} size={0.16} base={0.5} />
+      <Strobe position={[0, -1.15, 0.4]} color="#ff2a3c" rate={10} size={0.2} />
+      {livery.lightBar && (
+        <>
+          <Strobe position={[-0.4, 1.55, 0.6]} color="#ff2a3c" rate={9} size={0.2} />
+          <Strobe position={[0.4, 1.55, 0.6]} color="#3f7bff" rate={9} offset={Math.PI} size={0.2} />
+        </>
+      )}
+      <group ref={beamRef} position={[0, -1.0, 1.6]}>
+        <Searchlight color="#eaf4ff" intensity={0.15 + dn.night} />
+      </group>
+    </group>
+  );
+}
+
+function Helicopter() {
   const rig = useRef<Group>(null);
   const body = useRef<Group>(null);
   const rotor = useRef<Group>(null);
   const tail = useRef<Group>(null);
   const beam = useRef<Group>(null);
-  const tailTex = useMemo(() => labelTexture("ADAMS AIR", { width: 512, height: 256, bg: "#1d1d3f", fg: "#f3dfae", border: "#d6b56e", size: 120 }), []);
   const path = useMemo(
     () =>
       new CatmullRomCurve3(
-        [new Vector3(-230, 76, 0), new Vector3(-80, 85, -120), new Vector3(120, 78, -90), new Vector3(200, 72, 60), new Vector3(40, 72, 125)],
+        [new Vector3(-230, 92, 0), new Vector3(-80, 100, -120), new Vector3(120, 96, -90), new Vector3(200, 92, 60), new Vector3(40, 86, 125), new Vector3(-150, 95, 150)],
         true,
         "catmullrom",
         0.4,
@@ -266,6 +543,7 @@ function Helicopter() {
     [],
   );
   const tmp = useMemo(() => ({ p: new Vector3(), t: new Vector3(), t2: new Vector3(), look: new Vector3() }), []);
+  const [parts] = useState<HelicopterParts>(() => ({ body, rotor, tail, beam }));
   useFrame(({ clock }) => {
     const g = rig.current;
     if (!g) return;
@@ -276,205 +554,11 @@ function Helicopter() {
     g.position.copy(tmp.p);
     tmp.look.copy(tmp.p).add(tmp.t);
     g.lookAt(tmp.look);
-    const turn = tmp.t.x * tmp.t2.z - tmp.t.z * tmp.t2.x;
-    if (body.current) {
-      body.current.rotation.x = 0.1;
-      body.current.rotation.z = MathUtils.lerp(body.current.rotation.z, MathUtils.clamp(turn * 28, -0.45, 0.45), 0.05);
-    }
-    if (rotor.current) rotor.current.rotation.y = clock.elapsedTime * 32;
-    if (tail.current) tail.current.rotation.x = clock.elapsedTime * 44;
-    if (beam.current) beam.current.rotation.set(0.35 + Math.sin(clock.elapsedTime * 0.5) * 0.25, 0, Math.sin(clock.elapsedTime * 0.37) * 0.3);
+    spinHelicopter(parts, clock.elapsedTime, tmp.t.x * tmp.t2.z - tmp.t.z * tmp.t2.x);
   });
-  const nav = 0.4 + dn.night * 3;
   return (
     <group ref={rig} name="helicopter">
-      <group ref={body}>
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <capsuleGeometry args={[1.25, 2.6, 8, 16]} />
-          <meshStandardMaterial color="#1d1d3f" roughness={0.3} metalness={0.55} />
-        </mesh>
-        <mesh position={[0, 0.0, 0.2]}>
-          <boxGeometry args={[2.56, 0.12, 2.6]} />
-          <meshStandardMaterial color="#d6b56e" roughness={0.3} metalness={0.7} />
-        </mesh>
-        <mesh position={[0, 0.25, 1.55]}>
-          <sphereGeometry args={[1.12, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.62]} />
-          <Glass />
-        </mesh>
-        <mesh position={[0, 0.3, 1.55]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[1.1, 0.04, 6, 24, Math.PI]} />
-          <meshStandardMaterial color="#15151c" />
-        </mesh>
-        <Pilot position={[-0.45, -0.4, 0.9]} />
-        <Pilot position={[0.45, -0.4, 0.9]} top="#d6b56e" />
-        <mesh position={[0, 0.1, 1.9]}>
-          <boxGeometry args={[1.2, 0.3, 0.3]} />
-          <meshStandardMaterial color="#15151c" emissive="#ffb02e" emissiveIntensity={dn.night * 0.8} toneMapped={false} />
-        </mesh>
-        {[-1, 1].map((s) => (
-          <group key={s}>
-            <mesh position={[s * 1.22, 0.15, -0.3]}>
-              <boxGeometry args={[0.06, 1.2, 1.2]} />
-              <Glass />
-            </mesh>
-            <mesh position={[s * 1.25, 0.15, -0.3]}>
-              <boxGeometry args={[0.03, 1.3, 1.3]} />
-              <meshStandardMaterial color="#15151c" transparent opacity={0.0} />
-            </mesh>
-            <mesh position={[s * 1.26, -0.2, -0.3]}>
-              <boxGeometry args={[0.03, 1.9, 1.3]} />
-              <meshStandardMaterial color="#d6b56e" roughness={0.4} metalness={0.5} />
-            </mesh>
-            <mesh position={[s * 1.29, -0.5, 0.1]}>
-              <boxGeometry args={[0.03, 0.05, 0.25]} />
-              <meshStandardMaterial color="#c8ccd8" metalness={0.9} />
-            </mesh>
-          </group>
-        ))}
-        <mesh position={[0, -0.85, 0.2]}>
-          <boxGeometry args={[2.2, 0.5, 3.4]} />
-          <meshStandardMaterial color="#15151c" roughness={0.8} />
-        </mesh>
-        <mesh position={[0, -1.1, 1.8]}>
-          <boxGeometry args={[0.5, 0.16, 0.3]} />
-          <meshStandardMaterial color="#fff6d8" emissive="#fff2c0" emissiveIntensity={0.3 + dn.night * 4} toneMapped={false} />
-        </mesh>
-        <mesh position={[0, 1.15, -0.4]}>
-          <boxGeometry args={[1.7, 0.6, 2.8]} />
-          <meshStandardMaterial color="#2a2a44" roughness={0.5} metalness={0.5} />
-        </mesh>
-        <mesh position={[0, 1.2, 1.1]}>
-          <boxGeometry args={[1.2, 0.4, 0.4]} />
-          <meshStandardMaterial color="#0e0e14" />
-        </mesh>
-        {[-0.45, 0.45].map((x) => (
-          <mesh key={x} position={[x, 1.25, -1.9]} rotation={[0.5, 0, 0]}>
-            <cylinderGeometry args={[0.12, 0.14, 0.7, 8]} />
-            <meshStandardMaterial color="#3a3a46" metalness={0.8} roughness={0.4} />
-          </mesh>
-        ))}
-        <mesh position={[0, 0.5, -4.6]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.28, 0.72, 6.4, 12]} />
-          <meshStandardMaterial color="#1d1d3f" roughness={0.3} metalness={0.55} />
-        </mesh>
-        <mesh position={[0, 0.5, -4.4]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.33, 0.74, 5.6, 12, 1, true]} />
-          <meshStandardMaterial color="#d6b56e" roughness={0.3} metalness={0.7} transparent opacity={0.0} />
-        </mesh>
-        <mesh position={[0, 1.4, -7.4]}>
-          <boxGeometry args={[0.14, 2.2, 1.1]} />
-          <meshStandardMaterial color="#1d1d3f" roughness={0.4} metalness={0.5} />
-        </mesh>
-        {[-1, 1].map((s) => (
-          <mesh key={s} position={[s * 0.08, 1.45, -7.4]} rotation={[0, s * (Math.PI / 2), 0]}>
-            <planeGeometry args={[0.9, 1.2]} />
-            <meshStandardMaterial map={tailTex} roughness={0.5} />
-          </mesh>
-        ))}
-        <mesh position={[0, 0.6, -6.2]}>
-          <boxGeometry args={[2.6, 0.1, 0.7]} />
-          <meshStandardMaterial color="#1d1d3f" />
-        </mesh>
-        {[-1.3, 1.3].map((x) => (
-          <mesh key={x} position={[x, 0.85, -6.2]}>
-            <boxGeometry args={[0.08, 0.5, 0.6]} />
-            <meshStandardMaterial color="#d6b56e" metalness={0.6} roughness={0.4} />
-          </mesh>
-        ))}
-        <mesh position={[0, -0.1, -7.6]} rotation={[0.6, 0, 0]}>
-          <cylinderGeometry args={[0.04, 0.04, 0.9, 6]} />
-          <meshStandardMaterial color="#5a5a78" />
-        </mesh>
-        <group ref={tail} position={[0.3, 1.5, -7.6]}>
-          <mesh rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.16, 0.16, 0.3, 8]} />
-            <meshStandardMaterial color="#3a3a58" />
-          </mesh>
-          {[0, 1, 2].map((i) => (
-            <mesh key={i} rotation={[(i * Math.PI * 2) / 3, 0, 0]}>
-              <boxGeometry args={[0.06, 1.9, 0.26]} />
-              <meshStandardMaterial color="#9a95a8" />
-            </mesh>
-          ))}
-          <mesh rotation={[0, Math.PI / 2, 0]}>
-            <circleGeometry args={[1.0, 20]} />
-            <meshBasicMaterial color="#c8ccd8" transparent opacity={0.16} side={DoubleSide} />
-          </mesh>
-        </group>
-        <mesh position={[0, 1.65, 0]}>
-          <cylinderGeometry args={[0.14, 0.18, 0.7, 8]} />
-          <meshStandardMaterial color="#3a3a58" metalness={0.6} />
-        </mesh>
-        <mesh position={[0.6, 1.5, -0.6]}>
-          <cylinderGeometry args={[0.02, 0.02, 1.0, 4]} />
-          <meshStandardMaterial color="#c8ccd8" />
-        </mesh>
-        <mesh position={[-0.5, 1.5, 0.8]}>
-          <cylinderGeometry args={[0.12, 0.12, 0.06, 8]} />
-          <meshStandardMaterial color="#f4f1ea" />
-        </mesh>
-        <group ref={rotor} position={[0, 2.0, 0]}>
-          <mesh>
-            <cylinderGeometry args={[0.42, 0.42, 0.34, 10]} />
-            <meshStandardMaterial color="#3a3a58" metalness={0.6} />
-          </mesh>
-          {[0, 1, 2, 3].map((i) => (
-            <mesh key={i} rotation={[0, (i * Math.PI) / 2, 0]} position={[Math.cos((i * Math.PI) / 2) * 0.55, 0, -Math.sin((i * Math.PI) / 2) * 0.55]}>
-              <boxGeometry args={[0.4, 0.16, 0.22]} />
-              <meshStandardMaterial color="#15151c" />
-            </mesh>
-          ))}
-          <mesh>
-            <boxGeometry args={[10, 0.07, 0.44]} />
-            <meshStandardMaterial color="#9a95a8" />
-          </mesh>
-          <mesh rotation={[0, Math.PI / 2, 0]}>
-            <boxGeometry args={[10, 0.07, 0.44]} />
-            <meshStandardMaterial color="#9a95a8" />
-          </mesh>
-          {[-4.95, 4.95].map((x) => (
-            <mesh key={x} position={[x, 0, 0]}>
-              <sphereGeometry args={[0.08, 5, 5]} />
-              <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={dn.night * 6} toneMapped={false} />
-            </mesh>
-          ))}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]}>
-            <circleGeometry args={[5, 28]} />
-            <meshBasicMaterial color="#c8ccd8" transparent opacity={0.1} side={DoubleSide} />
-          </mesh>
-        </group>
-        {[-1, 1].map((s) => (
-          <group key={`skid${s}`} position={[s * 1.05, -1.75, 0]}>
-            <mesh rotation={[Math.PI / 2, 0, 0]}>
-              <cylinderGeometry args={[0.08, 0.08, 4, 8]} />
-              <meshStandardMaterial color="#5a5a78" metalness={0.5} />
-            </mesh>
-            <mesh position={[0, 0.25, 2.2]} rotation={[0.9, 0, 0]}>
-              <cylinderGeometry args={[0.08, 0.08, 0.7, 8]} />
-              <meshStandardMaterial color="#5a5a78" metalness={0.5} />
-            </mesh>
-            {[-1.1, 1.1].map((z) => (
-              <mesh key={z} position={[-s * 0.3, 0.55, z]} rotation={[0, 0, s * 0.45]}>
-                <cylinderGeometry args={[0.06, 0.06, 1.3, 6]} />
-                <meshStandardMaterial color="#5a5a78" metalness={0.5} />
-              </mesh>
-            ))}
-          </group>
-        ))}
-        <mesh position={[-1.3, 0.3, 0.6]}>
-          <sphereGeometry args={[0.16, 6, 6]} />
-          <meshStandardMaterial color="#ff2a3c" emissive="#ff2a3c" emissiveIntensity={nav} toneMapped={false} />
-        </mesh>
-        <mesh position={[1.3, 0.3, 0.6]}>
-          <sphereGeometry args={[0.16, 6, 6]} />
-          <meshStandardMaterial color="#2aff7a" emissive="#2aff7a" emissiveIntensity={nav} toneMapped={false} />
-        </mesh>
-        <Strobe position={[0, 2.6, -7.5]} color="#ffffff" rate={7} size={0.16} base={0.5} />
-        <Strobe position={[0, -1.15, 0.4]} color="#ff2a3c" rate={10} size={0.2} />
-        <group ref={beam} position={[0, -1.0, 1.6]}>
-          <Searchlight color="#eaf4ff" intensity={0.15 + dn.night} />
-        </group>
-      </group>
+      <HelicopterBody livery={ADAMS_AIR} bodyRef={body} rotorRef={rotor} tailRef={tail} beamRef={beam} />
     </group>
   );
 }

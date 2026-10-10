@@ -76,7 +76,8 @@ function TrafficLights() {
     const tick = Math.floor(time * 4);
     if (tick === lastTick.current) return;
     lastTick.current = tick;
-    items.forEach((it, i) => {
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
       const isGreen = lightIsGreen(it.axis, it.ix, it.iz, time);
       const isAmber = !isGreen && lightIsAmber(it.axis, it.ix, it.iz, time);
       l.setColorAt(i, isGreen ? green : isAmber ? amber : red);
@@ -84,7 +85,7 @@ function TrafficLights() {
       dummy.rotation.set(0, 0, 0);
       dummy.updateMatrix();
       l.setMatrixAt(i, dummy.matrix);
-    });
+    }
     l.instanceMatrix.needsUpdate = true;
     if (l.instanceColor) l.instanceColor.needsUpdate = true;
   });

@@ -6,6 +6,8 @@ import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Color, InstancedMesh, PMREMGenerator, Scene as ThreeScene, Texture } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import Aircraft from "./Aircraft";
+import AlterEgo from "./AlterEgo";
+import StageBoundary from "./StageBoundary";
 import Buildings from "./Buildings";
 import CameraRig from "./CameraRig";
 import { useCity } from "./CityContext";
@@ -24,10 +26,13 @@ import PeopleMover from "./PeopleMover";
 import Roads from "./Roads";
 import Sky from "./Sky";
 import SkyTraffic from "./SkyTraffic";
+import StaticBatch from "./StaticBatch";
 import Steam from "./Steam";
 import Traffic from "./Traffic";
 import { TreeWind } from "./TreeStand";
 import Watercraft from "./Watercraft";
+
+function ignoreFailure() {}
 
 function applyEnvironment(scene: ThreeScene, tex: Texture | null) {
   scene.environment = tex;
@@ -112,19 +117,40 @@ export default function Scene({ onReady }: { onReady: () => void }) {
       />
       <Suspense fallback={null}>
         <Sky />
-        <Ground />
-        <Roads />
+        <StaticBatch label="ground">
+          <Ground />
+        </StaticBatch>
+        <StaticBatch label="roads">
+          <Roads />
+        </StaticBatch>
         <Buildings />
-        <Landmarks />
-        <PeopleMover />
+        <StaticBatch label="landmarks">
+          <Landmarks />
+        </StaticBatch>
+        <StaticBatch label="people-mover">
+          <PeopleMover />
+        </StaticBatch>
         <Traffic />
-        <Aircraft />
+        <StaticBatch label="aircraft">
+          <Aircraft />
+        </StaticBatch>
+        <StageBoundary name="The alter ego" fallback={null} onFail={ignoreFailure}>
+          <Suspense fallback={null}>
+            <AlterEgo flyBy={extras} />
+          </Suspense>
+        </StageBoundary>
         {extras && <SkyTraffic />}
         {extras && <HoloBillboards />}
-        <Watercraft />
-        <Details />
+        <StaticBatch label="watercraft">
+          <Watercraft />
+        </StaticBatch>
+        <StaticBatch label="details">
+          <Details />
+        </StaticBatch>
         <Steam />
-        <Suburbs />
+        <StaticBatch label="suburbs">
+          <Suburbs />
+        </StaticBatch>
         <TreeWind />
         <Preload all />
         <FirstFrames onReady={onReady} />

@@ -9,7 +9,9 @@ import { CityContext, type CityApi } from "./CityContext";
 import { DayNightContext } from "./DayNightContext";
 import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
 import { useDetroitWeather } from "./DetroitWeather";
-import { SITE } from "@/content/site";
+import EntranceMusic from "./EntranceMusic";
+import StageBoundary from "./StageBoundary";
+import { CITY_FALLBACK, MUSIC, SITE } from "@/content/site";
 import { DESTINATIONS, homeCamera, type Destination } from "./layout";
 import Loader, { markVisited, useReturningVisitor } from "./Loader";
 
@@ -21,6 +23,8 @@ const DISTRICTS_HINT = `${DESTINATIONS.length} districts · Hover to preview · 
 const LOCKED_HINT = `${DESTINATIONS.length} districts · Opening soon`;
 const READOUT = "All districts online · Sky lanes active";
 
+const LIGHT_STEPS_PER_HOUR = 4;
+
 function subscribeMinute(cb: () => void) {
   const id = setInterval(cb, 60_000);
   return () => clearInterval(id);
@@ -28,7 +32,7 @@ function subscribeMinute(cb: () => void) {
 function clockSnapshot() {
   const q = new URLSearchParams(window.location.search).get("time");
   const preset: TimePreset = q === "day" || q === "dusk" || q === "night" ? q : "auto";
-  return `${preset}|${presetHour("auto").toFixed(2)}`;
+  return `${preset}|${(Math.floor(presetHour("auto") * LIGHT_STEPS_PER_HOUR) / LIGHT_STEPS_PER_HOUR).toFixed(2)}`;
 }
 function serverClockSnapshot() {
   return "auto|12.00";
@@ -80,7 +84,7 @@ function NavPad({ camRef, reducedMotion }: { camRef: React.MutableRefObject<Came
     <button
       type="button"
       className={`city-pad__btn ${cls}`}
-      aria-label={title}
+      aria-label={`${title}, press and hold`}
       title={title}
       onPointerDown={(e) => {
         e.preventDefault();
@@ -222,14 +226,24 @@ export default function CityCanvas() {
     [hovered, navigating, flyTo, quality, reducedMotion],
   );
 
-  const pillLabel = preset === "auto" ? "Detroit time" : "Preview";
+  const pillLabel = preset === "auto" ? "Local time" : "Preview";
   const cyclePreset = () => setOverride(PRESETS[(PRESETS.indexOf(preset) + 1) % PRESETS.length]);
 
   return (
     <DayNightContext.Provider value={dn}>
       <CityContext.Provider value={api}>
         <div className={`city-root ${ready ? "is-live" : ""}`}>
-          <CityStage onQuality={setQuality} onReady={() => setStageUp(true)} />
+          <StageBoundary
+            name="The 3D city"
+            onFail={() => setStageUp(true)}
+            fallback={
+              <div className="city-fallback">
+                <p>{CITY_FALLBACK}</p>
+              </div>
+            }
+          >
+            <CityStage live={ready} onQuality={setQuality} onReady={() => setStageUp(true)} />
+          </StageBoundary>
           <div className="city-frame" aria-hidden>
             <i />
             <i />
@@ -291,6 +305,7 @@ export default function CityCanvas() {
               <span>{pillLabel}</span>
               <small>{labelFor(hour)}</small>
             </button>
+            {MUSIC.src && <EntranceMusic />}
             <span className="city-geo">Downtown Detroit · 42.33° N, 83.05° W</span>
             <span className="city-readout">{READOUT}</span>
           </div>
@@ -298,6 +313,9 @@ export default function CityCanvas() {
           <div className="city-hud city-hud--pad">
             <span className="city-hint city-hint--mouse">Drag to orbit · Scroll to zoom · Shift‑drag or arrows to move · Q/E up and down</span>
             <span className="city-hint city-hint--touch">One finger to look · Two fingers to move · Pinch to zoom</span>
+            <span className="city-pad__cue" aria-hidden>
+              Press &amp; hold to move
+            </span>
             <NavPad camRef={camRef} reducedMotion={reducedMotion} />
           </div>
 

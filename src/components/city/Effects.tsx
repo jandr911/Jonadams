@@ -21,7 +21,7 @@ export default function Effects() {
   useEffect(() => {
     const day = 1 - dn.night;
     if (bloom.current) bloom.current.intensity = dn.bloom;
-    if (hueSat.current) hueSat.current.saturation = -0.08 - day * 0.1;
+    if (hueSat.current) hueSat.current.saturation = 0.24 - day * 0.06;
     if (tone.current) tone.current.contrast = 0.1 + day * 0.08;
     setInkStrength(ink, 0.4 + day * 0.3);
   }, [dn, quality, ink]);
@@ -31,7 +31,7 @@ export default function Effects() {
       <SMAA />
       <primitive object={ink} />
       <Bloom ref={bloom} mipmapBlur luminanceThreshold={1} luminanceSmoothing={0.2} intensity={0.3} radius={0.5} />
-      <HueSaturation ref={hueSat} saturation={-0.08} />
+      <HueSaturation ref={hueSat} saturation={0.18} />
       <BrightnessContrast ref={tone} brightness={-0.02} contrast={0.1} />
       <primitive object={grade} />
       <Noise blendFunction={BlendFunction.SOFT_LIGHT} opacity={0.1} />

@@ -142,6 +142,10 @@ interface Scratch {
   brakes: Uint8Array;
 }
 
+function markMatrixDirty(im: InstancedMesh) {
+  im.instanceMatrix.needsUpdate = true;
+}
+
 function runUpdate(
   meshes: Map<string, InstancedMesh>,
   bodies: Map<VehicleKind, InstancedMesh[]>,
@@ -195,7 +199,7 @@ function runUpdate(
       tailColorDirty = true;
     }
   }
-  for (const im of meshes.values()) im.instanceMatrix.needsUpdate = true;
+  meshes.forEach(markMatrixDirty);
   if (tailColorDirty && tail?.instanceColor) tail.instanceColor.needsUpdate = true;
 }
 
