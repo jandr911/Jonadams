@@ -8,6 +8,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import Aircraft from "./Aircraft";
 import Buildings from "./Buildings";
 import CameraRig from "./CameraRig";
+import { useCity } from "./CityContext";
 import DetailCull from "./DetailCull";
 import Details from "./Details";
 import Suburbs from "./Suburbs";
@@ -15,6 +16,7 @@ import { useDayNight } from "./DayNightContext";
 import Effects from "./Effects";
 import Ground from "./Ground";
 import HoloBillboards from "./HoloBillboards";
+import HologramClock from "./HologramClock";
 import Landmarks from "./Landmarks";
 import { requestShadowUpdate, setShadowManual } from "./mirrorRender";
 import PeopleMover from "./PeopleMover";
@@ -80,6 +82,8 @@ function FirstFrames({ onReady }: { onReady: () => void }) {
 
 export default function Scene({ onReady }: { onReady: () => void }) {
   const dn = useDayNight();
+  const { quality } = useCity();
+  const extras = quality === "high";
   const fogColor = useMemo(() => new Color().copy(dn.fog), [dn.fog]);
   return (
     <>
@@ -111,8 +115,8 @@ export default function Scene({ onReady }: { onReady: () => void }) {
         <PeopleMover />
         <Traffic />
         <Aircraft />
-        <SkyTraffic />
-        <HoloBillboards />
+        {extras && <SkyTraffic />}
+        {extras && <HoloBillboards />}
         <Watercraft />
         <Details />
         <Steam />
@@ -122,6 +126,7 @@ export default function Scene({ onReady }: { onReady: () => void }) {
         <FirstFrames onReady={onReady} />
       </Suspense>
       <Ambience />
+      <HologramClock />
       <CameraRig />
       <Effects />
       <ShadowThrottle />

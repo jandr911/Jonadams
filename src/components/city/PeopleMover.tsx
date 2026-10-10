@@ -14,6 +14,7 @@ import {
   Object3D,
   Vector3,
 } from "three";
+import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import { fillInstances } from "./instancing";
 import { labelTexture } from "./labels";
@@ -442,8 +443,9 @@ function MaglevPulses({ curve }: { curve: CatmullRomCurve3 }) {
   const ref = useRef<InstancedMesh>(null);
   const [dummy] = useState(() => new Object3D());
   const [loop] = useState(() => sampleLoop(curve));
+  const { reducedMotion } = useCity();
   useFrame(({ clock }) => {
-    if (ref.current) placePulses(ref.current, dummy, loop, clock.elapsedTime);
+    if (ref.current) placePulses(ref.current, dummy, loop, reducedMotion ? 0 : clock.elapsedTime);
   });
   return (
     <instancedMesh ref={ref} args={[PULSE, undefined, PULSE_COUNT]} frustumCulled={false} name="maglev-pulses" userData={{ noReflect: true }}>
@@ -454,6 +456,7 @@ function MaglevPulses({ curve }: { curve: CatmullRomCurve3 }) {
 
 export default function PeopleMover() {
   const curve = useMemo(() => buildLoop(), []);
+  const { quality } = useCity();
   const concrete = useMemo(() => makeStainedConcreteTexture(), []);
   useEffect(() => () => concrete.dispose(), [concrete]);
   const root = useRef<Group>(null);
@@ -464,7 +467,7 @@ export default function PeopleMover() {
       <Guideway curve={curve} concrete={concrete} />
       <Pylons curve={curve} concrete={concrete} />
       <Train curve={curve} />
-      <MaglevPulses curve={curve} />
+      {quality === "high" && <MaglevPulses curve={curve} />}
     </group>
   );
 }

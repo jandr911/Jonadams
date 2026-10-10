@@ -1983,6 +1983,9 @@ body {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .city-root .city-frame {
+    transition: none;
+  }
   .districts,
   .districts__hint,
   .district {

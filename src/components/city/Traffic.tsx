@@ -3,6 +3,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, BoxGeometry, Color, Group, InstancedMesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
+import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import { gradientColors } from "./instancing";
 import { CITY_HALF_Z, LANE_OFFSET, OUTER_COLS, OUTER_HALF_X, OUTER_MIN_Z, PITCH, ROAD_HALF, WOODWARD_INDEX, lightIsGreen, outerRoadLinesX, outerRoadLinesZ } from "./layout";
@@ -415,11 +416,12 @@ function LightTrails({ world }: { world: World }) {
 export default function Traffic() {
   const [world] = useState(() => buildWorld());
   const pose = useCallback<PoseFn>((i, out, time) => poseCar(world, i, out, time), [world]);
+  const { quality } = useCity();
   return (
     <group>
       <VehicleFleet items={world.items} pose={pose} dynamic castShadow />
       <Streetcars world={world} />
-      <LightTrails world={world} />
+      {quality === "high" && <LightTrails world={world} />}
     </group>
   );
 }
