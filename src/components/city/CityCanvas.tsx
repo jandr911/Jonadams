@@ -9,7 +9,8 @@ import { CityContext, type CityApi } from "./CityContext";
 import { DayNightContext } from "./DayNightContext";
 import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
 import { useDetroitWeather } from "./DetroitWeather";
-import { SITE } from "@/content/site";
+import EntranceMusic from "./EntranceMusic";
+import { MUSIC, SITE } from "@/content/site";
 import { DESTINATIONS, homeCamera, type Destination } from "./layout";
 import Loader, { markVisited, useReturningVisitor } from "./Loader";
 
@@ -291,6 +292,7 @@ export default function CityCanvas() {
               <span>{pillLabel}</span>
               <small>{labelFor(hour)}</small>
             </button>
+            {MUSIC.src && <EntranceMusic />}
             <span className="city-geo">Downtown Detroit · 42.33° N, 83.05° W</span>
             <span className="city-readout">{READOUT}</span>
           </div>

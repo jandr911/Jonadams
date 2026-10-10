@@ -12,6 +12,11 @@ export const SITE = {
   navLocked: true,
 };
 
+export const MUSIC = {
+  src: "",
+  title: "",
+};
+
 export const DESCRIPTION = "Step into the world of Jonathan Adams. Music, art, and the creatives of Detroit.";
 
 export const SHARE_IMAGE = {
