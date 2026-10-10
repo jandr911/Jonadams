@@ -19,6 +19,7 @@ import {
   UniformsUtils,
 } from "three";
 import { useCity } from "./CityContext";
+import { seedOf } from "./rng";
 import type { Destination } from "./layout";
 
 const BEACON_HEIGHT = 10;
@@ -74,6 +75,7 @@ const hologramFrag = /* glsl */ `
       a *= 1.0 - smoothstep(fogNear, fogFar, vFogDepth);
     #endif
     gl_FragColor = vec4(uColor * (1.1 + fres * 1.8), a);
+    #include <colorspace_fragment>
   }
 `;
 
@@ -100,10 +102,6 @@ function makeHologramMaterial(color: string, seed: number) {
   });
 }
 
-function seedOf(id: string) {
-  return [...id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 997, 7);
-}
-
 function tickHologram(mat: ShaderMaterial, time: number, hot: boolean, k: number) {
   const u = mat.uniforms;
   u.uTime.value = time;
@@ -122,7 +120,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
   const group = useRef<Group>(null);
   const inner = useRef<Group>(null);
   const crystal = useRef<Mesh>(null);
-  const [hologram] = useState(() => makeHologramMaterial(dest.color, seedOf(dest.id)));
+  const [hologram] = useState(() => makeHologramMaterial(dest.color, seedOf(dest.id) % 997));
   useEffect(() => () => hologram.dispose(), [hologram]);
   const columnMat = useRef<MeshBasicMaterial>(null);
   const ring = useRef<Mesh>(null);

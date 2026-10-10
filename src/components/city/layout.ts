@@ -201,3 +201,9 @@ export function destinationPosition(d: Destination): [number, number] {
   const [cx, cz] = blockCenter(d.block[0], d.block[1]);
   return [cx + d.offset[0], cz + d.offset[1]];
 }
+
+export function destinationById(id: string): Destination {
+  const d = DESTINATIONS.find((x) => x.id === id);
+  if (!d) throw new Error(`unknown destination ${id}`);
+  return d;
+}

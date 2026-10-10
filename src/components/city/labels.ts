@@ -1,6 +1,6 @@
 import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from "three";
 import { DISPLAY_FONT, SCRIPT_FONT } from "./NeonSign";
-import { mulberry32 } from "./rng";
+import { mulberry32, seedOf } from "./rng";
 
 const FACES: [string, string, FontFaceDescriptors][] = [
   ["CityDisplay", DISPLAY_FONT, {}],
@@ -25,12 +25,6 @@ function loadFont() {
     })();
   }
   return fontReady;
-}
-
-function seedOf(text: string) {
-  let h = 7;
-  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) >>> 0;
-  return h;
 }
 
 function newCanvasTexture(w: number, h: number) {

@@ -287,13 +287,17 @@ function clearEntry(lane: Car[], c: Car) {
   }
 }
 
+function laneFrame(c: Car, along: number, out: { x: number; z: number; yaw: number }) {
+  out.x = c.axis === "z" ? c.line + c.lane : along;
+  out.z = c.axis === "z" ? along : c.line - c.lane;
+  out.yaw = c.axis === "z" ? (c.dir === 1 ? 0 : Math.PI) : c.dir === 1 ? Math.PI / 2 : -Math.PI / 2;
+}
+
 function poseCar(w: World, i: number, out: VehiclePose, time: number) {
   if (i === 0) stepWorld(w, time);
   const c = w.cars[i];
-  out.x = c.axis === "z" ? c.line + c.lane : c.along;
-  out.z = c.axis === "z" ? c.along : c.line - c.lane;
+  laneFrame(c, c.along, out);
   out.y = CAR_Y;
-  out.yaw = c.axis === "z" ? (c.dir === 1 ? 0 : Math.PI) : c.dir === 1 ? Math.PI / 2 : -Math.PI / 2;
   out.spin = c.spin;
   out.brake = c.brake;
 }
@@ -359,13 +363,14 @@ const TRAIL = (() => {
 const TRAIL_EXPOSURE_SECONDS = 0.8;
 const TRAIL_MAX = 11;
 const TRAIL_FROM_NIGHT = 0.15;
+const trailFrame = { x: 0, z: 0, yaw: 0 };
 const HEAD_TRAIL = new Color(1, 0.86, 0.62).multiplyScalar(0.6);
 const TAIL_TRAIL = new Color(1, 0.1, 0.06).multiplyScalar(1.8);
 
 function placeTrail(m: InstancedMesh, d: Object3D, slot: number, c: Car, end: number, y: number, width: number, length: number) {
-  const along = c.along + c.dir * end;
-  d.position.set(c.axis === "z" ? c.line + c.lane : along, y, c.axis === "z" ? along : c.line - c.lane);
-  d.rotation.set(0, c.axis === "z" ? (c.dir === 1 ? 0 : Math.PI) : c.dir === 1 ? Math.PI / 2 : -Math.PI / 2, 0);
+  laneFrame(c, c.along + c.dir * end, trailFrame);
+  d.position.set(trailFrame.x, y, trailFrame.z);
+  d.rotation.set(0, trailFrame.yaw, 0);
   d.scale.set(width, 0.12, Math.max(length, 0.001));
   d.updateMatrix();
   m.setMatrixAt(slot, d.matrix);

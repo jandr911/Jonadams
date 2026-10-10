@@ -554,7 +554,7 @@ function MerchWarehouse() {
       <Fan position={[-5.5, 7.5, 8.8]} r={2} />
       <NeonSign text="MERCH" color="#ffb02e" width={11} height={3.6} fontSize={2.8} position={[2.5, 9.6, 8.9]} rotation={[0, 0, -0.06]} blink="fast" />
       <PaintedSign text="RIVERTOWN" bg="#2f4a3a" fg="#e6dbc2" width={12} height={2.2} position={[0, 17.4, 0]} doubleSided depth={0.8} />
-      <mesh geometry={WATER_TANK} position={[6, 15.2, 2]}>
+      <mesh geometry={WATER_TANK} position={[6.5, 15.2, -3.6]}>
         <meshStandardMaterial color="#5a4632" roughness={0.95} />
       </mesh>
     </Hotspot>

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Color, DoubleSide, PlaneGeometry, ShaderMaterial, type Texture, UniformsLib, UniformsUtils } from "three";
 import { SITE } from "@/content/site";
 import { hologramTexture } from "./labels";
+import { destinationById, destinationPosition } from "./layout";
 
 const PANEL = new PlaneGeometry(1, 0.5);
 
@@ -42,16 +43,17 @@ const frag = /* glsl */ `
       a *= 1.0 - smoothstep(fogNear, fogFar, vFogDepth);
     #endif
     gl_FragColor = vec4(col, a * 0.92);
+    #include <colorspace_fragment>
   }
 `;
 
 function makeHoloMaterial(map: Texture, color: string, seed: number) {
-  return new ShaderMaterial({
+  const mat = new ShaderMaterial({
     vertexShader: vert,
     fragmentShader: frag,
     uniforms: UniformsUtils.merge([
       UniformsLib.fog,
-      { uMap: { value: map }, uColor: { value: new Color(color) }, uTime: { value: 0 }, uSeed: { value: seed } },
+      { uMap: { value: null }, uColor: { value: new Color(color) }, uTime: { value: 0 }, uSeed: { value: seed } },
     ]),
     fog: true,
     transparent: true,
@@ -59,6 +61,8 @@ function makeHoloMaterial(map: Texture, color: string, seed: number) {
     side: DoubleSide,
     toneMapped: false,
   });
+  mat.uniforms.uMap.value = map;
+  return mat;
 }
 
 function tickHolo(mat: ShaderMaterial, time: number) {
@@ -75,11 +79,20 @@ interface Holo {
   yaw: number;
 }
 
+function besideDistrict(id: string, dx: number, y: number, dz: number): [number, number, number] {
+  const [x, z] = destinationPosition(destinationById(id));
+  return [x + dx, y, z + dz];
+}
+
+const listen = destinationById("listen");
+const club = destinationById("club");
+const watch = destinationById("watch");
+
 const HOLOS: Holo[] = [
-  { kicker: "Now playing", headline: SITE.artist.toUpperCase(), footer: "Listen at the Fox", color: "#49f2d6", position: [-60, 66, 20], width: 30, yaw: 0.12 },
-  { kicker: "Live at", headline: "CLUB ADAMS", footer: "On the riverfront", color: "#ff7ac0", position: [74, 74, 22], width: 28, yaw: -0.14 },
-  { kicker: "New visuals", headline: "WATCH", footer: "Michigan Central", color: "#7ff8e6", position: [-150, 82, 40], width: 20, yaw: 0.3 },
-  { kicker: "Detroit", headline: "UNIVERSECITY", footer: "A city built on music", color: "#f3dfae", position: [-6, 104, -64], width: 40, yaw: 0 },
+  { kicker: "Now playing", headline: SITE.artist.toUpperCase(), footer: `${listen.label} at the ${listen.sub}`, color: "#49f2d6", position: besideDistrict("listen", 33, 66, -57), width: 30, yaw: 0.12 },
+  { kicker: "Live at", headline: club.label.toUpperCase(), footer: club.sub, color: "#ff7ac0", position: besideDistrict("club", 43, 74, -55), width: 28, yaw: -0.14 },
+  { kicker: "New visuals", headline: watch.label.toUpperCase(), footer: watch.sub, color: "#7ff8e6", position: besideDistrict("watch", -26, 82, -37), width: 20, yaw: 0.3 },
+  { kicker: "Detroit", headline: SITE.cityName.toUpperCase(), footer: "A city built on music", color: "#f3dfae", position: [-6, 104, -64], width: 40, yaw: 0 },
 ];
 
 function HoloPanel({ holo, seed }: { holo: Holo; seed: number }) {

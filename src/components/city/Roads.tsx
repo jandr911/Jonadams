@@ -46,7 +46,7 @@ function LaneDashes() {
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <boxGeometry args={[0.28, 0.04, 2.2]} />
-      <meshStandardMaterial color="#e6d98a" emissive="#ffb84a" emissiveIntensity={0.35 + dn.night * 1.3} roughness={0.8} toneMapped={false} />
+      <meshStandardMaterial color="#e6d98a" emissive="#ffb84a" emissiveIntensity={0.35 + dn.night * 1.3} roughness={0.8} />
     </instancedMesh>
   );
 }
@@ -90,7 +90,7 @@ function EdgeLines() {
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <boxGeometry args={[0.18, 0.03, 1]} />
-      <meshStandardMaterial color="#d9d6cc" emissive="#49f2d6" emissiveIntensity={0.35 + dn.night * 1.3} roughness={0.8} toneMapped={false} />
+      <meshStandardMaterial color="#d9d6cc" emissive="#49f2d6" emissiveIntensity={0.35 + dn.night * 1.3} roughness={0.8} />
     </instancedMesh>
   );
 }
