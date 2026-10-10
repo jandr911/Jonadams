@@ -2,8 +2,9 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AdditiveBlending, BoxGeometry, BufferAttribute, Color, Group, InstancedMesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
+import { AdditiveBlending, BoxGeometry, Color, Group, InstancedMesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
 import { useDayNight } from "./DayNightContext";
+import { gradientColors } from "./instancing";
 import { CITY_HALF_Z, LANE_OFFSET, OUTER_COLS, OUTER_HALF_X, OUTER_MIN_Z, PITCH, ROAD_HALF, WOODWARD_INDEX, lightIsGreen, outerRoadLinesX, outerRoadLinesZ } from "./layout";
 import { mulberry32, pick, range } from "./rng";
 import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
@@ -352,14 +353,7 @@ function Streetcars({ world }: { world: World }) {
   );
 }
 
-const TRAIL = (() => {
-  const g = new BoxGeometry(1, 1, 1).translate(0, 0, -0.5);
-  const pos = g.attributes.position;
-  const colors = new Float32Array(pos.count * 3);
-  for (let i = 0; i < pos.count; i++) colors.fill(1 + pos.getZ(i), i * 3, i * 3 + 3);
-  g.setAttribute("color", new BufferAttribute(colors, 3));
-  return g;
-})();
+const TRAIL = gradientColors(new BoxGeometry(1, 1, 1).translate(0, 0, -0.5), "z", -1, 1);
 const TRAIL_EXPOSURE_SECONDS = 0.8;
 const TRAIL_MAX = 11;
 const TRAIL_FROM_NIGHT = 0.15;

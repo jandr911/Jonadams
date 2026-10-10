@@ -3,25 +3,16 @@
 import { Float, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
-import { AdditiveBlending, BufferAttribute, CatmullRomCurve3, ConeGeometry, DoubleSide, Group, MathUtils, Mesh, MeshStandardMaterial, PlaneGeometry, Vector3 } from "three";
+import { AdditiveBlending, CatmullRomCurve3, ConeGeometry, DoubleSide, Group, MathUtils, Mesh, MeshStandardMaterial, PlaneGeometry, Vector3 } from "three";
 import { useDayNight } from "./DayNightContext";
+import { gradientColors } from "./instancing";
 import { labelTexture } from "./labels";
 import { enableReflection } from "./layers";
 import { SCRIPT_FONT } from "./NeonSign";
 
 const SEARCHLIGHT_LENGTH = 60;
 
-const SEARCHLIGHT_CONE = (() => {
-  const geo = new ConeGeometry(3.2, SEARCHLIGHT_LENGTH, 18, 1, true);
-  const pos = geo.attributes.position;
-  const colors = new Float32Array(pos.count * 3);
-  for (let i = 0; i < pos.count; i++) {
-    const a = Math.pow((pos.getY(i) + SEARCHLIGHT_LENGTH / 2) / SEARCHLIGHT_LENGTH, 2.2);
-    colors.fill(a, i * 3, i * 3 + 3);
-  }
-  geo.setAttribute("color", new BufferAttribute(colors, 3));
-  return geo;
-})();
+const SEARCHLIGHT_CONE = gradientColors(new ConeGeometry(3.2, SEARCHLIGHT_LENGTH, 18, 1, true), "y", -SEARCHLIGHT_LENGTH / 2, SEARCHLIGHT_LENGTH, 2.2);
 
 function Searchlight({ color, intensity }: { color: string; intensity: number }) {
   return (

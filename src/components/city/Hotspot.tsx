@@ -5,7 +5,6 @@ import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
 import {
   AdditiveBlending,
-  BufferAttribute,
   Color,
   CylinderGeometry,
   DoubleSide,
@@ -19,26 +18,13 @@ import {
   UniformsUtils,
 } from "three";
 import { useCity } from "./CityContext";
+import { gradientColors } from "./instancing";
 import { seedOf } from "./rng";
 import type { Destination } from "./layout";
 
 const BEACON_HEIGHT = 10;
 
-function makeBeaconColumn() {
-  const geo = new CylinderGeometry(0.12, 0.12, BEACON_HEIGHT, 8, 1, true);
-  const pos = geo.attributes.position;
-  const colors = new Float32Array(pos.count * 3);
-  for (let i = 0; i < pos.count; i++) {
-    const a = Math.pow((pos.getY(i) + BEACON_HEIGHT / 2) / BEACON_HEIGHT, 1.4);
-    colors[i * 3] = a;
-    colors[i * 3 + 1] = a;
-    colors[i * 3 + 2] = a;
-  }
-  geo.setAttribute("color", new BufferAttribute(colors, 3));
-  return geo;
-}
-
-const BEACON_COLUMN = makeBeaconColumn();
+const BEACON_COLUMN = gradientColors(new CylinderGeometry(0.12, 0.12, BEACON_HEIGHT, 8, 1, true), "y", -BEACON_HEIGHT / 2, BEACON_HEIGHT, 1.4);
 const CRYSTAL = new OctahedronGeometry(1, 0).scale(1.1, 2.1, 1.1);
 
 const hologramVert = /* glsl */ `

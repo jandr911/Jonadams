@@ -4,7 +4,6 @@ import { Html, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, BoxGeometry, Color, ConeGeometry, CylinderGeometry, Group, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { SITE } from "@/content/site";
 import AmbassadorBridge from "./AmbassadorBridge";
 import { useCity } from "./CityContext";
@@ -22,7 +21,7 @@ import PaintedSign from "./PaintedSign";
 import { mulberry32 } from "./rng";
 import TreeStand, { plantTrees } from "./TreeStand";
 import { useWindowMaterial } from "./useWindowMaterial";
-import { baseBoxGeometry, fillInstances } from "./instancing";
+import { baseBoxGeometry, fillInstances, mergeParts } from "./instancing";
 import { enableReflection } from "./layers";
 import type { WindowMaterialOptions } from "./windowMaterial";
 
@@ -527,14 +526,15 @@ function Fan({ position, r }: { position: [number, number, number]; r: number })
 
 const WATER_TANK = (() => {
   const legs = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => new BoxGeometry(0.35, 4, 0.35).translate(sx * 1.6, 2, sz * 1.6)));
-  const merged = mergeGeometries([
-    ...legs,
-    new BoxGeometry(4, 0.3, 4).translate(0, 4.15, 0),
-    new CylinderGeometry(2.3, 2.3, 4.2, 14, 1).translate(0, 6.4, 0),
-    new ConeGeometry(2.5, 1.6, 14, 1).translate(0, 9.3, 0),
-  ].map((g) => g.toNonIndexed()));
-  if (!merged) throw new Error("water tank parts could not be merged");
-  return merged;
+  return mergeParts(
+    [
+      ...legs,
+      new BoxGeometry(4, 0.3, 4).translate(0, 4.15, 0),
+      new CylinderGeometry(2.3, 2.3, 4.2, 14, 1).translate(0, 6.4, 0),
+      new ConeGeometry(2.5, 1.6, 14, 1).translate(0, 9.3, 0),
+    ],
+    "water tank",
+  );
 })();
 
 function MerchWarehouse() {

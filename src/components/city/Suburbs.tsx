@@ -1,11 +1,10 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BufferGeometry, CircleGeometry, Color, ConeGeometry, CylinderGeometry, Group, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, Object3D, PlaneGeometry, Texture } from "three";
 import { labelTexture } from "./labels";
-import { fillInstances, useBaseBoxGeometry } from "./instancing";
+import { fillInstances, mergeParts, useBaseBoxGeometry } from "./instancing";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { useDayNight } from "./DayNightContext";
 import { AMBASSADOR_CLEAR_HALF, AMBASSADOR_RAMP_Z, AMBASSADOR_X, CITY_HALF_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR, ROAD } from "./layout";
@@ -162,12 +161,10 @@ function placeFeatureBlock(kind: BlockKind, cx: number, cz: number, rand: () => 
 }
 
 const WATER_TOWER = (() => {
-  const tank = new CylinderGeometry(3.2, 3.2, 4.5, 12).translate(0, 16, 0).toNonIndexed();
-  const cap = new ConeGeometry(3.3, 1.6, 12).translate(0, 19, 0).toNonIndexed();
-  const legs = [[-2, -2], [2, -2], [-2, 2], [2, 2]].map(([x, z]) => new CylinderGeometry(0.18, 0.22, 14, 6).translate(x, 7, z).toNonIndexed());
-  const merged = mergeGeometries([tank, cap, ...legs]);
-  if (!merged) throw new Error("water tower parts could not be merged");
-  return merged;
+  const tank = new CylinderGeometry(3.2, 3.2, 4.5, 12).translate(0, 16, 0);
+  const cap = new ConeGeometry(3.3, 1.6, 12).translate(0, 19, 0);
+  const legs = [[-2, -2], [2, -2], [-2, 2], [2, 2]].map(([x, z]) => new CylinderGeometry(0.18, 0.22, 14, 6).translate(x, 7, z));
+  return mergeParts([tank, cap, ...legs], "water tower");
 })();
 const FEATURE_ROOF = new ConeGeometry(4.9, 2.8, 4).translate(0, 1.4, 0);
 const FLAT_PLANE = new PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
