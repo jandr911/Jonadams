@@ -69,7 +69,7 @@ export default function SiteMenu({ links, cta, current }: { links: MenuLink[]; c
       </button>
       {open &&
         createPortal(
-          <nav ref={panel} id="site-menu-panel" className="site-menu__panel" aria-label="Primary">
+          <nav ref={panel} id="site-menu-panel" className="site-menu__panel" aria-label={HEADER.nav}>
             {links.map((n) => (
               <Link
                 key={n.href}

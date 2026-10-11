@@ -262,7 +262,7 @@ function Blimp() {
   );
 }
 
-export interface HelicopterLivery {
+interface HelicopterLivery {
   hull: string;
   trim: string;
   pilot: string;
@@ -596,7 +596,7 @@ function BannerPlane() {
     },
     [bannerGeo, bannerBackGeo],
   );
-  const tex = useMemo(() => labelTexture(`J. ADAMS · LIVE AT ${destinationById("club").label.toUpperCase()} · DETROIT`, { width: 2048, height: 256, bg: "#07060f", fg: "#f3dfae", border: "#d6b56e", size: 150 }), []);
+  const tex = useMemo(() => labelTexture(`J. ${SITE.surname.toUpperCase()} · LIVE AT ${destinationById("club").label.toUpperCase()} · DETROIT`, { width: 2048, height: 256, bg: "#07060f", fg: "#f3dfae", border: "#d6b56e", size: 150 }), []);
   useFrame(({ clock }) => {
     const g = rig.current;
     if (!g) return;

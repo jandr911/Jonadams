@@ -2,7 +2,7 @@
 
 import { useProgress } from "@react-three/drei";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { COORDINATES, LOADER, SITE, TAGLINE } from "@/content/site";
+import { COORDINATES, EQ_BARS, LOADER, SITE, TAGLINE } from "@/content/site";
 
 const VISITED_KEY = "city-visited";
 
@@ -43,7 +43,7 @@ const STAGES: [number, string][] = [
   [62, LOADER.stages.neon],
   [100, LOADER.stages.doors],
 ];
-const BARS = [0.55, 0.9, 0.7, 1, 0.6, 0.85, 0.5];
+const BARS = [...EQ_BARS, 0.85, 0.5];
 
 const DETROIT_SKYLINE_FROM_WINDSOR = [
   [18, 7, 74], [62, 7, 74], [40, 30, 14], [100, 52, 46], [112, 28, 56], [160, 20, 14], [186, 26, 18], [218, 30, 22],

@@ -20,7 +20,11 @@ export const MUSIC = {
 
 export const TAGLINE = "Music · Art · The Creatives";
 
-export const COORDINATES = "42.33° N, 83.05° W";
+export const GEO = { lat: 42.33, lon: -83.05 };
+
+export const COORDINATES = `${GEO.lat}° N, ${-GEO.lon}° W`;
+
+export const EQ_BARS = [0.55, 0.9, 0.7, 1, 0.6];
 
 export const CITY_HUD = {
   districtsHint: (count: number) => `${count} districts · Hover to preview · Click to fly in`,
@@ -75,6 +79,10 @@ export const JOIN = {
 };
 
 export const HEADER = {
+  nav: "Primary",
+  home: `${SITE.name}, home`,
+  join: "Join the list",
+  joinShort: "Join",
   back: "Back to the city",
   backShort: "Back",
   openMenu: "Open menu",
@@ -89,7 +97,7 @@ export const FOOTER = {
 
 export const districtEyebrow = (index: string) => `District ${index}`;
 
-export const CITY_FALLBACK ="This browser can't draw the 3D city. The districts below still take you everywhere.";
+export const CITY_FALLBACK = "This browser can't draw the 3D city. The districts below still take you everywhere.";
 
 export const ALTER_EGO = {
   name: "",

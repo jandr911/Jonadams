@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HEADER, JOIN, SITE } from "@/content/site";
+import { HEADER, SITE } from "@/content/site";
 import { DESTINATIONS, indexLabel } from "./city/layout";
 import SiteMenu, { type MenuLink } from "./SiteMenu";
 import Wordmark from "./Wordmark";
@@ -15,11 +15,11 @@ const NAV: MenuLink[] = DESTINATIONS.map((d, i) => ({
 export default function SiteHeader({ back = false, current }: { back?: boolean; current?: string }) {
   const cta = back
     ? { href: "/", label: HEADER.back, short: HEADER.backShort }
-    : { href: SITE.joinHref, label: JOIN.title, short: JOIN.submit };
+    : { href: SITE.joinHref, label: HEADER.join, short: HEADER.joinShort };
   return (
     <header className="site-header">
       <Wordmark />
-      <nav className="site-nav" aria-label="Primary">
+      <nav className="site-nav" aria-label={HEADER.nav}>
         {NAV.map((n) => {
           const label = (
             <>

@@ -212,7 +212,8 @@ Add a token to `globals.css` if one is missing.
   `btn-solid`, `panel`, `shell`, `room`, and the card classes already in the sheet.
 - DOM fonts come from `next/font` in the root layout: Cormorant Garamond for display
   (`font-serif`), Space Grotesk for body (`font-body`). Do not load a DOM font any other
-  way. The 3D scene and the share image use only the font files in `public/fonts`.
+  way. 3D text meshes and the share image load fonts only from `public/fonts`; canvas
+  sign textures may fall back to system fonts.
 - The site is a single dark theme by design. Do not add a light theme.
 - Inside the 3D scene, colours are Three.js values and belong in the component that
   owns the material or in `dayNight.ts`, where the day and night palettes live.

@@ -2,7 +2,7 @@
 
 import { CameraControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Box3, MathUtils, PerspectiveCamera, Vector3 } from "three";
 import { useCity, type Move } from "./CityContext";
 import { CAMERA_CEILING, INTRO_CAMERA, destinationPosition, homeCamera, type Destination } from "./layout";
@@ -90,7 +90,7 @@ export default function CameraRig({ live }: { live: boolean }) {
   const vel = useRef({ x: 0, y: 0, f: 0, d: 0 });
   const keys = useRef(new Set<Move>());
   const flight = useRef<Flight | null>(null);
-  const scratch = useRef({ p: new Vector3(), t: new Vector3() });
+  const [scratch] = useState(() => ({ p: new Vector3(), t: new Vector3() }));
   const placed = useRef(false);
   const introPlayed = useRef(false);
   const takeOver = useRef(() => {});
@@ -104,7 +104,7 @@ export default function CameraRig({ live }: { live: boolean }) {
   useEffect(() => {
     const c = ref.current;
     if (!c) return;
-    const { p, t } = scratch.current;
+    const { p, t } = scratch;
     const stopFlight = () => {
       flight.current?.done();
       flight.current = null;
@@ -176,7 +176,7 @@ export default function CameraRig({ live }: { live: boolean }) {
       flyRef.current = null;
       homeRef.current = null;
     };
-  }, [aspect, clock, flyRef, gl, homeRef, live, navigating, reducedMotion]);
+  }, [aspect, clock, flyRef, gl, homeRef, live, navigating, reducedMotion, scratch]);
 
   useEffect(() => {
     const isTyping = (e: KeyboardEvent) => {
@@ -239,7 +239,7 @@ export default function CameraRig({ live }: { live: boolean }) {
       return;
     }
     if (navigating) return;
-    const target = c.getTarget(scratch.current.t);
+    const target = c.getTarget(scratch.t);
     const need = (EYE_FLOOR - target.y) / Math.max(c.distance, 0.001);
     c.maxPolarAngle = need >= 1 ? 0.02 : need <= -1 ? MAX_POLAR : Math.min(MAX_POLAR, Math.acos(need));
     const k = keys.current;

@@ -4,7 +4,7 @@ import { Html, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, BoxGeometry, Color, ConeGeometry, CylinderGeometry, DoubleSide, Group, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
-import { SITE } from "@/content/site";
+import { EQ_BARS, SITE } from "@/content/site";
 import AmbassadorBridge from "./AmbassadorBridge";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
@@ -167,7 +167,6 @@ const CLUB_WING_HEIGHT = 54;
 const CLUB_PODIUM_HEIGHT = 8;
 const CLUB_TOWER = new CylinderGeometry(0.72, 1, 1, 40, 1).translate(0, 0.5, 0);
 const CLUB_RING_COUNT = 9;
-const CLUB_BAR_HEIGHTS = [0.55, 0.9, 0.7, 1, 0.6];
 const CLUB_BAR_MAX = 9;
 const CLUB_BAR_STEP_FRAMES = 14;
 const GOLD = "#d6b56e";
@@ -221,12 +220,12 @@ function ClubCrownBars() {
       const b = bars.current[i];
       if (!b) continue;
       const k = 0.35 + 0.65 * Math.abs(Math.sin(t * (0.9 + i * 0.23) + i));
-      b.scale.y = CLUB_BAR_MAX * CLUB_BAR_HEIGHTS[i] * k;
+      b.scale.y = CLUB_BAR_MAX * EQ_BARS[i] * k;
     }
   });
   return (
     <group position={[0, CLUB_PODIUM_HEIGHT + CLUB_TOWER_HEIGHT, 0]}>
-      {CLUB_BAR_HEIGHTS.map((h, i) => (
+      {EQ_BARS.map((h, i) => (
         <mesh
           key={i}
           ref={(el) => {

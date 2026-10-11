@@ -1,17 +1,19 @@
 import Link from "next/link";
-import { SITE } from "@/content/site";
+import { EQ_BARS, HEADER, SITE } from "@/content/site";
 
-const BARS: [number, number, number][] = [
-  [0.55, 1.7, 0],
-  [0.9, 1.3, 0.4],
-  [0.7, 2.1, 0.9],
-  [1, 1.5, 0.2],
-  [0.6, 1.9, 0.6],
+const TIMING: [number, number][] = [
+  [1.7, 0],
+  [1.3, 0.4],
+  [2.1, 0.9],
+  [1.5, 0.2],
+  [1.9, 0.6],
 ];
+
+const BARS = EQ_BARS.map((h, i): [number, number, number] => [h, ...TIMING[i]]);
 
 export default function Wordmark() {
   return (
-    <Link href="/" className="wordmark" aria-label={`${SITE.name}, home`}>
+    <Link href="/" className="wordmark" aria-label={HEADER.home}>
       <span className="wordmark__bars" aria-hidden>
         {BARS.map(([h, t, d]) => (
           <i key={`${h}-${t}`} style={{ ["--h" as string]: h, ["--t" as string]: `${t}s`, ["--d" as string]: `${-d}s` }} />

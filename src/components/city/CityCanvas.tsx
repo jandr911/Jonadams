@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { CityContext, HoverContext, type CityApi, type Move, type Quality } from "./CityContext";
 import { DayNightContext } from "./DayNightContext";
 import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
-import { useDetroitWeather } from "./DetroitWeather";
+import { useDetroitCloudCover } from "./DetroitWeather";
 import EntranceMusic from "./EntranceMusic";
 import StageBoundary from "./StageBoundary";
 import { CITY_FALLBACK, CITY_HUD, MUSIC, SITE } from "@/content/site";
@@ -123,33 +123,29 @@ export default function CityCanvas() {
   const [hovered, setHoveredState] = useState<Destination | null>(null);
   const [leaving, setLeaving] = useState<readonly string[]>([]);
   const hoveredRef = useRef<Destination | null>(null);
-  const leaveTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const [leaveTimers] = useState(() => new Map<string, ReturnType<typeof setTimeout>>());
   const setHovered = useCallback((d: Destination | null) => {
     const previous = hoveredRef.current;
     hoveredRef.current = d;
     setHoveredState(d);
-    const timers = leaveTimers.current;
-    if (d && timers.has(d.id)) {
-      clearTimeout(timers.get(d.id));
-      timers.delete(d.id);
+    if (d && leaveTimers.has(d.id)) {
+      clearTimeout(leaveTimers.get(d.id));
+      leaveTimers.delete(d.id);
       setLeaving((ids) => ids.filter((id) => id !== d.id));
     }
     if (!previous || previous === d) return;
     const id = previous.id;
-    clearTimeout(timers.get(id));
+    clearTimeout(leaveTimers.get(id));
     setLeaving((ids) => (ids.includes(id) ? ids : [...ids, id]));
-    timers.set(
+    leaveTimers.set(
       id,
       setTimeout(() => {
-        timers.delete(id);
+        leaveTimers.delete(id);
         setLeaving((ids) => ids.filter((other) => other !== id));
       }, LABEL_FADE_MS),
     );
-  }, []);
-  useEffect(() => {
-    const timers = leaveTimers.current;
-    return () => timers.forEach(clearTimeout);
-  }, []);
+  }, [leaveTimers]);
+  useEffect(() => () => leaveTimers.forEach(clearTimeout), [leaveTimers]);
   const hover = useMemo(() => ({ hovered, leaving }), [hovered, leaving]);
   const [navigating, setNavigating] = useState(false);
   const [fade, setFade] = useState(false);
@@ -162,7 +158,7 @@ export default function CityCanvas() {
   const homeRef = useRef<(() => void) | null>(null);
   const held = useRef(new Set<Move>());
   const trackRef = useRef<HTMLDivElement>(null);
-  const prefetched = useRef(new Set<string>());
+  const [prefetched] = useState(() => new Set<string>());
 
   useEffect(() => {
     const el = trackRef.current;
@@ -193,15 +189,13 @@ export default function CityCanvas() {
   }, [ready]);
 
   useEffect(() => {
-    if (!hovered || prefetched.current.has(hovered.href)) return;
-    prefetched.current.add(hovered.href);
+    if (!hovered || prefetched.has(hovered.href)) return;
+    prefetched.add(hovered.href);
     router.prefetch(hovered.href);
-  }, [hovered, router]);
+  }, [hovered, prefetched, router]);
 
-  const weather = useDetroitWeather();
-  const cloud = weather.kind === "ok" ? weather.cloud : undefined;
+  const cloud = useDetroitCloudCover();
   const dn = useMemo(() => computeDayNight(hour, cloud), [hour, cloud]);
-
 
   const flyTo = useCallback(
     async (d: Destination) => {

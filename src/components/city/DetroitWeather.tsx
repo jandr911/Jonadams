@@ -1,28 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { GEO } from "@/content/site";
 
-const LATITUDE = 42.33;
-const LONGITUDE = -83.05;
-const FORECAST_URL = `https://api.open-meteo.com/v1/forecast?latitude=${LATITUDE}&longitude=${LONGITUDE}&current=temperature_2m,weather_code,cloud_cover&temperature_unit=fahrenheit`;
+const FORECAST_URL = `https://api.open-meteo.com/v1/forecast?latitude=${GEO.lat}&longitude=${GEO.lon}&current=cloud_cover`;
 const REFRESH_MS = 15 * 60_000;
 
-type Weather = { kind: "loading" } | { kind: "offline" } | { kind: "ok"; tempF: number; code: number; cloud: number };
-
-export function useDetroitWeather(): Weather {
-  const [weather, setWeather] = useState<Weather>({ kind: "loading" });
+export function useDetroitCloudCover(): number | undefined {
+  const [cloud, setCloud] = useState<number | undefined>(undefined);
   useEffect(() => {
     let alive = true;
     const load = async () => {
       try {
         const res = await fetch(FORECAST_URL);
         if (!res.ok) throw new Error(`weather request failed with ${res.status}`);
-        const json = (await res.json()) as { current: { temperature_2m: number; weather_code: number; cloud_cover: number } };
+        const json = (await res.json()) as { current: { cloud_cover: number } };
         if (!alive) return;
-        setWeather({ kind: "ok", tempF: Math.round(json.current.temperature_2m), code: json.current.weather_code, cloud: json.current.cloud_cover / 100 });
+        setCloud(json.current.cloud_cover / 100);
       } catch (err) {
         console.warn("Detroit weather unavailable", err);
-        if (alive) setWeather({ kind: "offline" });
+        if (alive) setCloud(undefined);
       }
     };
     void load();
@@ -32,5 +29,5 @@ export function useDetroitWeather(): Weather {
       clearInterval(id);
     };
   }, []);
-  return weather;
+  return cloud;
 }

@@ -602,7 +602,7 @@ a.site-nav__link:hover .site-nav__sub,
   border-radius: 18px;
   background: var(--panel);
   backdrop-filter: blur(18px) saturate(140%);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(244, 241, 234, 0.05);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45), inset 0 1px 0 color-mix(in srgb, var(--paper) 5%, transparent);
   overflow: hidden;
   opacity: 0;
   transform: translateY(12px);
