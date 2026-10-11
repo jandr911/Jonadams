@@ -9,7 +9,6 @@ import Aircraft from "./Aircraft";
 import AlterEgo from "./AlterEgo";
 import StageBoundary from "./StageBoundary";
 import Buildings from "./Buildings";
-import CameraRig from "./CameraRig";
 import { useCity } from "./CityContext";
 import DetailCull from "./DetailCull";
 import Details from "./Details";
@@ -160,7 +159,6 @@ export default function Scene({ onReady }: { onReady: () => void }) {
       </Suspense>
       <Ambience />
       <HologramClock />
-      <CameraRig />
       <Effects />
       <ShadowThrottle />
       <DetailCull />

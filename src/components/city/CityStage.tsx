@@ -1,11 +1,13 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
+import { memo } from "react";
 import { NoToneMapping } from "three";
+import CameraRig from "./CameraRig";
 import QualityGovernor from "./QualityGovernor";
 import Scene from "./Scene";
 
-export default function CityStage({ live, onQuality, onReady }: { live: boolean; onQuality: (q: "high" | "low") => void; onReady: () => void }) {
+function CityStage({ live, onQuality, onReady }: { live: boolean; onQuality: (q: "high" | "low") => void; onReady: () => void }) {
   return (
     <Canvas
       dpr={1}
@@ -24,6 +26,9 @@ export default function CityStage({ live, onQuality, onReady }: { live: boolean;
     >
       <QualityGovernor live={live} onQuality={onQuality} />
       <Scene onReady={onReady} />
+      <CameraRig live={live} />
     </Canvas>
   );
 }
+
+export default memo(CityStage);

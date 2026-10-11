@@ -15,7 +15,9 @@ import {
   blockCenter,
   destinationById,
   destinationPosition,
+  LABEL_FADE_STYLE,
 } from "./layout";
+import { useLingeringLabel } from "./useLingeringLabel";
 import { carvedStoneTexture, handPaintedBillboardTexture, wheatpastePosterTexture } from "./labels";
 import NeonSign, { DISPLAY_FONT, SCRIPT_FONT } from "./NeonSign";
 import PaintedSign from "./PaintedSign";
@@ -137,21 +139,21 @@ function Landmark({
   children: React.ReactNode;
 }) {
   const { navigating } = useCity();
-  const [hover, setHover] = useState(false);
+  const label = useLingeringLabel();
   return (
     <group position={position}>
       <group
         onPointerOver={(e) => {
           e.stopPropagation();
-          setHover(true);
+          label.show();
         }}
-        onPointerOut={() => setHover(false)}
+        onPointerOut={label.hide}
       >
         {children}
       </group>
-      {hover && !navigating && (
+      {label.mounted && !navigating && (
         <Html position={[0, labelHeight, 0]} center distanceFactor={90} style={{ pointerEvents: "none" }} zIndexRange={[40, 0]}>
-          <div className="landmark-label">
+          <div className={`landmark-label ${label.on ? "is-on" : ""}`} style={LABEL_FADE_STYLE}>
             <strong>{name}</strong>
             <span>{note}</span>
           </div>

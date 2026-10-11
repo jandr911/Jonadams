@@ -10,7 +10,8 @@ import { useCity } from "./CityContext";
 import { type DayNight } from "./dayNight";
 import { useDayNight } from "./DayNightContext";
 import { LISTEN_ROOF_Y, PAD } from "./Landmarks";
-import { destinationById, destinationPosition } from "./layout";
+import { HOVER_SCALE, LABEL_FADE_STYLE, destinationById, destinationPosition } from "./layout";
+import { useLingeringLabel } from "./useLingeringLabel";
 import { makeShadowBlobTexture } from "./textures";
 
 const STAND_H = 20;
@@ -27,7 +28,8 @@ const GRIP = new Vector3(HELI_SKID_X, -HELI_SKID_DROP, 0);
 const ROOF_SPOT = { x: -6, z: 4.5 };
 const SHADOW = { x: 0.6, width: 5.2, depth: 4.4 };
 const ROPE_COLOR = "#c8582a";
-const HOTSPOT_GROW = 0.035;
+const HOTSPOT_GROW = HOVER_SCALE - 1;
+const ROOF_RISE = LISTEN_ROOF_Y - PAD;
 
 const [FOX_X, FOX_Z] = destinationPosition(destinationById("listen"));
 const STAND = new Vector3(FOX_X + ROOF_SPOT.x, LISTEN_ROOF_Y, FOX_Z + ROOF_SPOT.z);
@@ -75,6 +77,7 @@ const FLIGHT: { t: number; p: Vector3 }[] = [
 ];
 
 const BEAT_HZ = 1.53;
+const BAR_SWELL_HZ = BEAT_HZ / 8;
 const PUFF_SECONDS = 9;
 const SMOKE_OPACITY = 0.94;
 const PUFF_DRIFT = 1.2;
@@ -257,20 +260,21 @@ interface RoofLift {
 }
 
 function liftWithHotspot(lift: RoofLift, listenHovered: boolean, dt: number, carried: boolean, held: boolean) {
-  const target = listenHovered ? (LISTEN_ROOF_Y - PAD) * HOTSPOT_GROW : 0;
+  const target = listenHovered ? ROOF_RISE * HOTSPOT_GROW : 0;
   lift.value += (target - lift.value) * (1 - Math.exp(-dt * 10));
   lift.hang = carried ? lift.hang + ((held ? lift.value : 0) - lift.hang) * (1 - Math.exp(-dt * 4)) : lift.value;
 }
 
 function poseRoof(roof: Group, shadow: Mesh | null, camera: Vector3, t: number, still: boolean, lift: number) {
-  const beat = still ? 0 : t * BEAT_HZ * Math.PI * 2;
-  roof.position.copy(STAND);
-  roof.position.y += lift;
-  roof.rotation.set(0, faceCamera(roof, camera), still ? 0 : Math.sin(beat * 0.5) * 0.035, "YXZ");
-  const bounce = still ? 0 : Math.abs(Math.sin(beat));
+  const beat = still ? 0 : t * BEAT_HZ * Math.PI;
+  const spread = lift / ROOF_RISE;
+  roof.position.set(STAND.x + ROOF_SPOT.x * spread, STAND.y + lift, STAND.z + ROOF_SPOT.z * spread);
+  roof.rotation.set(0, faceCamera(roof, camera), still ? 0 : Math.sin(beat) * 0.035, "YXZ");
+  const accent = 0.75 + 0.25 * Math.sin(t * BAR_SWELL_HZ * Math.PI * 2);
+  const bounce = still ? 0 : Math.sin(beat * 2) ** 2 * accent;
   roof.scale.set(1 - bounce * 0.012, 1 + bounce * 0.025, 1);
   if (shadow) {
-    shadow.position.set(STAND.x + SHADOW.x, STAND.y + lift + 0.05, STAND.z);
+    shadow.position.set(roof.position.x + SHADOW.x, STAND.y + lift + 0.05, roof.position.z);
     shadow.scale.setScalar(1 - bounce * 0.04);
   }
 }
@@ -322,7 +326,7 @@ function poseHanging(hang: Group | null, rope: Mesh | null, body: Group | null, 
 
 export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
   const dn = useDayNight();
-  const { reducedMotion, navigating, hovered } = useCity();
+  const { reducedMotion, navigating, hoveredRef } = useCity();
   const [lift] = useState<RoofLift>(() => ({ value: 0, hang: 0 }));
   const [standingMap, smokeMap, walkingMap] = useTexture([STANDING.src, SMOKE.src, WALKING.src]);
   const gl = useThree((s) => s.gl);
@@ -359,7 +363,7 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
 
   const [flight] = useState<Flight>(() => ({ pos: new Vector3(), ahead: new Vector3(), yaw: ENTRY_YAW, lastT: -1 }));
   const [swing] = useState<Swing>(() => ({ pos: new Vector3(), vel: new Vector3(), grip: new Vector3(), active: false }));
-  const [hover, setHover] = useState(false);
+  const label = useLingeringLabel();
   const roof = useRef<Group>(null);
   const smoke = useRef<Group>(null);
   const shadow = useRef<Mesh>(null);
@@ -394,12 +398,12 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
     const onRoof = roof.current;
     if (onRoof) {
       onRoof.visible = !hanging;
-      liftWithHotspot(lift, hovered?.id === "listen", dt, hanging, hold);
+      liftWithHotspot(lift, hoveredRef.current?.id === "listen", dt, hanging, hold);
       if (!hanging) poseRoof(onRoof, shadow.current, camera.position, t, reducedMotion, lift.value);
     }
     if (shadow.current) shadow.current.visible = !hanging;
     if (smoke.current && !hanging) poseSmoke(smoke.current, art.smoke, t, reducedMotion);
-    if (hanging && hover) setHover(false);
+    if (hanging && label.on) label.hide();
     if (hang.current) hang.current.visible = hanging;
     if (rope.current) rope.current.visible = hanging;
     if (hanging) poseHanging(hang.current, rope.current, body.current, swing, camera.position, dt, hold, reducedMotion, lift.hang);
@@ -424,17 +428,17 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
         ref={roof}
         position={STAND.toArray()}
         onPointerOver={() => {
-          if (named && roof.current?.visible) setHover(true);
+          if (named && roof.current?.visible) label.show();
         }}
-        onPointerOut={() => setHover(false)}
+        onPointerOut={label.hide}
       >
         <mesh geometry={art.standingGeo} material={art.standing} />
         <group ref={smoke} position={SMOKE_ROOT.toArray()}>
           <mesh geometry={art.smokeGeo} material={art.smoke} renderOrder={1} raycast={ignoreRaycast} />
         </group>
-        {hover && named && !navigating && (
+        {label.mounted && named && !navigating && (
           <Html position={[0, TAG_Y, 0]} center distanceFactor={90} style={{ pointerEvents: "none" }} zIndexRange={[40, 0]}>
-            <div className="landmark-label">
+            <div className={`landmark-label ${label.on ? "is-on" : ""}`} style={LABEL_FADE_STYLE}>
               <strong>{ALTER_EGO.name}</strong>
               <span>{ALTER_EGO.note}</span>
             </div>
