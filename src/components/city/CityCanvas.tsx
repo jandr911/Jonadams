@@ -150,6 +150,7 @@ export default function CityCanvas() {
   const enter = useCallback(() => setEntered(true), []);
   const flyRef = useRef<((d: Destination) => Promise<void>) | null>(null);
   const homeRef = useRef<(() => void) | null>(null);
+  const leftForRoom = useRef(false);
   const held = useRef(new Set<Move>());
   const trackRef = useRef<HTMLDivElement>(null);
   const [prefetched] = useState(() => new Set<string>());
@@ -202,10 +203,21 @@ export default function CityCanvas() {
       await Promise.race([flight, settle]);
       setFade(true);
       await new Promise((r) => setTimeout(r, reducedMotion ? 0 : FADE_MS));
+      leftForRoom.current = true;
       router.push(d.href);
     },
     [navigating, router, reducedMotion, setHovered],
   );
+
+  useEffect(() => {
+    if (!leftForRoom.current) return;
+    const raf = requestAnimationFrame(() => {
+      leftForRoom.current = false;
+      setFade(false);
+      setNavigating(false);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   const api = useMemo<CityApi>(
     () => ({ setHovered, hoveredRef, navigating, flyTo, flyRef, homeRef, held, quality, reducedMotion }),

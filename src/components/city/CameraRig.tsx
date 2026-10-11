@@ -93,6 +93,7 @@ export default function CameraRig({ live }: { live: boolean }) {
   const [scratch] = useState(() => ({ p: new Vector3(), t: new Vector3() }));
   const placed = useRef(false);
   const introPlayed = useRef(false);
+  const wasNavigating = useRef(navigating);
   const takeOver = useRef(() => {});
 
   useEffect(() => {
@@ -134,6 +135,8 @@ export default function CameraRig({ live }: { live: boolean }) {
       const home = homeCamera(aspect);
       void (reducedMotion ? jump(home.position, home.target) : fly(home.position, home.target, FLY_HOME_SECONDS, true));
     };
+    if (wasNavigating.current && !navigating) homeRef.current();
+    wasNavigating.current = navigating;
     flyRef.current = async (d: Destination) => {
       const [x, z] = destinationPosition(d);
       const from: Vec3 = [x + d.view.from[0], d.view.from[1], z + d.view.from[2]];
