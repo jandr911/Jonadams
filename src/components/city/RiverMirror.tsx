@@ -18,6 +18,7 @@ import {
   WebGLRenderTarget,
 } from "three";
 import { useDayNight } from "./DayNightContext";
+import { cadenceDue } from "./renderCadence";
 import { makeMirrorScratch, renderMirror, type MirrorScratch } from "./mirrorRender";
 
 const vert = /* glsl */ `
@@ -101,7 +102,8 @@ const frag = /* glsl */ `
 `;
 
 const MIRROR_SCALE = 0.4;
-const MIRROR_EVERY = 3;
+const MIRROR_NORMAL = { frames: 3, hz: 20 };
+const MIRROR_SMOOTH = { frames: 1, hz: 60 };
 
 function resizeTarget(rt: WebGLRenderTarget, width: number, height: number) {
   rt.setSize(width, height);
@@ -122,7 +124,7 @@ export default function RiverMirror({
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
   const mesh = useRef<Mesh>(null);
-  const frame = useRef(0);
+  const cadence = useRef({ last: -Infinity, frames: 0 });
 
   const mirrorWidth = Math.max(256, Math.floor(size.width * MIRROR_SCALE));
   const mirrorHeight = Math.max(144, Math.floor(size.height * MIRROR_SCALE));
@@ -185,8 +187,7 @@ export default function RiverMirror({
     const m = mesh.current;
     if (!m) return;
     (m.material as ShaderMaterial).uniforms.uTime.value = clock.elapsedTime;
-    frame.current += 1;
-    if (frame.current % MIRROR_EVERY !== 0) return;
+    if (!cadenceDue(cadence.current, clock.elapsedTime, MIRROR_NORMAL, MIRROR_SMOOTH)) return;
     if (!scratch.current) scratch.current = makeMirrorScratch();
     renderMirror(gl, scene, camera as PerspectiveCamera, m, rt, scratch.current);
   }, -1);
