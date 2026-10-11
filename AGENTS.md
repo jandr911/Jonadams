@@ -295,8 +295,14 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
   database from a component directly, and never call `cookies()` outside `src/app/admin/`.
 - `/admin` is gated by `src/proxy.ts` (session refresh and redirect) and again by
   `requireAdmin()` in the layout and inside every server action. Keep both.
-- Never add the secret (service role) key to this app. If a job ever needs it, it runs
-  outside the site.
+- **Migrations run automatically on Vercel.** `scripts/migrate.mjs` runs as `prebuild`: on a
+  Vercel build with `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD` set it links the
+  project, runs `supabase db push`, turns public sign-ups off through the Management API,
+  and creates the owner login from `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_EMAIL` and
+  `ADMIN_PASSWORD` if it does not exist. Outside Vercel it prints "skipped" and exits 0, so
+  local builds never touch the hosted database. Those variables are server-only Vercel
+  environment variables; none is `NEXT_PUBLIC_` and none is read by the app at runtime.
+- Never read the service role key from app code. It exists only for the prebuild script.
 - `.env*` is git-ignored and must stay so. Only `NEXT_PUBLIC_*` values reach the browser.
   Never print a key, log it, or commit it to a fixture.
 - `.vercel/` holds the project link and is git-ignored. Leave it alone.
