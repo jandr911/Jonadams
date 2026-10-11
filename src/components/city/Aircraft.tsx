@@ -92,8 +92,7 @@ function Blimp() {
     const x = Math.cos(t) * r;
     const z = -40 + Math.sin(t) * r * 0.55;
     g.position.set(x, 78 + Math.sin(clock.elapsedTime * 0.3) * 1.5, z);
-    const heading = Math.atan2(-Math.sin(t) * r, Math.cos(t) * r * 0.55);
-    g.rotation.y = MathUtils.lerp(g.rotation.y, heading + Math.PI / 2, 0.05);
+    g.rotation.y = Math.atan2(-Math.sin(t) * r, Math.cos(t) * r * 0.55) + Math.PI / 2;
     for (let k = 0; k < props.current.length; k++) {
       const p = props.current[k];
       if (p) p.rotation.x = clock.elapsedTime * 22;
@@ -563,14 +562,17 @@ function Helicopter() {
   );
 }
 
-function rippleBanner(geo: PlaneGeometry, t: number) {
+function rippleBanner(geo: PlaneGeometry, t: number, side: 1 | -1) {
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    pos.setZ(i, Math.sin(x * 0.45 - t * 5) * 0.28 * (0.3 + (x + 15) / 30));
+    const x = pos.getX(i) * side;
+    pos.setZ(i, side * Math.sin(x * 0.45 + t * 5) * 0.28 * (0.05 + (15 - x) / 30));
   }
   pos.needsUpdate = true;
 }
+
+const BANNER_OMEGA = 0.032;
+const BANNER_BANK_PER_ACCEL = 0.4;
 
 function BannerPlane() {
   const dn = useDayNight();
@@ -578,25 +580,35 @@ function BannerPlane() {
   const prop = useRef<Group>(null);
   const banner = useRef<Group>(null);
   const bannerGeo = useMemo(() => new PlaneGeometry(30, 4, 30, 1), []);
-  useEffect(() => () => bannerGeo.dispose(), [bannerGeo]);
+  const bannerBackGeo = useMemo(() => new PlaneGeometry(30, 4, 30, 1), []);
+  useEffect(
+    () => () => {
+      bannerGeo.dispose();
+      bannerBackGeo.dispose();
+    },
+    [bannerGeo, bannerBackGeo],
+  );
   const tex = useMemo(() => labelTexture("J. ADAMS · LIVE AT CLUB ADAMS · DETROIT", { width: 2048, height: 256, bg: "#07060f", fg: "#f3dfae", border: "#d6b56e", size: 150 }), []);
   const nav = 0.4 + dn.night * 3;
   useFrame(({ clock }) => {
     const g = rig.current;
     if (!g) return;
     const t = clock.elapsedTime;
-    const a = -t * 0.032 + 1.5;
+    const a = -t * BANNER_OMEGA + 1.5;
     const rx = 330;
     const rz = 210;
     g.position.set(Math.cos(a) * rx, 96 + Math.sin(t * 0.4) * 2, 30 + Math.sin(a) * rz);
-    const vx = 0.032 * Math.sin(a) * rx;
-    const vz = -0.032 * Math.cos(a) * rz;
+    const vx = BANNER_OMEGA * Math.sin(a) * rx;
+    const vz = -BANNER_OMEGA * Math.cos(a) * rz;
+    const speed2 = vx * vx + vz * vz;
+    const curvature = (rx * rz) / Math.pow(rx * rx * Math.sin(a) ** 2 + rz * rz * Math.cos(a) ** 2, 1.5);
     g.rotation.set(0, Math.atan2(-vz, vx), 0);
-    g.rotateZ(-0.12);
+    g.rotateX(-BANNER_BANK_PER_ACCEL * speed2 * curvature);
     if (prop.current) prop.current.rotation.x = t * 40;
     if (banner.current) {
       banner.current.rotation.set(0, Math.sin(t * 0.5) * 0.06, Math.sin(t * 0.7) * 0.05);
-      rippleBanner(bannerGeo, t);
+      rippleBanner(bannerGeo, t, 1);
+      rippleBanner(bannerBackGeo, t, -1);
     }
   });
   return (
@@ -694,7 +706,7 @@ function BannerPlane() {
         <mesh geometry={bannerGeo}>
           <meshStandardMaterial map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.3 + dn.night * 1.2} roughness={0.8} toneMapped={false} />
         </mesh>
-        <mesh geometry={bannerGeo} rotation={[0, Math.PI, 0]} position={[0, 0, -0.02]}>
+        <mesh geometry={bannerBackGeo} rotation={[0, Math.PI, 0]} position={[0, 0, -0.02]}>
           <meshStandardMaterial map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.3 + dn.night * 1.2} roughness={0.8} toneMapped={false} />
         </mesh>
         <mesh position={[15, 0, 0]}>

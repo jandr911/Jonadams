@@ -4,6 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { useRef, useState } from "react";
 import { BoxGeometry, Color, CylinderGeometry, InstancedMesh, Matrix4, Object3D, Quaternion, SphereGeometry, Vector3 } from "three";
 import { useCity } from "./CityContext";
+import { mulberry32, range } from "./rng";
 import { mergeParts } from "./instancing";
 
 const DRONE = mergeParts(
@@ -78,11 +79,16 @@ const TAXI_LIGHTS: LightSpec[] = [
   { offset: lightAt(0, -0.72, 0, 1.6, 0.05, 3.2), color: CYAN, blink: false },
 ];
 
+const SPACING_JITTER = 0.3;
+const DRONE_TILT = 0.12;
+const TAXI_TILT = 0.04;
+
 function buildFleet() {
   const drones: Craft[] = [];
   const taxis: Craft[] = [];
+  const rand = mulberry32(41);
   for (const lane of LANES) {
-    for (let k = 0; k < lane.count; k++) (lane.kind === "drone" ? drones : taxis).push({ lane, phase: k / lane.count });
+    for (let k = 0; k < lane.count; k++) (lane.kind === "drone" ? drones : taxis).push({ lane, phase: (k + range(rand, -SPACING_JITTER, SPACING_JITTER)) / lane.count });
   }
   const lightCount = drones.length * DRONE_LIGHTS.length + taxis.length * TAXI_LIGHTS.length;
   const colors = new Float32Array(lightCount * 3);
@@ -102,12 +108,12 @@ function poseCraft(c: Craft, time: number, d: Object3D) {
     d.position.set(r.cx + Math.cos(a) * r.rx, lane.y + Math.sin(a * 3 + c.phase * 9) * 1.5, r.cz + Math.sin(a) * r.rz);
     const tx = -Math.sin(a) * r.rx * lane.dir;
     const tz = Math.cos(a) * r.rz * lane.dir;
-    d.rotation.set(0, Math.atan2(tx, tz), lane.kind === "taxi" ? -0.12 * lane.dir : 0);
+    d.rotation.set(lane.kind === "taxi" ? TAXI_TILT : DRONE_TILT, Math.atan2(tx, tz), lane.kind === "taxi" ? -0.12 * lane.dir : 0, "YXZ");
   } else if (lane.line) {
     const span = lane.line.half * 2;
-    const along = ((c.phase * span + time * lane.speed) % span) - lane.line.half;
+    const along = ((((c.phase * span + time * lane.speed) % span) + span) % span) - lane.line.half;
     d.position.set(along * lane.dir, lane.y + Math.sin(time * 0.8 + c.phase * 7) * 0.8, lane.line.z);
-    d.rotation.set(0, lane.dir === 1 ? Math.PI / 2 : -Math.PI / 2, 0);
+    d.rotation.set(lane.kind === "taxi" ? TAXI_TILT : DRONE_TILT, lane.dir === 1 ? Math.PI / 2 : -Math.PI / 2, 0, "YXZ");
   }
   d.updateMatrix();
 }

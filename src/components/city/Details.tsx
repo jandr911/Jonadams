@@ -30,6 +30,7 @@ import People from "./People";
 import StreetFurniture from "./StreetFurniture";
 import VehicleFleet, { type FleetItem, type PoseFn } from "./VehicleFleet";
 import type { VehicleKind } from "./vehicles";
+import { loopPose, type LoopPose } from "./loopPath";
 import { mulberry32, pick, range } from "./rng";
 
 function TrafficLights() {
@@ -149,6 +150,29 @@ const GULL_BODY = new CapsuleGeometry(0.14, 0.7, 3, 6).rotateX(Math.PI / 2);
 const GULL_WING_LEFT = new BoxGeometry(1.2, 0.04, 0.42).translate(-0.65, 0, 0);
 const GULL_WING_RIGHT = new BoxGeometry(1.2, 0.04, 0.42).translate(0.65, 0, 0);
 
+const GULL_STRAIGHT = 150;
+const GULL_TURN_R = 22;
+const GULL_LOOP_Z = (RIVER_NEAR + RIVER_FAR) / 2;
+const GULL_SPEED = 11;
+const GULL_BANK = 0.45;
+const GULL_TURN_LEN = Math.PI * GULL_TURN_R;
+const gullLoop: LoopPose = { a: 0, b: 0, ha: 1, hb: 0, leg: 0, into: 0 };
+const gullPose = { x: 0, z: 0, yaw: 0, bank: 0 };
+
+function gullBank(into: number) {
+  return GULL_BANK * Math.min(1, into / 12, (GULL_TURN_LEN - into) / 12);
+}
+
+function gullPath(distance: number, lateral: number) {
+  const loop = loopPose(distance, 2 * GULL_STRAIGHT, GULL_TURN_R, gullLoop, lateral);
+  const p = gullPose;
+  p.x = loop.a;
+  p.z = GULL_LOOP_Z + loop.b;
+  p.yaw = Math.atan2(loop.ha, loop.hb);
+  p.bank = loop.leg % 2 === 1 ? gullBank(loop.into) : 0;
+  return p;
+}
+
 function Gulls() {
   const body = useRef<InstancedMesh>(null);
   const wingL = useRef<InstancedMesh>(null);
@@ -159,7 +183,7 @@ function Gulls() {
     return Array.from({ length: 28 }, () => ({
       ox: range(rand, -40, 40),
       oy: range(rand, -6, 6),
-      oz: range(rand, -20, 20),
+      oz: range(rand, -12, 12),
       flap: rand() * 10,
       speed: range(rand, 0.8, 1.2),
       s: range(rand, 0.8, 1.2),
@@ -171,22 +195,20 @@ function Gulls() {
     const r = wingR.current;
     if (!b || !l || !r) return;
     const t = clock.elapsedTime;
-    const cx = Math.sin(t * 0.05) * 260;
-    const cz = RIVER_NEAR + 20 + Math.cos(t * 0.05) * 30;
-    const heading = Math.cos(t * 0.05) > 0 ? 0 : Math.PI;
     for (let i = 0; i < flock.length; i++) {
       const g = flock[i];
+      const pose = gullPath(t * GULL_SPEED + g.ox + Math.sin(t * 0.3 + g.flap) * 3, g.oz + Math.sin(t * 0.23 + g.flap * 2) * 2);
       const flap = Math.sin(t * 9 + g.flap) * 0.7;
       const y = 26 + g.oy + Math.sin(t * g.speed + g.flap) * 1.2;
-      dummy.position.set(cx + g.ox, y, cz + g.oz);
-      dummy.rotation.set(0, heading + Math.PI / 2, 0);
+      dummy.position.set(pose.x, y, pose.z);
+      dummy.rotation.set(0, pose.yaw, pose.bank);
       dummy.scale.setScalar(g.s);
       dummy.updateMatrix();
       b.setMatrixAt(i, dummy.matrix);
-      dummy.rotation.set(0, heading + Math.PI / 2, flap);
+      dummy.rotation.set(0, pose.yaw, pose.bank + flap);
       dummy.updateMatrix();
       l.setMatrixAt(i, dummy.matrix);
-      dummy.rotation.set(0, heading + Math.PI / 2, -flap);
+      dummy.rotation.set(0, pose.yaw, pose.bank - flap);
       dummy.updateMatrix();
       r.setMatrixAt(i, dummy.matrix);
     }
