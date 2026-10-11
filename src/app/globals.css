@@ -1336,6 +1336,10 @@ a.site-nav__link:hover .site-nav__sub,
   box-shadow: 0 0 10px var(--gold-2), 0 0 22px color-mix(in srgb, var(--gold-2) 60%, transparent);
   transform: translateY(-50%);
 }
+.loader__enter {
+  margin-top: 6px;
+  animation: loader-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 @keyframes loader-rise {
   from {
     opacity: 0;
@@ -3187,11 +3191,15 @@ a.site-nav__link:hover .site-nav__sub,
 }
 
 /* room phases */
-.stage__phase {
+.stage__controls {
   position: absolute;
   top: max(16px, 2.5cqw);
   right: max(16px, 4.375cqw);
   z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
 }
 .stage[data-phase-anim] .stage__art :is(stop, rect, path, polygon, ellipse) {
   transition:
@@ -3287,9 +3295,11 @@ a.site-nav__link:hover .site-nav__sub,
   --room-canvas: #23212c;
 }
 @media (max-width: 720px), (max-aspect-ratio: 3 / 2) {
-  .stage__phase {
+  .stage__controls {
     top: 12px;
     right: 12px;
+  }
+  .stage__controls .city-pill {
     gap: 8px;
     padding: 6px 10px;
     backdrop-filter: none;

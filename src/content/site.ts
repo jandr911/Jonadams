@@ -15,7 +15,7 @@ export const SITE = {
 };
 
 export const MUSIC = {
-  src: "",
+  src: "/audio/tied.mp3",
   title: "",
 };
 
@@ -65,6 +65,7 @@ export const LOADER = {
   },
   welcome: "Welcome to the city",
   welcomeBack: "Welcome back",
+  enter: "Enter the city",
   established: `Est. ${SITE.year} · ${SITE.city}`,
   nowEntering: "Now entering",
   presents: `${SITE.artist} presents`,
