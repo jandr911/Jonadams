@@ -8,7 +8,7 @@ import { fillInstances } from "./instancing";
 import { AMBASSADOR_RAMP_Z, AMBASSADOR_X, RIVER_FAR, RIVER_NEAR, blockCenter } from "./layout";
 import { mulberry32, pick, range } from "./rng";
 import { makeAsphaltTexture } from "./textures";
-import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
+import VehicleFleet, { fleetStep, type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
 import { FLEET_COLORS, type VehicleKind } from "./vehicles";
 
 const X = AMBASSADOR_X;
@@ -190,8 +190,7 @@ function buildFleet(): Fleet {
 
 function poseCar(f: Fleet, i: number, out: VehiclePose, time: number) {
   if (i === 0) {
-    const dt = f.last < 0 ? 0 : Math.min(time - f.last, 0.05);
-    f.last = time;
+    const dt = fleetStep(f, time);
     for (const c of f.cars) {
       const dir = c.lane < 0 ? 1 : -1;
       c.z += c.speed * dt * dir;

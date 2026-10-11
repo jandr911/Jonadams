@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
-import { BoxGeometry, BufferAttribute, Matrix4 } from "three";
-import type { BufferGeometry, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
+import { BoxGeometry, BufferAttribute, Matrix4, Object3D } from "three";
+import type { BufferGeometry, Color, InstancedMesh, MeshStandardMaterial } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 export function fillInstances(mesh: InstancedMesh | null, dummy: Object3D, count: number, place: (i: number, d: Object3D) => void) {
@@ -15,6 +15,30 @@ export function fillInstances(mesh: InstancedMesh | null, dummy: Object3D, count
   }
   mesh.instanceMatrix.needsUpdate = true;
   mesh.computeBoundingSphere();
+}
+
+export interface Placement {
+  x: number;
+  y: number;
+  z: number;
+  sx: number;
+  sy: number;
+  sz: number;
+  ry: number;
+  rx?: number;
+  color?: Color;
+}
+
+export function fillPlacements(mesh: InstancedMesh | null, items: Placement[]) {
+  if (!mesh) return;
+  fillInstances(mesh, new Object3D(), items.length, (i, d) => {
+    const it = items[i];
+    d.position.set(it.x, it.y, it.z);
+    d.rotation.set(it.rx ?? 0, it.ry, 0);
+    d.scale.set(it.sx, it.sy, it.sz);
+  });
+  items.forEach((it, i) => it.color && mesh.setColorAt(i, it.color));
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 }
 
 export function baseBoxGeometry() {

@@ -19,16 +19,16 @@ import {
   COLS,
   DESTINATIONS,
   OUTER_ROWS,
+  PAD,
   ROWS,
   allBlocks,
   blockCenter,
 } from "./layout";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { mulberry32, pick, range } from "./rng";
 import { ghostAdTexture, labelTexture } from "./labels";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { makeShadowBlobTexture } from "./textures";
-import { fillInstances, useBaseBoxGeometry } from "./instancing";
+import { fillInstances, fillPlacements, mergeParts, useBaseBoxGeometry, type Placement } from "./instancing";
 import { enableReflection } from "./layers";
 import type { BufferGeometry, Group } from "three";
 
@@ -113,10 +113,7 @@ function crownGeometry() {
     return g;
   });
   parts.push(new ConeGeometry(0.2, 0.1, 4).rotateY(Math.PI / 4).translate(0, y + 0.05, 0));
-  const merged = mergeGeometries(parts);
-  for (const part of parts) part.dispose();
-  if (!merged) throw new Error("crown parts could not be merged");
-  return merged;
+  return mergeParts(parts, "crown");
 }
 
 const CROWN = crownGeometry();
@@ -285,16 +282,14 @@ function InstancedLots({ lots }: { lots: Lot[] }) {
   useEffect(() => {
     const m = ref.current;
     if (!m) return;
-    lots.forEach((l, i) => {
-      dummy.position.set(l.x, 0.4 + (l.y ?? 0), l.z);
-      dummy.scale.set(l.w, l.h, l.d);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
-      m.setColorAt(i, l.color);
+    fillInstances(m, dummy, lots.length, (i, d) => {
+      const l = lots[i];
+      d.position.set(l.x, PAD + (l.y ?? 0), l.z);
+      d.scale.set(l.w, l.h, l.d);
     });
+    lots.forEach((l, i) => m.setColorAt(i, l.color));
     m.geometry.setAttribute("aSeed", new InstancedBufferAttribute(seeds, 1));
     m.geometry.setAttribute("aArch", new InstancedBufferAttribute(arch, 3));
-    m.instanceMatrix.needsUpdate = true;
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }, [lots, seeds, arch, dummy]);
   return (
@@ -331,22 +326,18 @@ function ShopSigns({ spots, sign }: { spots: SignSpot[]; sign: (typeof SHOP_SIGN
   const tex = useMemo(() => labelTexture(sign.text, { width: 512, height: 112, bg: sign.bg, fg: sign.fg, border: sign.border, size: 64, weathered: true }), [sign]);
   useEffect(() => {
     const dummy = new Object3D();
-    const m = ref.current;
-    const t = tubes.current;
-    if (!m || !t) return;
-    spots.forEach((it, i) => {
-      dummy.position.set(it.x, 0.4 + 3.8, it.z);
-      dummy.rotation.set(0, it.rot, 0);
-      dummy.scale.set(it.w, it.w * 0.22, 1);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
-      dummy.position.set(it.x + Math.sin(it.rot) * 0.1, 0.4 + 3.8 - it.w * 0.11 - 0.12, it.z + Math.cos(it.rot) * 0.1);
-      dummy.scale.set(it.w * 0.92, 0.07, 0.07);
-      dummy.updateMatrix();
-      t.setMatrixAt(i, dummy.matrix);
+    fillInstances(ref.current, dummy, spots.length, (i, d) => {
+      const it = spots[i];
+      d.position.set(it.x, PAD + 3.8, it.z);
+      d.rotation.set(0, it.rot, 0);
+      d.scale.set(it.w, it.w * 0.22, 1);
     });
-    m.instanceMatrix.needsUpdate = true;
-    t.instanceMatrix.needsUpdate = true;
+    fillInstances(tubes.current, dummy, spots.length, (i, d) => {
+      const it = spots[i];
+      d.position.set(it.x + Math.sin(it.rot) * 0.1, PAD + 3.8 - it.w * 0.11 - 0.12, it.z + Math.cos(it.rot) * 0.1);
+      d.rotation.set(0, it.rot, 0);
+      d.scale.set(it.w * 0.92, 0.07, 0.07);
+    });
   }, [spots]);
   useEffect(() => {
     if (mat.current) mat.current.emissiveIntensity = 0.1 + dn.night * 0.9;
@@ -404,15 +395,13 @@ function StreetLevel({ lots }: { lots: Lot[] }) {
   useEffect(() => {
     const a = awnings.current;
     if (!a) return;
-    items.awn.forEach((it, i) => {
-      dummy.position.set(it.x, 0.4 + 3.1, it.z);
-      dummy.rotation.set(0.35, it.rot, 0);
-      dummy.scale.set(it.w, 1, 1);
-      dummy.updateMatrix();
-      a.setMatrixAt(i, dummy.matrix);
-      a.setColorAt(i, it.color);
+    fillInstances(a, dummy, items.awn.length, (i, d) => {
+      const it = items.awn[i];
+      d.position.set(it.x, PAD + 3.1, it.z);
+      d.rotation.set(0.35, it.rot, 0);
+      d.scale.set(it.w, 1, 1);
     });
-    a.instanceMatrix.needsUpdate = true;
+    items.awn.forEach((it, i) => a.setColorAt(i, it.color));
     if (a.instanceColor) a.instanceColor.needsUpdate = true;
   }, [items, dummy]);
   return (
@@ -432,17 +421,12 @@ function ContactShadows({ lots }: { lots: Lot[] }) {
   useEffect(() => () => texture.dispose(), [texture]);
   const bases = useMemo(() => lots.filter((l) => !l.y), [lots]);
   useEffect(() => {
-    const dummy = new Object3D();
-    const m = ref.current;
-    if (!m) return;
-    bases.forEach((l, i) => {
-      dummy.position.set(l.x, 0.46, l.z);
-      dummy.rotation.set(-Math.PI / 2, 0, 0);
-      dummy.scale.set(l.w + 7, l.d + 7, 1);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
+    fillInstances(ref.current, new Object3D(), bases.length, (i, d) => {
+      const l = bases[i];
+      d.position.set(l.x, 0.46, l.z);
+      d.rotation.set(-Math.PI / 2, 0, 0);
+      d.scale.set(l.w + 7, l.d + 7, 1);
     });
-    m.instanceMatrix.needsUpdate = true;
   }, [bases]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, bases.length]}>
@@ -469,7 +453,7 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
       if (l.y) return;
       const n = 1 + Math.floor(rand() * 3);
       for (let k = 0; k < n; k++) {
-        const unit = { x: l.x + (rand() - 0.5) * l.w * 0.6, y: 0.4 + l.h + 0.5, z: l.z + (rand() - 0.5) * l.d * 0.6, s: range(rand, 0.8, 1.6) };
+        const unit = { x: l.x + (rand() - 0.5) * l.w * 0.6, y: PAD + l.h + 0.5, z: l.z + (rand() - 0.5) * l.d * 0.6, s: range(rand, 0.8, 1.6) };
         if (!hasCrown(l)) out.push(unit);
       }
     });
@@ -485,19 +469,18 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
   const greenery = useRef<InstancedMesh>(null);
   const extras = useMemo(() => {
     const rand = mulberry32(5150);
-    type P = { x: number; y: number; z: number; sx: number; sy: number; sz: number; ry: number; rx?: number };
-    const parapet: P[] = [];
-    const vent: P[] = [];
-    const skylight: P[] = [];
-    const dish: P[] = [];
-    const green: P[] = [];
+    const parapet: Placement[] = [];
+    const vent: Placement[] = [];
+    const skylight: Placement[] = [];
+    const dish: Placement[] = [];
+    const green: Placement[] = [];
     lots.forEach((l) => {
-      const top = 0.4 + (l.y ?? 0) + l.h;
+      const top = PAD + (l.y ?? 0) + l.h;
       parapet.push({ x: l.x, y: top + 0.3, z: l.z + l.d / 2, sx: l.w + 0.5, sy: 0.6, sz: 0.4, ry: 0 });
       parapet.push({ x: l.x, y: top + 0.3, z: l.z - l.d / 2, sx: l.w + 0.5, sy: 0.6, sz: 0.4, ry: 0 });
       parapet.push({ x: l.x + l.w / 2, y: top + 0.3, z: l.z, sx: 0.4, sy: 0.6, sz: l.d + 0.5, ry: 0 });
       parapet.push({ x: l.x - l.w / 2, y: top + 0.3, z: l.z, sx: 0.4, sy: 0.6, sz: l.d + 0.5, ry: 0 });
-      const roof = (list: P[]) => (hasCrown(l) ? [] : list);
+      const roof = (list: Placement[]) => (hasCrown(l) ? [] : list);
       const n = Math.floor(rand() * 4);
       for (let k = 0; k < n; k++) {
         roof(vent).push({ x: l.x + (rand() - 0.5) * l.w * 0.7, y: top + 0.45, z: l.z + (rand() - 0.5) * l.d * 0.7, sx: 1, sy: range(rand, 0.6, 1.3), sz: 1, ry: 0 });
@@ -519,70 +502,36 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
     return { parapet, vent, skylight, dish, green };
   }, [lots]);
   useEffect(() => {
-    const sets: [InstancedMesh | null, typeof extras.parapet][] = [
-      [parapets.current, extras.parapet],
-      [vents.current, extras.vent],
-      [skylights.current, extras.skylight],
-      [dishes.current, extras.dish],
-      [greenery.current, extras.green],
-    ];
-    for (const [m, items] of sets) {
-      if (!m) continue;
-      items.forEach((it, i) => {
-        dummy.position.set(it.x, it.y, it.z);
-        dummy.rotation.set(it.rx ?? 0, it.ry, 0);
-        dummy.scale.set(it.sx, it.sy, it.sz);
-        dummy.updateMatrix();
-        m.setMatrixAt(i, dummy.matrix);
-      });
-      m.instanceMatrix.needsUpdate = true;
-    }
-  }, [extras, dummy]);
+    fillPlacements(parapets.current, extras.parapet);
+    fillPlacements(vents.current, extras.vent);
+    fillPlacements(skylights.current, extras.skylight);
+    fillPlacements(dishes.current, extras.dish);
+    fillPlacements(greenery.current, extras.green);
+  }, [extras]);
   useEffect(() => {
     if (skylightMat.current) skylightMat.current.emissiveIntensity = 0.05 + dn.night * 0.7;
   }, [dn]);
   useEffect(() => {
-    const bk = bulkheads.current;
-    if (bk) {
-      bulkLots.forEach((l, i) => {
-        dummy.position.set(l.x - l.w * 0.2, 0.4 + l.h + 1.3, l.z + l.d * 0.15);
-        dummy.scale.set(Math.min(3.2, l.w * 0.3), 1, Math.min(3.2, l.d * 0.3));
-        dummy.updateMatrix();
-        bk.setMatrixAt(i, dummy.matrix);
-      });
-      bk.instanceMatrix.needsUpdate = true;
-    }
-    const un = units.current;
-    if (un) {
-      unitLots.forEach((u, i) => {
-        dummy.position.set(u.x, u.y, u.z);
-        dummy.scale.set(u.s, 1, u.s);
-        dummy.updateMatrix();
-        un.setMatrixAt(i, dummy.matrix);
-      });
-      un.instanceMatrix.needsUpdate = true;
-    }
-    const t = tanks.current;
-    if (t) {
-      tankLots.forEach((l, i) => {
-        dummy.position.set(l.x + l.w * 0.22, 0.4 + (l.y ?? 0) + l.h + 1.1, l.z - l.d * 0.2);
-        dummy.scale.set(1, 1, 1);
-        dummy.updateMatrix();
-        t.setMatrixAt(i, dummy.matrix);
-      });
-      t.instanceMatrix.needsUpdate = true;
-    }
-    const m = masts.current;
-    if (m) {
-      mastLots.forEach((l, i) => {
-        const mh = 3 + (l.h > 44 ? 5 : 0);
-        dummy.position.set(l.x, 0.4 + topOf(l) + mh / 2, l.z);
-        dummy.scale.set(1, mh, 1);
-        dummy.updateMatrix();
-        m.setMatrixAt(i, dummy.matrix);
-      });
-      m.instanceMatrix.needsUpdate = true;
-    }
+    fillInstances(bulkheads.current, dummy, bulkLots.length, (i, d) => {
+      const l = bulkLots[i];
+      d.position.set(l.x - l.w * 0.2, PAD + l.h + 1.3, l.z + l.d * 0.15);
+      d.scale.set(Math.min(3.2, l.w * 0.3), 1, Math.min(3.2, l.d * 0.3));
+    });
+    fillInstances(units.current, dummy, unitLots.length, (i, d) => {
+      const u = unitLots[i];
+      d.position.set(u.x, u.y, u.z);
+      d.scale.set(u.s, 1, u.s);
+    });
+    fillInstances(tanks.current, dummy, tankLots.length, (i, d) => {
+      const l = tankLots[i];
+      d.position.set(l.x + l.w * 0.22, PAD + (l.y ?? 0) + l.h + 1.1, l.z - l.d * 0.2);
+    });
+    fillInstances(masts.current, dummy, mastLots.length, (i, d) => {
+      const l = mastLots[i];
+      const mh = 3 + (l.h > 44 ? 5 : 0);
+      d.position.set(l.x, PAD + topOf(l) + mh / 2, l.z);
+      d.scale.set(1, mh, 1);
+    });
   }, [tankLots, mastLots, bulkLots, unitLots, dummy]);
   useEffect(() => {
     if (beaconMat.current) beaconMat.current.emissiveIntensity = 0.6 + dn.night * 3;
@@ -626,7 +575,7 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
         <cylinderGeometry args={[0.1, 0.16, 1, 5]} />
         <meshStandardMaterial color="#aaa" roughness={0.5} metalness={0.6} />
       </instancedMesh>
-      <group position={[beaconLot.x, 0.4 + topOf(beaconLot), beaconLot.z]}>
+      <group position={[beaconLot.x, PAD + topOf(beaconLot), beaconLot.z]}>
         <mesh position={[0, beaconMast / 2, 0]}>
           <cylinderGeometry args={[0.12, 0.2, beaconMast, 5]} />
           <meshStandardMaterial color="#5a5a5a" roughness={0.5} metalness={0.6} />
@@ -638,18 +587,6 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
       </group>
     </group>
   );
-}
-
-interface Placed {
-  x: number;
-  y: number;
-  z: number;
-  sx: number;
-  sy: number;
-  sz: number;
-  ry: number;
-  rx?: number;
-  color?: Color;
 }
 
 const BILLBOARD_ADS = [
@@ -664,23 +601,18 @@ const BILLBOARD_ADS = [
   { text: "DDOT · RIDE WOODWARD", bg: "#14101c", fg: "#ffb02e", border: "#ffb02e" },
 ];
 
-function BillboardFaces({ spots, ad }: { spots: Placed[]; ad: (typeof BILLBOARD_ADS)[number] }) {
+function BillboardFaces({ spots, ad }: { spots: Placement[]; ad: (typeof BILLBOARD_ADS)[number] }) {
   const dn = useDayNight();
   const ref = useRef<InstancedMesh>(null);
   const mat = useRef<MeshStandardMaterial>(null);
   const tex = useMemo(() => labelTexture(ad.text, { width: 512, height: 184, bg: ad.bg, fg: ad.fg, border: ad.border, size: 75, weathered: true }), [ad]);
   useEffect(() => {
-    const dummy = new Object3D();
-    const m = ref.current;
-    if (!m) return;
-    spots.forEach((it, i) => {
-      dummy.position.set(it.x + Math.sin(it.ry) * 0.17, it.y, it.z + Math.cos(it.ry) * 0.17);
-      dummy.rotation.set(0, it.ry, 0);
-      dummy.scale.set(it.sx, it.sy, 1);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
+    fillInstances(ref.current, new Object3D(), spots.length, (i, d) => {
+      const it = spots[i];
+      d.position.set(it.x + Math.sin(it.ry) * 0.17, it.y, it.z + Math.cos(it.ry) * 0.17);
+      d.rotation.set(0, it.ry, 0);
+      d.scale.set(it.sx, it.sy, 1);
     });
-    m.instanceMatrix.needsUpdate = true;
   }, [spots]);
   useEffect(() => {
     if (mat.current) mat.current.emissiveIntensity = 0.05 + dn.night * 0.75;
@@ -693,48 +625,38 @@ function BillboardFaces({ spots, ad }: { spots: Placed[]; ad: (typeof BILLBOARD_
   );
 }
 
-function RoofBillboards({ items }: { items: Placed[] }) {
+function RoofBillboards({ items }: { items: Placement[] }) {
   const dn = useDayNight();
   const backs = useRef<InstancedMesh>(null);
   const legs = useRef<InstancedMesh>(null);
   const lamps = useRef<InstancedMesh>(null);
   const lampMat = useRef<MeshStandardMaterial>(null);
   const byAd = useMemo(() => {
-    const groups: Placed[][] = BILLBOARD_ADS.map(() => []);
+    const groups: Placement[][] = BILLBOARD_ADS.map(() => []);
     items.forEach((it, i) => groups[i % BILLBOARD_ADS.length].push(it));
     return groups;
   }, [items]);
   useEffect(() => {
     const dummy = new Object3D();
-    const b = backs.current;
-    const l = legs.current;
-    const lp = lamps.current;
-    if (!b || !l || !lp) return;
-    items.forEach((it, i) => {
-      const nx = Math.sin(it.ry);
-      const nz = Math.cos(it.ry);
-      dummy.position.set(it.x, it.y, it.z);
-      dummy.rotation.set(0, it.ry, 0);
-      dummy.scale.set(it.sx + 0.3, it.sy + 0.3, 0.3);
-      dummy.updateMatrix();
-      b.setMatrixAt(i, dummy.matrix);
-      const legH = 2.6 - it.sy / 2;
-      for (const side of [-1, 1]) {
-        dummy.position.set(it.x + Math.cos(it.ry) * side * it.sx * 0.35, it.y - it.sy / 2 - legH / 2, it.z - Math.sin(it.ry) * side * it.sx * 0.35);
-        dummy.rotation.set(0, 0, 0);
-        dummy.scale.set(1, legH, 1);
-        dummy.updateMatrix();
-        l.setMatrixAt(i * 2 + (side + 1) / 2, dummy.matrix);
-      }
-      dummy.position.set(it.x + nx * 0.35, it.y + it.sy / 2 + 0.12, it.z + nz * 0.35);
-      dummy.rotation.set(0, it.ry, 0);
-      dummy.scale.set(it.sx * 0.9, 0.08, 0.5);
-      dummy.updateMatrix();
-      lp.setMatrixAt(i, dummy.matrix);
+    fillInstances(backs.current, dummy, items.length, (i, d) => {
+      const it = items[i];
+      d.position.set(it.x, it.y, it.z);
+      d.rotation.set(0, it.ry, 0);
+      d.scale.set(it.sx + 0.3, it.sy + 0.3, 0.3);
     });
-    b.instanceMatrix.needsUpdate = true;
-    l.instanceMatrix.needsUpdate = true;
-    lp.instanceMatrix.needsUpdate = true;
+    fillInstances(legs.current, dummy, items.length * 2, (j, d) => {
+      const it = items[j >> 1];
+      const side = j & 1 ? 1 : -1;
+      const legH = 2.6 - it.sy / 2;
+      d.position.set(it.x + Math.cos(it.ry) * side * it.sx * 0.35, it.y - it.sy / 2 - legH / 2, it.z - Math.sin(it.ry) * side * it.sx * 0.35);
+      d.scale.set(1, legH, 1);
+    });
+    fillInstances(lamps.current, dummy, items.length, (i, d) => {
+      const it = items[i];
+      d.position.set(it.x + Math.sin(it.ry) * 0.35, it.y + it.sy / 2 + 0.12, it.z + Math.cos(it.ry) * 0.35);
+      d.rotation.set(0, it.ry, 0);
+      d.scale.set(it.sx * 0.9, 0.08, 0.5);
+    });
   }, [items]);
   useEffect(() => {
     if (lampMat.current) lampMat.current.emissiveIntensity = 0.1 + dn.night * 2.2;
@@ -774,22 +696,22 @@ function Facades({ lots }: { lots: Lot[] }) {
 
   const data = useMemo(() => {
     const rand = mulberry32(4242);
-    const cornice: Placed[] = [];
-    const belt: Placed[] = [];
-    const pil: Placed[] = [];
-    const plat: Placed[] = [];
-    const rail: Placed[] = [];
-    const stair: Placed[] = [];
-    const balc: Placed[] = [];
-    const board: Placed[] = [];
-    const door: Placed[] = [];
-    const canopy: Placed[] = [];
-    const stoop: Placed[] = [];
-    const planter: Placed[] = [];
-    const shrub: Placed[] = [];
+    const cornice: Placement[] = [];
+    const belt: Placement[] = [];
+    const pil: Placement[] = [];
+    const plat: Placement[] = [];
+    const rail: Placement[] = [];
+    const stair: Placement[] = [];
+    const balc: Placement[] = [];
+    const board: Placement[] = [];
+    const door: Placement[] = [];
+    const canopy: Placement[] = [];
+    const stoop: Placement[] = [];
+    const planter: Placement[] = [];
+    const shrub: Placement[] = [];
     const planterColors = ["#2a2a30", "#5a4636", "#6e6a60", "#8a3a2a"];
     lots.forEach((l) => {
-      const y0 = 0.4 + (l.y ?? 0);
+      const y0 = PAD + (l.y ?? 0);
       const top = y0 + l.h;
       if (l.style !== "mid") cornice.push({ x: l.x, y: top - 0.35, z: l.z, sx: l.w + 0.9, sy: 0.7, sz: l.d + 0.9, ry: 0 });
       if (l.h > 12 && l.style !== "mid") cornice.push({ x: l.x, y: top - 1.3, z: l.z, sx: l.w + 0.5, sy: 0.3, sz: l.d + 0.5, ry: 0 });
@@ -853,16 +775,16 @@ function Facades({ lots }: { lots: Lot[] }) {
         if (rand() < 0.35) return;
         const nx = Math.sin(ry);
         const nz = Math.cos(ry);
-        door.push({ x: sx + nx * 0.2, y: 0.4 + 1.5, z: sz + nz * 0.2, sx: 2.2, sy: 3, sz: 0.3, ry });
-        canopy.push({ x: sx + nx * 1.1, y: 0.4 + 3.3, z: sz + nz * 1.1, sx: 3.2, sy: 0.2, sz: 1.8, ry });
-        stoop.push({ x: sx + nx * 0.85, y: 0.4 + 0.16, z: sz + nz * 0.85, sx: 3, sy: 0.32, sz: 1.5, ry });
+        door.push({ x: sx + nx * 0.2, y: PAD + 1.5, z: sz + nz * 0.2, sx: 2.2, sy: 3, sz: 0.3, ry });
+        canopy.push({ x: sx + nx * 1.1, y: PAD + 3.3, z: sz + nz * 1.1, sx: 3.2, sy: 0.2, sz: 1.8, ry });
+        stoop.push({ x: sx + nx * 0.85, y: PAD + 0.16, z: sz + nz * 0.85, sx: 3, sy: 0.32, sz: 1.5, ry });
         if (rand() < 0.45) {
           const color = new Color(pick(rand, planterColors));
           for (const side of [-1, 1]) {
             const ox = Math.cos(ry) * side * 2.1 + nx * 0.75;
             const oz = -Math.sin(ry) * side * 2.1 + nz * 0.75;
-            planter.push({ x: sx + ox, y: 0.4 + 0.3, z: sz + oz, sx: 0.7, sy: 0.6, sz: 0.7, ry, color });
-            shrub.push({ x: sx + ox, y: 0.4 + 0.95, z: sz + oz, sx: 0.8, sy: 0.7, sz: 0.8, ry: rand() * 6.28 });
+            planter.push({ x: sx + ox, y: PAD + 0.3, z: sz + oz, sx: 0.7, sy: 0.6, sz: 0.7, ry, color });
+            shrub.push({ x: sx + ox, y: PAD + 0.95, z: sz + oz, sx: 0.8, sy: 0.7, sz: 0.8, ry: rand() * 6.28 });
           }
         }
       });
@@ -871,35 +793,18 @@ function Facades({ lots }: { lots: Lot[] }) {
   }, [lots]);
 
   useEffect(() => {
-    const dummy = new Object3D();
-    const sets: [InstancedMesh | null, typeof data.cornice][] = [
-      [cornices.current, data.cornice],
-      [belts.current, data.belt],
-      [pilasters.current, data.pil],
-      [platforms.current, data.plat],
-      [rails.current, data.rail],
-      [stairs.current, data.stair],
-      [balconies.current, data.balc],
-      [doors.current, data.door],
-      [canopies.current, data.canopy],
-      [stoops.current, data.stoop],
-      [planters.current, data.planter],
-      [shrubs.current, data.shrub],
-    ];
-    for (const [m, items] of sets) {
-      if (!m) continue;
-      for (let i = 0; i < items.length; i++) {
-        const it = items[i];
-        dummy.position.set(it.x, it.y, it.z);
-        dummy.rotation.set(it.rx ?? 0, it.ry, 0);
-        dummy.scale.set(it.sx, it.sy, it.sz);
-        dummy.updateMatrix();
-        m.setMatrixAt(i, dummy.matrix);
-        if (it.color) m.setColorAt(i, it.color);
-      }
-      m.instanceMatrix.needsUpdate = true;
-      if (m.instanceColor) m.instanceColor.needsUpdate = true;
-    }
+    fillPlacements(cornices.current, data.cornice);
+    fillPlacements(belts.current, data.belt);
+    fillPlacements(pilasters.current, data.pil);
+    fillPlacements(platforms.current, data.plat);
+    fillPlacements(rails.current, data.rail);
+    fillPlacements(stairs.current, data.stair);
+    fillPlacements(balconies.current, data.balc);
+    fillPlacements(doors.current, data.door);
+    fillPlacements(canopies.current, data.canopy);
+    fillPlacements(stoops.current, data.stoop);
+    fillPlacements(planters.current, data.planter);
+    fillPlacements(shrubs.current, data.shrub);
   }, [data]);
 
   return (
@@ -968,17 +873,13 @@ function crownColor(l: Lot) {
 
 function fillCrowns(mesh: InstancedMesh | null, lots: Lot[]) {
   if (!mesh) return;
-  const dummy = new Object3D();
-  lots.forEach((l, i) => {
-    dummy.position.set(l.x, 0.4 + topOf(l), l.z);
-    dummy.scale.set(l.w * CROWN_INSET, crownHeight(l), l.d * CROWN_INSET);
-    dummy.updateMatrix();
-    mesh.setMatrixAt(i, dummy.matrix);
-    mesh.setColorAt(i, crownColor(l));
+  fillInstances(mesh, new Object3D(), lots.length, (i, d) => {
+    const l = lots[i];
+    d.position.set(l.x, PAD + topOf(l), l.z);
+    d.scale.set(l.w * CROWN_INSET, crownHeight(l), l.d * CROWN_INSET);
   });
-  mesh.instanceMatrix.needsUpdate = true;
+  lots.forEach((l, i) => mesh.setColorAt(i, crownColor(l)));
   if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  mesh.computeBoundingSphere();
 }
 
 function Crowns({ lots }: { lots: Lot[] }) {
@@ -1018,7 +919,7 @@ function GhostAdWall({ ad, lots }: { ad: (typeof GHOST_ADS)[number]; lots: Lot[]
       const l = lots[i];
       const side = l.blank === 1 ? 1 : -1;
       const { bottom, height } = adSpan(l);
-      o.position.set(l.x + side * (l.w / 2 + 0.04), 0.4 + bottom + height / 2, l.z);
+      o.position.set(l.x + side * (l.w / 2 + 0.04), PAD + bottom + height / 2, l.z);
       o.rotation.set(0, side * (Math.PI / 2), 0);
       o.scale.set(height / AD_ASPECT, height, 1);
     });

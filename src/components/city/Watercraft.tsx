@@ -10,7 +10,7 @@ import { fillInstances } from "./instancing";
 import { enableReflection } from "./layers";
 import { RIVER_FAR, RIVER_NEAR } from "./layout";
 import NeonSign, { DISPLAY_FONT } from "./NeonSign";
-import { loopLength, loopPose, type LoopPose } from "./loopPath";
+import { loopLength, loopPose, newLoopPose } from "./loopPath";
 import { mulberry32, pick, range } from "./rng";
 
 const WATER_Y = -0.6;
@@ -1150,7 +1150,7 @@ function laneLength(b: Craft) {
   return loopLength(straight, (b.returnZ - b.z) / 2);
 }
 
-const craftLoop: LoopPose = { a: 0, b: 0, ha: 1, hb: 0, leg: 0, into: 0 };
+const craftLoop = newLoopPose();
 
 function poseCraft(b: Craft, travelled: number, out: CraftPose) {
   const straight = b.max - b.min;

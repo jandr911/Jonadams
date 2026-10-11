@@ -3,7 +3,7 @@
 import { Html, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AdditiveBlending, BoxGeometry, Color, ConeGeometry, CylinderGeometry, Group, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
+import { AdditiveBlending, BoxGeometry, Color, ConeGeometry, CylinderGeometry, DoubleSide, Group, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
 import { SITE } from "@/content/site";
 import AmbassadorBridge from "./AmbassadorBridge";
 import { useCity } from "./CityContext";
@@ -16,6 +16,7 @@ import {
   destinationById,
   destinationPosition,
   LABEL_FADE_STYLE,
+  PAD,
 } from "./layout";
 import { useLingeringLabel } from "./useLingeringLabel";
 import { carvedStoneTexture, handPaintedBillboardTexture, wheatpastePosterTexture } from "./labels";
@@ -27,8 +28,6 @@ import { useWindowMaterial } from "./useWindowMaterial";
 import { baseBoxGeometry, fillInstances, mergeParts, setEmissiveIntensity } from "./instancing";
 import { enableReflection } from "./layers";
 import type { WindowMaterialOptions } from "./windowMaterial";
-
-export const PAD = 0.4;
 
 const BASE_BOX = baseBoxGeometry();
 const FOUNTAIN_PLUME = new CylinderGeometry(0.6, 1.6, 9.5, 10).translate(0, 4.75, 0);
@@ -341,7 +340,7 @@ function ClubAdams() {
       </mesh>
       <mesh position={[0, deckY + 1.5, 0]} scale={[9.1, 1, 6.9]}>
         <cylinderGeometry args={[1, 1, 1.4, 40, 1, true]} />
-        <meshStandardMaterial color="#9fd8ff" roughness={0.05} metalness={0.3} transparent opacity={0.3} side={2} />
+        <meshStandardMaterial color="#9fd8ff" roughness={0.05} metalness={0.3} transparent opacity={0.3} side={DoubleSide} />
       </mesh>
       <mesh position={[0, deckY + 1.6, -4]}>
         <boxGeometry args={[6, 1.6, 2.2]} />
@@ -790,7 +789,7 @@ function HartPlaza() {
       </group>
       <mesh position={[-6, 1.4, 7]}>
         <cylinderGeometry args={[4, 4, 2.2, 24, 1, true]} />
-        <meshStandardMaterial color="#8a8ab0" side={2} />
+        <meshStandardMaterial color="#8a8ab0" side={DoubleSide} />
       </mesh>
     </Landmark>
   );
@@ -1056,7 +1055,7 @@ function ComericaPark() {
     <Landmark name="Comerica Park" note="Home of the Tigers" position={[x, PAD, z]} labelHeight={24}>
       <mesh position={[0, 3.6, 0]}>
         <cylinderGeometry args={[10.5, 11, 7.2, 36, 1, true, Math.PI * 0.15, Math.PI * 1.7]} />
-        <meshStandardMaterial color="#8a4a3a" roughness={0.8} side={2} />
+        <meshStandardMaterial color="#8a4a3a" roughness={0.8} side={DoubleSide} />
       </mesh>
       <mesh position={[0, 7.3, 0]} rotation={[Math.PI / 2, 0, Math.PI * 0.15]}>
         <torusGeometry args={[10.6, 0.4, 8, 36, Math.PI * 1.7]} />
@@ -1156,7 +1155,7 @@ function MillikenLighthouse() {
       <group ref={beam} position={[4, 18.2, 5]}>
         <mesh position={[12, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
           <coneGeometry args={[2.2, 24, 10, 1, true]} />
-          <meshBasicMaterial color="#fff2c0" transparent opacity={0.08} blending={2} depthWrite={false} toneMapped={false} />
+          <meshBasicMaterial color="#fff2c0" transparent opacity={0.08} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
         </mesh>
       </group>
       <TreeStand trees={MILLIKEN_TREES} quality="near" seed={1879} castShadow />

@@ -35,6 +35,12 @@ export interface VehiclePose {
 }
 export type PoseFn = (i: number, out: VehiclePose, time: number) => void;
 
+export function fleetStep(fleet: { last: number }, time: number) {
+  const dt = fleet.last < 0 ? 0 : Math.min(time - fleet.last, 0.05);
+  fleet.last = time;
+  return dt;
+}
+
 const KIND_GEO = new Map<VehicleKind, VehicleKindGeometry>();
 function kindGeometry(kind: VehicleKind) {
   let g = KIND_GEO.get(kind);

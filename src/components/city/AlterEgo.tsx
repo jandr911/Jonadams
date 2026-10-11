@@ -9,8 +9,8 @@ import { DETROIT_POLICE, HELI_PITCH, HELI_SKID_DROP, HELI_SKID_X, HelicopterBody
 import { useCity } from "./CityContext";
 import { type DayNight } from "./dayNight";
 import { useDayNight } from "./DayNightContext";
-import { LISTEN_ROOF_Y, PAD } from "./Landmarks";
-import { HOVER_SCALE, LABEL_FADE_STYLE, destinationById, destinationPosition } from "./layout";
+import { LISTEN_ROOF_Y } from "./Landmarks";
+import { HOVER_SCALE, LABEL_FADE_STYLE, PAD, destinationById, destinationPosition } from "./layout";
 import { useLingeringLabel } from "./useLingeringLabel";
 import { makeShadowBlobTexture } from "./textures";
 

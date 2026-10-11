@@ -2,16 +2,16 @@
 
 import { useFrame } from "@react-three/fiber";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BufferGeometry, CircleGeometry, Color, ConeGeometry, CylinderGeometry, Group, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, Object3D, PlaneGeometry, Texture } from "three";
+import { BufferGeometry, CircleGeometry, Color, ConeGeometry, CylinderGeometry, DoubleSide, Group, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, Object3D, PlaneGeometry, Texture } from "three";
 import { labelTexture } from "./labels";
-import { fillInstances, mergeParts, useBaseBoxGeometry } from "./instancing";
+import { fillInstances, fillPlacements, mergeParts, useBaseBoxGeometry, type Placement } from "./instancing";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { useDayNight } from "./DayNightContext";
-import { AMBASSADOR_CLEAR_HALF, AMBASSADOR_RAMP_Z, AMBASSADOR_X, CITY_HALF_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR, ROAD } from "./layout";
+import { AMBASSADOR_CLEAR_HALF, AMBASSADOR_RAMP_Z, AMBASSADOR_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR, RIVERWALK_HALF, ROAD } from "./layout";
 import { mulberry32, pick, range } from "./rng";
 import { makeConcreteTexture, makeLawnTexture, makeRoadTexture, makeShingleTexture } from "./textures";
 import TreeStand, { plantTrees, type TreePlace } from "./TreeStand";
-import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
+import VehicleFleet, { fleetStep, type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
 import { FLEET_COLORS, type VehicleKind } from "./vehicles";
 
 const EXTENT = 1650;
@@ -34,10 +34,8 @@ const HOUSE_COLORS = ["#8a4a3a", "#b07a5a", "#c9b48c", "#9a95a8", "#5a6a7a", "#7
 const ROOF_COLORS = ["#3a3230", "#4a3a38", "#2c3038", "#5a4a3a"];
 const MID_COLORS = ["#8a4a3a", "#a3563f", "#b89a7a", "#9c8468", "#5e4a3e", "#c0603a", "#7c6a5c", "#bfa57c", "#c9b48c"];
 const LOFT_COLORS = ["#8a4a3a", "#a3563f", "#7c6a5c", "#6e5a4a", "#9c8468", "#4e4038", "#c9b48c"];
-const SHED_COLORS = ["#9a95a8", "#7c6a5c", "#5a6a7a"];
 const LAWN = new Color("#3f6a42");
 const PATH = new Color("#77736b");
-const RIVERWALK_HALF = CITY_HALF_X + 40;
 const DOWNTOWN_MARGIN = 24;
 const LOFT_REACH = 900;
 
@@ -94,7 +92,7 @@ function placed(x: number, y: number, z: number, sx: number, sy: number, sz: num
   return { x, y: GROUND + y, z, ry, sx, sy, sz, color };
 }
 
-function placeFeatureBlock(kind: BlockKind, cx: number, cz: number, rand: () => number, f: Features, trees: { x: number; z: number; s: number }[], midrise: MidLot[]) {
+function placeFeatureBlock(kind: BlockKind, cx: number, cz: number, rand: () => number, f: Features, trees: TreePlace[], midrise: MidLot[]) {
   const half = PAD / 2;
   if (kind === "park") {
     f.lawns.push(placed(cx, 0.02, cz, PAD - 2, 1, PAD - 2));
@@ -170,17 +168,6 @@ const FEATURE_ROOF = new ConeGeometry(4.9, 2.8, 4).rotateY(Math.PI / 4).translat
 const FLAT_PLANE = new PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
 const FIELD_DISC = new CircleGeometry(1, 20).rotateX(-Math.PI / 2);
 
-interface Placement {
-  x: number;
-  y: number;
-  z: number;
-  ry: number;
-  sx: number;
-  sy: number;
-  sz: number;
-  color?: Color;
-}
-
 interface MidLot {
   x: number;
   z: number;
@@ -211,7 +198,7 @@ function onFreeway(x0: number, z: number) {
   return x0 < FREEWAY_X + FREEWAY_CLEAR && x0 + STREET > FREEWAY_X - FREEWAY_CLEAR && z < FREEWAY_Z1 + FREEWAY_CLEAR;
 }
 
-function freewayVerge(x0: number, z0: number, z1: number, rand: () => number, trees: { x: number; z: number; s: number }[], banks: Bank[]) {
+function freewayVerge(x0: number, z0: number, z1: number, rand: () => number, trees: TreePlace[], banks: Bank[]) {
   const west = FREEWAY_X - FREEWAY_CLEAR - (x0 + 2);
   const east = x0 + STREET - 2 - (FREEWAY_X + FREEWAY_CLEAR);
   banks.push(lawnRect(x0 + 2 + west / 2, z0, z1, west));
@@ -257,7 +244,7 @@ function riverStreets() {
   return { near, far };
 }
 
-function buildRiverfront(rand: () => number, trees: { x: number; z: number; s: number }[], midrise: MidLot[], banks: Bank[]) {
+function buildRiverfront(rand: () => number, trees: TreePlace[], midrise: MidLot[], banks: Bank[]) {
   const streets = riverStreets();
   const nearBank = { z0: streets.near + ROAD / 2 + 0.5, z1: RIVER_NEAR - 5 };
   const farBank = { z0: RIVER_FAR + 5, z1: streets.far - ROAD / 2 - 0.5 };
@@ -275,7 +262,7 @@ function buildRiverfront(rand: () => number, trees: { x: number; z: number; s: n
         }
         built = true;
       } else if (cx < 0 && cx > -LOFT_REACH) {
-        midrise.push({ x: cx, z: nearBank.z0 + 11, w: 46, d: 18, h: range(rand, 6, 9), color: new Color(pick(rand, SHED_COLORS)), seed: rand() * 100 });
+        midrise.push({ x: cx, z: nearBank.z0 + 11, w: 46, d: 18, h: range(rand, 6, 9), color: new Color(pick(rand, BOX_COLORS.shed)), seed: rand() * 100 });
         built = true;
       }
       const treeZ0 = built ? nearBank.z0 + 23 : nearBank.z0 + 3;
@@ -299,7 +286,7 @@ function buildRiverfront(rand: () => number, trees: { x: number; z: number; s: n
 
 function buildHouses(): {
   houses: House[];
-  trees: { x: number; z: number; s: number }[];
+  trees: TreePlace[];
   midrise: MidLot[];
   pads: { x: number; z: number }[];
   banks: Bank[];
@@ -307,7 +294,7 @@ function buildHouses(): {
 } {
   const rand = mulberry32(90210);
   const houses: House[] = [];
-  const trees: { x: number; z: number; s: number }[] = [];
+  const trees: TreePlace[] = [];
   const midrise: MidLot[] = [];
   const pads: { x: number; z: number }[] = [];
   const banks: Bank[] = [];
@@ -388,17 +375,14 @@ function buildHouses(): {
 function Banks({ banks }: { banks: Bank[] }) {
   const ref = useRef<InstancedMesh>(null);
   useEffect(() => {
-    const dummy = new Object3D();
     const m = ref.current;
     if (!m) return;
-    banks.forEach((b, i) => {
-      dummy.position.set(b.x, b.y, b.z);
-      dummy.scale.set(b.w, b.h, b.d);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
-      m.setColorAt(i, b.color);
+    fillInstances(m, new Object3D(), banks.length, (i, d) => {
+      const b = banks[i];
+      d.position.set(b.x, b.y, b.z);
+      d.scale.set(b.w, b.h, b.d);
     });
-    m.instanceMatrix.needsUpdate = true;
+    banks.forEach((b, i) => m.setColorAt(i, b.color));
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }, [banks]);
   return (
@@ -484,19 +468,7 @@ function HideAbove({ y, children }: { y: number; children: React.ReactNode }) {
 
 function Parts({ items, children, geometry, castShadow = false }: { items: Placement[]; children?: React.ReactNode; geometry?: BufferGeometry; castShadow?: boolean }) {
   const ref = useRef<InstancedMesh>(null);
-  useEffect(() => {
-    const m = ref.current;
-    if (!m) return;
-    const dummy = new Object3D();
-    fillInstances(m, dummy, items.length, (i, d) => {
-      const it = items[i];
-      d.position.set(it.x, it.y, it.z);
-      d.rotation.y = it.ry;
-      d.scale.set(it.sx, it.sy, it.sz);
-    });
-    items.forEach((it, i) => it.color && m.setColorAt(i, it.color));
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
-  }, [items]);
+  useEffect(() => fillPlacements(ref.current, items), [items]);
   if (items.length === 0) return null;
   return (
     <instancedMesh ref={ref} args={[geometry, undefined, items.length]} castShadow={castShadow}>
@@ -626,11 +598,8 @@ function buildRingParking(pads: { x: number; z: number }[]): { slots: ParkingSlo
   for (const p of pads) {
     if (!nearDowntown(p.x, p.z) || rand() < 0.8) continue;
     const side = rand() < 0.5 ? -1 : 1;
-    const n = 1;
-    for (let k = 0; k < n; k++) {
-      slots.push({ x: p.x + side * (PAD / 2 + 1.7), z: p.z + range(rand, -PAD / 2 + 4, PAD / 2 - 4), rot: side < 0 ? 0 : Math.PI });
-      items.push({ kind: pick(rand, kinds), color: new Color(pick(rand, FLEET_COLORS)) });
-    }
+    slots.push({ x: p.x + side * (PAD / 2 + 1.7), z: p.z + range(rand, -PAD / 2 + 4, PAD / 2 - 4), rot: side < 0 ? 0 : Math.PI });
+    items.push({ kind: pick(rand, kinds), color: new Color(pick(rand, FLEET_COLORS)) });
   }
   return { slots, items };
 }
@@ -663,18 +632,15 @@ function MidRise({ lots }: { lots: MidLot[] }) {
   const ref = useRef<InstancedMesh>(null);
   const seeds = useMemo(() => new Float32Array(lots.map((l) => l.seed)), [lots]);
   useEffect(() => {
-    const dummy = new Object3D();
     const m = ref.current;
     if (!m) return;
-    lots.forEach((l, i) => {
-      dummy.position.set(l.x, 0, l.z);
-      dummy.scale.set(l.w, l.h, l.d);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
-      m.setColorAt(i, l.color);
+    fillInstances(m, new Object3D(), lots.length, (i, d) => {
+      const l = lots[i];
+      d.position.set(l.x, 0, l.z);
+      d.scale.set(l.w, l.h, l.d);
     });
+    lots.forEach((l, i) => m.setColorAt(i, l.color));
     m.geometry.setAttribute("aSeed", new InstancedBufferAttribute(seeds, 1));
-    m.instanceMatrix.needsUpdate = true;
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }, [lots, seeds]);
   return (
@@ -762,8 +728,7 @@ function buildFreewayFleet(): FreewayFleet {
 
 function poseFreewayCar(f: FreewayFleet, i: number, out: VehiclePose, time: number) {
   if (i === 0) {
-    const dt = f.last < 0 ? 0 : Math.min(time - f.last, 0.05);
-    f.last = time;
+    const dt = fleetStep(f, time);
     for (const c of f.cars) {
       const dir = c.lane < 0 ? 1 : -1;
       c.z += c.speed * dt * dir;
@@ -790,21 +755,8 @@ function Freeway() {
   const pylonCount = Math.floor((FREEWAY_Z1 - FREEWAY_Z0) / 40);
   useEffect(() => {
     const dummy = new Object3D();
-    const p = pylons.current;
-    const l = lamps.current;
-    if (!p || !l) return;
-    for (let i = 0; i < pylonCount; i++) {
-      const z = FREEWAY_Z0 + i * 40;
-      dummy.position.set(FREEWAY_X, FREEWAY_Y / 2 - 0.5, z);
-      dummy.scale.set(1, 1, 1);
-      dummy.updateMatrix();
-      p.setMatrixAt(i, dummy.matrix);
-      dummy.position.set(FREEWAY_X + (i % 2 ? 7.5 : -7.5), FREEWAY_Y + 6, z + 20);
-      dummy.updateMatrix();
-      l.setMatrixAt(i, dummy.matrix);
-    }
-    p.instanceMatrix.needsUpdate = true;
-    l.instanceMatrix.needsUpdate = true;
+    fillInstances(pylons.current, dummy, pylonCount, (i, d) => d.position.set(FREEWAY_X, FREEWAY_Y / 2 - 0.5, FREEWAY_Z0 + i * 40));
+    fillInstances(lamps.current, dummy, pylonCount, (i, d) => d.position.set(FREEWAY_X + (i % 2 ? 7.5 : -7.5), FREEWAY_Y + 6, FREEWAY_Z0 + i * 40 + 20));
   }, [pylonCount]);
   useEffect(() => {
     if (lampMat.current) lampMat.current.emissiveIntensity = 0.2 + dn.night * 1.3;
@@ -857,7 +809,7 @@ function Riprap() {
     const rand = mulberry32(606);
     const out: { x: number; y: number; z: number; s: number; ry: number }[] = [];
     for (let x = -EXTENT; x < EXTENT; x += RIPRAP_STEP) {
-      if (Math.abs(x) < CITY_HALF_X + 40) {
+      if (Math.abs(x) < RIVERWALK_HALF) {
         out.push({ x: x + (rand() - 0.5) * 2, y: -0.4 + rand() * 0.3, z: RIVER_FAR - 0.5 - rand() * 2.2, s: range(rand, 0.6, 1.3), ry: rand() * 6.28 });
         continue;
       }
@@ -906,7 +858,7 @@ const TILES_PER_SIDE = 3;
 interface Tile {
   houses: House[];
   pads: { x: number; z: number }[];
-  trees: { x: number; z: number; s: number }[];
+  trees: TreePlace[];
   banks: Bank[];
 }
 
@@ -935,7 +887,7 @@ function StoreSigns({ spot }: { spot: SignSpot }) {
   return (
     <Parts items={spot.placements}>
       <planeGeometry args={[1, 1]} />
-      <meshStandardMaterial ref={mat} map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.1} side={2} />
+      <meshStandardMaterial ref={mat} map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.1} side={DoubleSide} />
     </Parts>
   );
 }

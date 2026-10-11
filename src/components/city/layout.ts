@@ -12,6 +12,8 @@ export const ROWS = 6;
 
 export const CITY_HALF_X = (COLS * PITCH) / 2;
 export const CITY_HALF_Z = (ROWS * PITCH) / 2;
+export const RIVERWALK_HALF = CITY_HALF_X + 40;
+export const PAD = 0.4;
 
 export const RIVER_NEAR = CITY_HALF_Z + 12;
 export const RIVER_FAR = RIVER_NEAR + 70;

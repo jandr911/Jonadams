@@ -6,7 +6,7 @@ import { useDayNight } from "./DayNightContext";
 import { fillInstances } from "./instancing";
 import { RIVER_NEAR } from "./layout";
 import { mulberry32, range } from "./rng";
-import TreeStand, { plantTrees } from "./TreeStand";
+import TreeStand, { plantTrees, type TreePlace } from "./TreeStand";
 
 const X = 340;
 const Z = RIVER_NEAR + 23;
@@ -27,19 +27,13 @@ export const BRIDGE_LANDING = { x: X + LANDING.x, z: Z + LANDING.z };
 const LIGHTHOUSE = { x: 82, z: 0 };
 const SLIDE = { x: 46, z: 4 };
 
-interface Tree {
-  x: number;
-  z: number;
-  s: number;
-}
-
 function near(x: number, z: number, cx: number, cz: number, hx: number, hz: number) {
   return Math.abs(x - cx) < hx && Math.abs(z - cz) < hz;
 }
 
-function buildTrees(): Tree[] {
+function buildTrees(): TreePlace[] {
   const rand = mulberry32(1879);
-  const out: Tree[] = [];
+  const out: TreePlace[] = [];
   while (out.length < TREE_COUNT) {
     const a = rand() * Math.PI * 2;
     const r = Math.sqrt(rand()) * 0.93;
@@ -251,7 +245,7 @@ export default function BelleIsle() {
       const s = loop[i * LAMP_EVERY];
       d.position.set(s.x * 1.04, 4.1, s.z * 1.06);
     });
-  }, [dummy, trees, loop, lampCount]);
+  }, [dummy, loop, lampCount]);
 
   useEffect(() => {
     if (lampMat.current) lampMat.current.emissiveIntensity = 0.3 + dn.night * 5;

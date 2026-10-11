@@ -29,6 +29,7 @@ import StaticBatch from "./StaticBatch";
 import Steam from "./Steam";
 import Traffic from "./Traffic";
 import { TreeWind } from "./TreeStand";
+import { WindowClock } from "./useWindowMaterial";
 import Watercraft from "./Watercraft";
 
 function ignoreFailure() {}
@@ -167,6 +168,7 @@ export default function Scene({ onReady }: { onReady: () => void }) {
       </Suspense>
       <Ambience />
       <HologramClock />
+      <WindowClock />
       <Effects />
       <ShadowThrottle />
       <DetailCull />
