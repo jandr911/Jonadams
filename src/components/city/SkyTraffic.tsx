@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { BoxGeometry, Color, CylinderGeometry, InstancedMesh, Matrix4, Object3D, Quaternion, SphereGeometry, Vector3 } from "three";
 import { useCity } from "./CityContext";
 import { mulberry32, range } from "./rng";
-import { mergeParts } from "./instancing";
+import { HIDDEN_MATRIX, mergeParts } from "./instancing";
 
 const DRONE = mergeParts(
   [
@@ -119,7 +119,6 @@ function poseCraft(c: Craft, time: number, d: Object3D) {
 }
 
 const lightMatrix = new Matrix4();
-const HIDDEN = new Matrix4().makeScale(0, 0, 0);
 
 function placeFleet(crafts: Craft[], specs: LightSpec[], body: InstancedMesh, lights: InstancedMesh, firstLight: number, time: number, d: Object3D, steady: boolean) {
   let slot = firstLight;
@@ -128,7 +127,7 @@ function placeFleet(crafts: Craft[], specs: LightSpec[], body: InstancedMesh, li
     body.setMatrixAt(i, d.matrix);
     for (const s of specs) {
       const on = !s.blink || steady || Math.sin(time * 6 + i * 1.7) > 0.6;
-      lights.setMatrixAt(slot++, on ? lightMatrix.multiplyMatrices(d.matrix, s.offset) : HIDDEN);
+      lights.setMatrixAt(slot++, on ? lightMatrix.multiplyMatrices(d.matrix, s.offset) : HIDDEN_MATRIX);
     }
   }
   body.instanceMatrix.needsUpdate = true;

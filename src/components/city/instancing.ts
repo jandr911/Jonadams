@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
-import { BoxGeometry, BufferAttribute } from "three";
-import type { BufferGeometry, InstancedMesh, Object3D } from "three";
+import { BoxGeometry, BufferAttribute, Matrix4 } from "three";
+import type { BufferGeometry, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 export function fillInstances(mesh: InstancedMesh | null, dummy: Object3D, count: number, place: (i: number, d: Object3D) => void) {
@@ -33,6 +33,24 @@ export function mergeParts(parts: BufferGeometry[], label: string) {
   for (const g of new Set([...parts, ...flat])) g.dispose();
   if (!merged) throw new Error(`${label} parts could not be merged`);
   return merged;
+}
+
+export function cachedByKey<K, V>(make: (key: K) => V) {
+  const cache = new Map<K, V>();
+  return (key: K) => {
+    let value = cache.get(key);
+    if (value === undefined) {
+      value = make(key);
+      cache.set(key, value);
+    }
+    return value;
+  };
+}
+
+export const HIDDEN_MATRIX = new Matrix4().makeScale(0, 0, 0);
+
+export function setEmissiveIntensity(mat: MeshStandardMaterial, value: number) {
+  mat.emissiveIntensity = value;
 }
 
 export function gradientColors<T extends BufferGeometry>(geo: T, axis: "y" | "z", from: number, length: number, exponent = 1) {

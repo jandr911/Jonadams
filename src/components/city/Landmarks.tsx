@@ -24,7 +24,7 @@ import PaintedSign from "./PaintedSign";
 import { mulberry32 } from "./rng";
 import TreeStand, { plantTrees } from "./TreeStand";
 import { useWindowMaterial } from "./useWindowMaterial";
-import { baseBoxGeometry, fillInstances, mergeParts } from "./instancing";
+import { baseBoxGeometry, fillInstances, mergeParts, setEmissiveIntensity } from "./instancing";
 import { enableReflection } from "./layers";
 import type { WindowMaterialOptions } from "./windowMaterial";
 
@@ -590,10 +590,6 @@ const MC_MUNTINS: Box[] = MC_ARCH_X.flatMap((ax) => [
   { x: ax, y: 7.2, z: MC_FRONT + 0.32, sx: 5.4, sy: 0.12, sz: 0.3 },
 ]);
 const MC_BALUSTER_COUNT = 25;
-
-function setEmissiveIntensity(mat: MeshStandardMaterial, value: number) {
-  mat.emissiveIntensity = value;
-}
 const MC_PILASTER_X = [-11.4, -6.8, -2.3, 2.3, 6.8, 11.4];
 
 function MichiganCentral() {

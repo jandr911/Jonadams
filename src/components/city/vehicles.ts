@@ -1,14 +1,13 @@
 import { BoxGeometry, BufferGeometry, CylinderGeometry, ExtrudeGeometry, PlaneGeometry, Shape, SphereGeometry } from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { mergeParts } from "./instancing";
 import type { LabelOptions } from "./labels";
 
 export const FLEET_COLORS = ["#f4f1ea", "#1d1d3f", "#c8102e", "#2a3a7a", "#9a95a8", "#d6b56e", "#3f3f4f", "#2f6ea8"];
 
 export type VehicleKind = "sedan" | "suv" | "van" | "pickup" | "taxi" | "police" | "bus" | "semi";
-export const VEHICLE_KINDS: VehicleKind[] = ["sedan", "suv", "van", "pickup", "taxi", "police", "bus", "semi"];
 
 type Pt = [number, number];
-export type PartKey = "dark" | "trim" | "chrome" | "glass" | "accent" | "amber" | "strobe" | "decal";
+type PartKey = "dark" | "trim" | "chrome" | "glass" | "accent" | "amber" | "strobe" | "decal";
 interface Extra {
   mat: PartKey;
   size: [number, number, number];
@@ -16,7 +15,7 @@ interface Extra {
   rot?: [number, number, number];
 }
 
-export interface VehicleSpec {
+interface VehicleSpec {
   length: number;
   width: number;
   body: Pt[];
@@ -264,7 +263,7 @@ function extrudeProfile(pts: Pt[], width: number, bevel: number) {
 }
 
 function boxAt(size: [number, number, number], pos: [number, number, number], rot?: [number, number, number]) {
-  const g = new BoxGeometry(...size).toNonIndexed();
+  const g = new BoxGeometry(...size);
   if (rot) {
     g.rotateX(rot[0]);
     g.rotateY(rot[1]);
@@ -284,7 +283,7 @@ export function buildKindGeometry(kind: VehicleKind): VehicleKindGeometry {
   const s = VEHICLE_SPECS[kind];
   const bodyPieces: BufferGeometry[] = [extrudeProfile(s.body, s.width, 0.05)];
   if (s.roof) bodyPieces.push(boxAt([s.width + 0.02, 0.07, s.roof.len], [0, s.roof.y, s.roof.z]));
-  const body = mergeGeometries(bodyPieces)!;
+  const body = mergeParts(bodyPieces, `${kind} body`);
   const glassPieces: BufferGeometry[] = [extrudeProfile(s.glass, s.width + 0.06, 0)];
   const grouped: Partial<Record<Exclude<PartKey, "glass">, BufferGeometry[]>> = {};
   for (const e of s.extras) {
@@ -295,20 +294,20 @@ export function buildKindGeometry(kind: VehicleKind): VehicleKindGeometry {
     (grouped[e.mat] ??= []).push(boxAt(e.size, e.pos, e.rot));
   }
   const parts: VehicleKindGeometry["parts"] = {};
-  for (const k of Object.keys(grouped) as Exclude<PartKey, "glass">[]) parts[k] = mergeGeometries(grouped[k]!)!;
-  return { body, glass: mergeGeometries(glassPieces)!, parts };
+  for (const k of Object.keys(grouped) as Exclude<PartKey, "glass">[]) parts[k] = mergeParts(grouped[k]!, `${kind} ${k}`);
+  return { body, glass: mergeParts(glassPieces, `${kind} glass`), parts };
 }
 
 export function buildWheelGeometry() {
-  const tire = mergeGeometries([new CylinderGeometry(1, 1, 0.3, 10).toNonIndexed(), new CylinderGeometry(0.86, 0.86, 0.34, 10).toNonIndexed()])!;
+  const tire = mergeParts([new CylinderGeometry(1, 1, 0.3, 10), new CylinderGeometry(0.86, 0.86, 0.34, 10)], "tire");
   tire.rotateZ(Math.PI / 2);
-  const rimPieces: BufferGeometry[] = [new CylinderGeometry(0.64, 0.64, 0.3, 8).toNonIndexed(), new CylinderGeometry(0.18, 0.18, 0.4, 6).toNonIndexed()];
+  const rimPieces: BufferGeometry[] = [new CylinderGeometry(0.64, 0.64, 0.3, 8), new CylinderGeometry(0.18, 0.18, 0.4, 6)];
   for (let i = 0; i < 3; i++) {
-    const spoke = new BoxGeometry(1.1, 0.34, 0.12).toNonIndexed();
+    const spoke = new BoxGeometry(1.1, 0.34, 0.12);
     spoke.rotateY((i / 3) * Math.PI);
     rimPieces.push(spoke);
   }
-  const rim = mergeGeometries(rimPieces)!;
+  const rim = mergeParts(rimPieces, "rim");
   rim.rotateZ(Math.PI / 2);
   return { tire, rim };
 }
@@ -318,18 +317,18 @@ export function buildLampGeometry() {
 }
 
 export function buildMirrorGeometry() {
-  return mergeGeometries([boxAt([0.12, 0.1, 0.2], [0.12, 0, 0]), boxAt([0.14, 0.03, 0.03], [0.02, 0, 0])])!;
+  return mergeParts([boxAt([0.12, 0.1, 0.2], [0.12, 0, 0]), boxAt([0.14, 0.03, 0.03], [0.02, 0, 0])], "mirror");
 }
 
 export function buildDriverGeometry() {
-  const head = new SphereGeometry(0.14, 8, 6).toNonIndexed();
+  const head = new SphereGeometry(0.14, 8, 6);
   head.translate(0, 0.62, 0);
-  const torso = new BoxGeometry(0.42, 0.5, 0.26).toNonIndexed();
+  const torso = new BoxGeometry(0.42, 0.5, 0.26);
   torso.translate(0, 0.25, 0);
-  const wheel = new CylinderGeometry(0.17, 0.17, 0.03, 10).toNonIndexed();
+  const wheel = new CylinderGeometry(0.17, 0.17, 0.03, 10);
   wheel.rotateX(Math.PI / 2 - 0.5);
   wheel.translate(0, 0.42, 0.34);
-  return mergeGeometries([head, torso, wheel])!;
+  return mergeParts([head, torso, wheel], "driver");
 }
 
 export function buildPoolGeometry() {

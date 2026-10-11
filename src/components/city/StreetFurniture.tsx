@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BoxGeometry, BufferGeometry, Color, CylinderGeometry, InstancedMesh, Object3D, SphereGeometry, TorusGeometry } from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { useDayNight } from "./DayNightContext";
+import { cachedByKey, mergeParts } from "./instancing";
 import { labelTexture } from "./labels";
 import { BLOCK, COLS, CROSSWALK_OFFSET, PITCH, ROAD_HALF, ROWS, blockCenter, outerRoadLinesX, outerRoadLinesZ } from "./layout";
 import { mulberry32, pick, range } from "./rng";
@@ -24,129 +24,125 @@ const RAMP_LENGTH = 1.4;
 const CURB_HEIGHT = 0.4;
 const BIKE_OUTWARD = 0.4;
 
-function nonIdx<T extends BufferGeometry>(g: T) {
-  return g.toNonIndexed();
-}
-
 function hydrantGeometry() {
-  const body = nonIdx(new CylinderGeometry(0.14, 0.17, 0.7, 8));
+  const body = new CylinderGeometry(0.14, 0.17, 0.7, 8);
   body.translate(0, 0.35, 0);
-  const cap = nonIdx(new SphereGeometry(0.16, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2));
+  const cap = new SphereGeometry(0.16, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2);
   cap.translate(0, 0.7, 0);
-  const nozzleL = nonIdx(new CylinderGeometry(0.07, 0.07, 0.16, 6));
+  const nozzleL = new CylinderGeometry(0.07, 0.07, 0.16, 6);
   nozzleL.rotateZ(Math.PI / 2);
   nozzleL.translate(-0.2, 0.42, 0);
   const nozzleR = nozzleL.clone();
   nozzleR.translate(0.4, 0, 0);
-  const front = nonIdx(new CylinderGeometry(0.06, 0.06, 0.14, 6));
+  const front = new CylinderGeometry(0.06, 0.06, 0.14, 6);
   front.rotateX(Math.PI / 2);
   front.translate(0, 0.5, 0.2);
-  const base = nonIdx(new CylinderGeometry(0.2, 0.22, 0.08, 8));
+  const base = new CylinderGeometry(0.2, 0.22, 0.08, 8);
   base.translate(0, 0.04, 0);
-  return mergeGeometries([body, cap, nozzleL, nozzleR, front, base])!;
+  return mergeParts([body, cap, nozzleL, nozzleR, front, base], "hydrant");
 }
 function binGeometry() {
-  const body = nonIdx(new CylinderGeometry(0.34, 0.3, 0.95, 10));
+  const body = new CylinderGeometry(0.34, 0.3, 0.95, 10);
   body.translate(0, 0.475, 0);
-  const lid = nonIdx(new CylinderGeometry(0.37, 0.37, 0.08, 10));
+  const lid = new CylinderGeometry(0.37, 0.37, 0.08, 10);
   lid.translate(0, 0.99, 0);
-  const band = nonIdx(new CylinderGeometry(0.355, 0.355, 0.06, 10));
+  const band = new CylinderGeometry(0.355, 0.355, 0.06, 10);
   band.translate(0, 0.5, 0);
-  return mergeGeometries([body, lid, band])!;
+  return mergeParts([body, lid, band], "bin");
 }
 function benchGeometry() {
-  const seat = nonIdx(new BoxGeometry(1.8, 0.07, 0.5));
+  const seat = new BoxGeometry(1.8, 0.07, 0.5);
   seat.translate(0, 0.46, 0);
-  const back = nonIdx(new BoxGeometry(1.8, 0.4, 0.06));
+  const back = new BoxGeometry(1.8, 0.4, 0.06);
   back.rotateX(-0.15);
   back.translate(0, 0.76, -0.24);
   const legs = [-0.75, 0.75].map((x) => {
-    const l = nonIdx(new BoxGeometry(0.08, 0.46, 0.46));
+    const l = new BoxGeometry(0.08, 0.46, 0.46);
     l.translate(x, 0.23, 0);
     return l;
   });
   const arm = [-0.88, 0.88].map((x) => {
-    const a = nonIdx(new BoxGeometry(0.05, 0.05, 0.5));
+    const a = new BoxGeometry(0.05, 0.05, 0.5);
     a.translate(x, 0.72, 0);
     return a;
   });
-  return mergeGeometries([seat, back, ...legs, ...arm])!;
+  return mergeParts([seat, back, ...legs, ...arm], "bench");
 }
 function rackGeometry() {
-  const u = nonIdx(new TorusGeometry(0.4, 0.03, 6, 14, Math.PI));
+  const u = new TorusGeometry(0.4, 0.03, 6, 14, Math.PI).toNonIndexed();
   u.translate(0, 0.4, 0);
   return u;
 }
 function bikeGeometry() {
-  const wheelA = nonIdx(new TorusGeometry(0.34, 0.025, 6, 16));
+  const wheelA = new TorusGeometry(0.34, 0.025, 6, 16);
   wheelA.translate(-0.52, 0.34, 0);
   const wheelB = wheelA.clone();
   wheelB.translate(1.04, 0, 0);
-  const down = nonIdx(new BoxGeometry(0.75, 0.04, 0.04));
+  const down = new BoxGeometry(0.75, 0.04, 0.04);
   down.rotateZ(0.55);
   down.translate(-0.2, 0.55, 0);
-  const top = nonIdx(new BoxGeometry(0.6, 0.04, 0.04));
+  const top = new BoxGeometry(0.6, 0.04, 0.04);
   top.translate(0.0, 0.82, 0);
-  const seatTube = nonIdx(new BoxGeometry(0.04, 0.5, 0.04));
+  const seatTube = new BoxGeometry(0.04, 0.5, 0.04);
   seatTube.rotateZ(-0.25);
   seatTube.translate(-0.28, 0.6, 0);
-  const fork = nonIdx(new BoxGeometry(0.04, 0.55, 0.04));
+  const fork = new BoxGeometry(0.04, 0.55, 0.04);
   fork.rotateZ(0.3);
   fork.translate(0.42, 0.62, 0);
-  const bars = nonIdx(new BoxGeometry(0.04, 0.03, 0.5));
+  const bars = new BoxGeometry(0.04, 0.03, 0.5);
   bars.translate(0.36, 0.95, 0);
-  const seat = nonIdx(new BoxGeometry(0.24, 0.05, 0.12));
+  const seat = new BoxGeometry(0.24, 0.05, 0.12);
   seat.translate(-0.3, 0.92, 0);
-  return mergeGeometries([wheelA, wheelB, down, top, seatTube, fork, bars, seat])!;
+  return mergeParts([wheelA, wheelB, down, top, seatTube, fork, bars, seat], "bike");
 }
 function paperGeometry() {
-  const b = nonIdx(new BoxGeometry(0.5, 1.0, 0.5));
+  const b = new BoxGeometry(0.5, 1.0, 0.5);
   b.translate(0, 0.5, 0);
-  const w = nonIdx(new BoxGeometry(0.4, 0.4, 0.04));
+  const w = new BoxGeometry(0.4, 0.4, 0.04);
   w.translate(0, 0.72, 0.26);
-  return mergeGeometries([b, w])!;
+  return mergeParts([b, w], "paper");
 }
 function mailboxGeometry() {
-  const b = nonIdx(new BoxGeometry(0.6, 0.7, 0.5));
+  const b = new BoxGeometry(0.6, 0.7, 0.5);
   b.translate(0, 0.75, 0);
-  const top = nonIdx(new CylinderGeometry(0.25, 0.25, 0.6, 10, 1, false, 0, Math.PI));
+  const top = new CylinderGeometry(0.25, 0.25, 0.6, 10, 1, false, 0, Math.PI);
   top.rotateZ(Math.PI / 2);
   top.rotateY(Math.PI / 2);
   top.translate(0, 1.1, 0);
   const legs = [-0.2, 0.2].map((x) => {
-    const l = nonIdx(new BoxGeometry(0.05, 0.4, 0.05));
+    const l = new BoxGeometry(0.05, 0.4, 0.05);
     l.translate(x, 0.2, 0);
     return l;
   });
-  return mergeGeometries([b, top, ...legs])!;
+  return mergeParts([b, top, ...legs], "mailbox");
 }
 function coneGeometry() {
-  const c = nonIdx(new CylinderGeometry(0.04, 0.18, 0.6, 8));
+  const c = new CylinderGeometry(0.04, 0.18, 0.6, 8);
   c.translate(0, 0.3, 0);
-  const base = nonIdx(new BoxGeometry(0.42, 0.04, 0.42));
+  const base = new BoxGeometry(0.42, 0.04, 0.42);
   base.translate(0, 0.02, 0);
-  return mergeGeometries([c, base])!;
+  return mergeParts([c, base], "cone");
 }
 
 function manholeGeometry() {
-  const lid = nonIdx(new CylinderGeometry(0.45, 0.45, 0.05, 14));
+  const lid = new CylinderGeometry(0.45, 0.45, 0.05, 14);
   lid.translate(0, 0.025, 0);
-  const rim = nonIdx(new CylinderGeometry(0.52, 0.52, 0.03, 14));
+  const rim = new CylinderGeometry(0.52, 0.52, 0.03, 14);
   rim.translate(0, 0.015, 0);
-  return mergeGeometries([lid, rim])!;
+  return mergeParts([lid, rim], "manhole");
 }
 function drainGeometry() {
-  const frame = nonIdx(new BoxGeometry(0.9, 0.05, 0.42));
+  const frame = new BoxGeometry(0.9, 0.05, 0.42);
   frame.translate(0, 0.025, 0);
   const bars = [-0.3, -0.1, 0.1, 0.3].map((x) => {
-    const b = nonIdx(new BoxGeometry(0.06, 0.08, 0.34));
+    const b = new BoxGeometry(0.06, 0.08, 0.34);
     b.translate(x, 0.04, 0);
     return b;
   });
-  return mergeGeometries([frame, ...bars])!;
+  return mergeParts([frame, ...bars], "drain");
 }
 function rampGeometry() {
-  const r = nonIdx(new BoxGeometry(1.6, CURB_HEIGHT, RAMP_LENGTH));
+  const r = new BoxGeometry(1.6, CURB_HEIGHT, RAMP_LENGTH).toNonIndexed();
   return r;
 }
 
@@ -275,6 +271,15 @@ export default function StreetFurniture() {
     () => ({ hydrant: hydrantGeometry(), bin: binGeometry(), bench: benchGeometry(), rack: rackGeometry(), bike: bikeGeometry(), paper: paperGeometry(), mailbox: mailboxGeometry(), cone: coneGeometry(), manhole: manholeGeometry(), drain: drainGeometry(), ramp: rampGeometry() }),
     [],
   );
+  useEffect(() => () => Object.values(geos).forEach((g) => g.dispose()), [geos]);
+  const bind = useMemo(
+    () =>
+      cachedByKey((k: Kind) => (m: InstancedMesh | null) => {
+        if (m) refs.current.set(k, m);
+        else refs.current.delete(k);
+      }),
+    [],
+  );
   const counts = useMemo(() => {
     const c = {} as Record<Kind, number>;
     for (const k of KINDS) c[k] = items.filter((i) => i.kind === k).length;
@@ -314,10 +319,7 @@ export default function StreetFurniture() {
       {KINDS.map((k) => (
         <instancedMesh
           key={k}
-          ref={(m) => {
-            if (m) refs.current.set(k, m);
-            else refs.current.delete(k);
-          }}
+          ref={bind(k)}
           args={[geos[k], undefined, Math.max(1, counts[k])]}
           frustumCulled={false}
         >

@@ -210,3 +210,21 @@ export function makeShadowBlobTexture() {
   ctx.fillRect(0, 0, size, size);
   return new CanvasTexture(c);
 }
+
+export function makeHeadlightPoolTexture() {
+  const c = document.createElement("canvas");
+  c.width = 64;
+  c.height = 128;
+  const ctx = c.getContext("2d")!;
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.translate(32, 12);
+  ctx.scale(0.3, 1);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 100);
+  g.addColorStop(0, "#e6e6e6");
+  g.addColorStop(0.3, "#666666");
+  g.addColorStop(1, "#000000");
+  ctx.fillStyle = g;
+  ctx.fillRect(-120, -20, 240, 140);
+  return new CanvasTexture(c);
+}

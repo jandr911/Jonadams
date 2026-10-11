@@ -1,11 +1,13 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { AdditiveBlending, CanvasTexture, Color, Euler, InstancedMesh, Matrix4, MeshBasicMaterial, MeshStandardMaterial, Quaternion, Vector3 } from "three";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
+import { HIDDEN_MATRIX, cachedByKey } from "./instancing";
 import { labelTexture } from "./labels";
+import { makeHeadlightPoolTexture } from "./textures";
 import {
   VEHICLE_SPECS,
   buildDriverGeometry,
@@ -55,27 +57,9 @@ let shared: Shared | null = null;
 function sharedGeometry() {
   if (!shared) {
     const w = buildWheelGeometry();
-    shared = { tire: w.tire, rim: w.rim, lamp: buildLampGeometry(), mirror: buildMirrorGeometry(), driver: buildDriverGeometry(), pool: buildPoolGeometry(), poolTex: poolTexture() };
+    shared = { tire: w.tire, rim: w.rim, lamp: buildLampGeometry(), mirror: buildMirrorGeometry(), driver: buildDriverGeometry(), pool: buildPoolGeometry(), poolTex: makeHeadlightPoolTexture() };
   }
   return shared;
-}
-
-function poolTexture() {
-  const c = document.createElement("canvas");
-  c.width = 64;
-  c.height = 128;
-  const ctx = c.getContext("2d")!;
-  ctx.fillStyle = "#000000";
-  ctx.fillRect(0, 0, c.width, c.height);
-  ctx.translate(32, 12);
-  ctx.scale(0.3, 1);
-  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 100);
-  g.addColorStop(0, "#e6e6e6");
-  g.addColorStop(0.3, "#666666");
-  g.addColorStop(1, "#000000");
-  ctx.fillStyle = g;
-  ctx.fillRect(-120, -20, 240, 140);
-  return new CanvasTexture(c);
 }
 
 interface Locals {
@@ -137,7 +121,6 @@ interface Scratch {
   M: Matrix4;
   spin: Matrix4;
   out: Matrix4;
-  zero: Matrix4;
   night: number;
   brakes: Uint8Array;
   spinRaw: Float64Array;
@@ -167,7 +150,7 @@ function runUpdate(
   const mirror = meshes.get("mirror");
   const driver = meshes.get("driver");
   const pool = meshes.get("pool");
-  const { p, pos, q, e, M, spin, out, zero } = s;
+  const { p, pos, q, e, M, spin, out } = s;
   const lightsOn = s.night > 0.18;
   if (s.spinRaw.length !== items.length) {
     s.spinRaw = new Float64Array(items.length);
@@ -199,10 +182,10 @@ function runUpdate(
       head?.setMatrixAt(i * 2 + k, out.multiplyMatrices(M, loc.head[k]));
       tail?.setMatrixAt(i * 2 + k, out.multiplyMatrices(M, loc.tail[k]));
       if (loc.mirrors.length) mirror?.setMatrixAt(i * 2 + k, out.multiplyMatrices(M, loc.mirrors[k]));
-      else mirror?.setMatrixAt(i * 2 + k, zero);
+      else mirror?.setMatrixAt(i * 2 + k, HIDDEN_MATRIX);
     }
     driver?.setMatrixAt(i, out.multiplyMatrices(M, loc.driver));
-    if (pool) pool.setMatrixAt(i, lightsOn ? out.multiplyMatrices(M, loc.pool) : zero);
+    if (pool) pool.setMatrixAt(i, lightsOn ? out.multiplyMatrices(M, loc.pool) : HIDDEN_MATRIX);
     const b = p.brake ? 1 : 0;
     if (tail && s.brakes[i] !== b) {
       s.brakes[i] = b;
@@ -288,27 +271,28 @@ export default function VehicleFleet({
     M: new Matrix4(),
     spin: new Matrix4(),
     out: new Matrix4(),
-    zero: new Matrix4().makeScale(0, 0, 0),
     night: 0,
     brakes: new Uint8Array(0),
     spinRaw: new Float64Array(0),
     spinShown: new Float32Array(0),
   });
 
-  const bind = useCallback(
-    (key: string) => (m: InstancedMesh | null) => {
-      if (m) meshes.current.set(key, m);
-      else meshes.current.delete(key);
-      indexBodyParts(meshes.current, bodies.current, key);
-    },
+  const bind = useMemo(
+    () =>
+      cachedByKey((key: string) => (m: InstancedMesh | null) => {
+        if (m) meshes.current.set(key, m);
+        else meshes.current.delete(key);
+        indexBodyParts(meshes.current, bodies.current, key);
+      }),
     [],
   );
-  const bindMat = useCallback(
-    (key: string) => (m: MeshStandardMaterial | MeshBasicMaterial | null) => {
-      if (m) mats.current.set(key, m);
-      else mats.current.delete(key);
-      if (key.endsWith(":strobe")) indexStrobes(mats.current, strobes.current);
-    },
+  const bindMat = useMemo(
+    () =>
+      cachedByKey((key: string) => (m: MeshStandardMaterial | MeshBasicMaterial | null) => {
+        if (m) mats.current.set(key, m);
+        else mats.current.delete(key);
+        if (key.endsWith(":strobe")) indexStrobes(mats.current, strobes.current);
+      }),
     [],
   );
 
@@ -351,7 +335,8 @@ export default function VehicleFleet({
       {groups.kinds.map((kind) => {
         const g = kindGeometry(kind);
         const count = groups.map.get(kind)!.length;
-        const spec = VEHICLE_SPECS[kind];
+        const decal = VEHICLE_SPECS[kind].decal;
+        const decalTex = g.parts.decal && decal ? labelTexture(decal.text, decal.opts) : null;
         return (
           <group key={kind}>
             <instancedMesh ref={bind(`${kind}:body`)} args={[g.body, undefined, count]} castShadow={castShadow} frustumCulled={false}>
@@ -390,9 +375,9 @@ export default function VehicleFleet({
                 <meshStandardMaterial ref={bindMat(`${kind}:strobe`)} color="#ff2a3c" emissive="#ff2a3c" emissiveIntensity={3} toneMapped={false} />
               </instancedMesh>
             )}
-            {g.parts.decal && spec.decal && (
+            {g.parts.decal && decalTex && (
               <instancedMesh ref={bind(`${kind}:decal`)} args={[g.parts.decal, undefined, count]} frustumCulled={false}>
-                <meshStandardMaterial ref={bindMat(`${kind}:decal`)} map={labelTexture(spec.decal.text, spec.decal.opts)} emissiveMap={labelTexture(spec.decal.text, spec.decal.opts)} emissive="#ffffff" emissiveIntensity={0} roughness={0.5} metalness={0.2} />
+                <meshStandardMaterial ref={bindMat(`${kind}:decal`)} map={decalTex} emissiveMap={decalTex} emissive="#ffffff" emissiveIntensity={0} roughness={0.5} metalness={0.2} />
               </instancedMesh>
             )}
           </group>

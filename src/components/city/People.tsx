@@ -1,14 +1,14 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BoxGeometry, BufferGeometry, Color, InstancedMesh, Matrix4, MeshStandardMaterial, Quaternion, SphereGeometry, TorusGeometry, Vector3 } from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
+import { HIDDEN_MATRIX, cachedByKey, mergeParts } from "./instancing";
 import { labelTexture } from "./labels";
 import { BLOCK, CITY_HALF_X, CITY_HALF_Z, DESTINATIONS, allBlocks, blockCenter, destinationPosition } from "./layout";
-import { loopLength, loopPose, type LoopPose } from "./loopPath";
+import { loopLength, loopPose, newLoopPose } from "./loopPath";
 import { mulberry32, pick, range } from "./rng";
 
 const SKIN = ["#f1c9a5", "#e0ac7e", "#c68642", "#8d5524", "#5c3a1e", "#f5d6c6", "#a66a3a", "#3b2314"];
@@ -187,23 +187,31 @@ const PART = {
   phone: mat(0, -0.36, 0.06, 0.09, 0.15, 0.02),
   camera: mat(0, -0.34, 0.1, 0.18, 0.12, 0.16),
 };
-const ELBOW = new Matrix4().makeTranslation(0, -0.32, 0);
-const KNEE = new Matrix4().makeTranslation(0, -0.4, 0);
+
+interface LimbSpec {
+  upper: Matrix4;
+  lower: Matrix4;
+  end: Matrix4;
+  joint: Matrix4;
+}
+
+const ARM: LimbSpec = { upper: PART.uArm, lower: PART.lArm, end: PART.hand, joint: new Matrix4().makeTranslation(0, -0.32, 0) };
+const LEG: LimbSpec = { upper: PART.uLeg, lower: PART.lLeg, end: PART.shoe, joint: new Matrix4().makeTranslation(0, -0.4, 0) };
 
 function eyesGeometry() {
-  const l = new BoxGeometry(0.035, 0.035, 0.02).toNonIndexed();
+  const l = new BoxGeometry(0.035, 0.035, 0.02);
   l.translate(-0.055, 0, 0);
-  const r = new BoxGeometry(0.035, 0.035, 0.02).toNonIndexed();
+  const r = new BoxGeometry(0.035, 0.035, 0.02);
   r.translate(0.055, 0, 0);
-  return mergeGeometries([l, r])!;
+  return mergeParts([l, r], "eyes");
 }
 function headphoneGeometry() {
-  const band = new TorusGeometry(0.2, 0.025, 5, 16, Math.PI).toNonIndexed();
-  const cupL = new SphereGeometry(0.055, 6, 6).toNonIndexed();
+  const band = new TorusGeometry(0.2, 0.025, 5, 16, Math.PI);
+  const cupL = new SphereGeometry(0.055, 6, 6);
   cupL.translate(-0.19, -0.02, 0);
-  const cupR = new SphereGeometry(0.055, 6, 6).toNonIndexed();
+  const cupR = new SphereGeometry(0.055, 6, 6);
   cupR.translate(0.19, -0.02, 0);
-  return mergeGeometries([band, cupL, cupR])!;
+  return mergeParts([band, cupL, cupR], "headphones");
 }
 
 const PART_KEYS = ["head", "eyes", "hair", "hairBack", "bun", "brim", "torso", "jacket", "hips", "skirt", "uArmL", "lArmL", "handL", "uArmR", "lArmR", "handR", "uLegL", "lLegL", "shoeL", "uLegR", "lLegR", "shoeR", "bag", "headphones", "phone"] as const;
@@ -218,7 +226,6 @@ interface Scratch {
   R: Matrix4;
   J: Matrix4;
   out: Matrix4;
-  zero: Matrix4;
   frame: number;
   limbs: Limbs | null;
 }
@@ -280,22 +287,22 @@ function limbsOf(m: Map<PartKey, InstancedMesh>): Limbs {
   };
 }
 
-function limb(out: Matrix4, s: Scratch, M: Matrix4, px: number, py: number, upper: number, lower: number, upperPart: Matrix4, lowerPart: Matrix4, endPart: Matrix4, joint: Matrix4, dest: Limb, i: number) {
+function limb(s: Scratch, spec: LimbSpec, dest: Limb, i: number, px: number, py: number, upper: number, lower: number) {
   s.T.makeTranslation(px, py, 0);
   s.R.makeRotationX(upper);
-  s.J.multiplyMatrices(M, s.T).multiply(s.R);
-  out.multiplyMatrices(s.J, upperPart);
-  dest.u.setMatrixAt(i, out);
+  s.J.multiplyMatrices(s.M, s.T).multiply(s.R);
+  s.out.multiplyMatrices(s.J, spec.upper);
+  dest.u.setMatrixAt(i, s.out);
   s.R.makeRotationX(lower);
-  s.J.multiply(joint).multiply(s.R);
-  out.multiplyMatrices(s.J, lowerPart);
-  dest.l.setMatrixAt(i, out);
-  out.multiplyMatrices(s.J, endPart);
-  dest.e.setMatrixAt(i, out);
+  s.J.multiply(spec.joint).multiply(s.R);
+  s.out.multiplyMatrices(s.J, spec.lower);
+  dest.l.setMatrixAt(i, s.out);
+  s.out.multiplyMatrices(s.J, spec.end);
+  dest.e.setMatrixAt(i, s.out);
 }
 
 const walkFrame = { x: 0, z: 0, yaw: 0 };
-const walkLoop: LoopPose = { a: 0, b: 0, ha: 1, hb: 0, leg: 0, into: 0 };
+const walkLoop = newLoopPose();
 
 function swingKnee(w: number) {
   const lift = Math.max(0, -Math.cos(w + 0.15));
@@ -317,6 +324,10 @@ function walkPose(p: Person, t: number, out: { x: number; z: number; yaw: number
   return walked;
 }
 
+function markMatrixDirty(im: InstancedMesh) {
+  im.instanceMatrix.needsUpdate = true;
+}
+
 function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: number, s: Scratch, camX: number, camZ: number) {
   for (let k = 0; k < PART_KEYS.length; k++) if (!m.get(PART_KEYS[k])) return;
   const head = m.get("head")!;
@@ -334,7 +345,7 @@ function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: numbe
   const phone = m.get("phone")!;
   s.limbs ??= limbsOf(m);
   const { armL, armR, legL, legR } = s.limbs;
-  const { pos, q, sc, M, out, zero } = s;
+  const { pos, q, sc, M, out } = s;
   s.frame++;
   for (let i = 0; i < people.length; i++) {
     const p = people[i];
@@ -398,26 +409,26 @@ function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: numbe
     head.setMatrixAt(i, out.multiplyMatrices(M, PART.head));
     eyes.setMatrixAt(i, out.multiplyMatrices(M, PART.eyes));
     const h = p.hair;
-    hair.setMatrixAt(i, h === 4 ? zero : out.multiplyMatrices(M, h === 1 ? PART.hairLong : h === 3 ? PART.afro : h === 5 ? PART.cap : PART.hairShort));
-    hairBack.setMatrixAt(i, h === 1 ? out.multiplyMatrices(M, PART.hairBack) : zero);
-    bun.setMatrixAt(i, h === 2 ? out.multiplyMatrices(M, PART.bun) : zero);
-    brim.setMatrixAt(i, h === 5 ? out.multiplyMatrices(M, PART.brim) : zero);
+    hair.setMatrixAt(i, h === 4 ? HIDDEN_MATRIX : out.multiplyMatrices(M, h === 1 ? PART.hairLong : h === 3 ? PART.afro : h === 5 ? PART.cap : PART.hairShort));
+    hairBack.setMatrixAt(i, h === 1 ? out.multiplyMatrices(M, PART.hairBack) : HIDDEN_MATRIX);
+    bun.setMatrixAt(i, h === 2 ? out.multiplyMatrices(M, PART.bun) : HIDDEN_MATRIX);
+    brim.setMatrixAt(i, h === 5 ? out.multiplyMatrices(M, PART.brim) : HIDDEN_MATRIX);
     torso.setMatrixAt(i, out.multiplyMatrices(M, PART.torso));
-    jacket.setMatrixAt(i, p.jacket ? out.multiplyMatrices(M, PART.jacket) : zero);
+    jacket.setMatrixAt(i, p.jacket ? out.multiplyMatrices(M, PART.jacket) : HIDDEN_MATRIX);
     hips.setMatrixAt(i, out.multiplyMatrices(M, PART.hips));
-    skirt.setMatrixAt(i, p.skirt ? out.multiplyMatrices(M, PART.skirt) : zero);
-    bag.setMatrixAt(i, p.bag ? out.multiplyMatrices(M, PART.bag) : zero);
-    headphones.setMatrixAt(i, p.headphones ? out.multiplyMatrices(M, PART.headphones) : zero);
-    limb(out, s, M, -0.27, 1.34, shL, elL, PART.uArm, PART.lArm, PART.hand, ELBOW, armL, i);
-    limb(out, s, M, 0.27, 1.34, shR, elR, PART.uArm, PART.lArm, PART.hand, ELBOW, armR, i);
+    skirt.setMatrixAt(i, p.skirt ? out.multiplyMatrices(M, PART.skirt) : HIDDEN_MATRIX);
+    bag.setMatrixAt(i, p.bag ? out.multiplyMatrices(M, PART.bag) : HIDDEN_MATRIX);
+    headphones.setMatrixAt(i, p.headphones ? out.multiplyMatrices(M, PART.headphones) : HIDDEN_MATRIX);
+    limb(s, ARM, armL, i, -0.27, 1.34, shL, elL);
+    limb(s, ARM, armR, i, 0.27, 1.34, shR, elR);
     if (p.phone || p.camera) {
       out.multiplyMatrices(s.J, p.camera ? PART.camera : PART.phone);
       phone.setMatrixAt(i, out);
-    } else phone.setMatrixAt(i, zero);
-    limb(out, s, M, -0.1, 0.78, hipL, kneeL, PART.uLeg, PART.lLeg, PART.shoe, KNEE, legL, i);
-    limb(out, s, M, 0.1, 0.78, -hipL, kneeR, PART.uLeg, PART.lLeg, PART.shoe, KNEE, legR, i);
+    } else phone.setMatrixAt(i, HIDDEN_MATRIX);
+    limb(s, LEG, legL, i, -0.1, 0.78, hipL, kneeL);
+    limb(s, LEG, legR, i, 0.1, 0.78, -hipL, kneeR);
   }
-  for (const im of m.values()) im.instanceMatrix.needsUpdate = true;
+  m.forEach(markMatrixDirty);
 }
 
 const ROPE_POSTS = [-10, -7.5, -5, -2.5, 2.5, 5, 7.5, 10];
@@ -583,13 +594,14 @@ export default function People() {
   const [{ people, extras }] = useState(() => buildPeople());
   const refs = useRef(new Map<PartKey, InstancedMesh>());
   const phoneMat = useRef<MeshStandardMaterial>(null);
-  const scratch = useRef<Scratch>({ pos: new Vector3(), q: new Quaternion(), sc: new Vector3(), M: new Matrix4(), T: new Matrix4(), R: new Matrix4(), J: new Matrix4(), out: new Matrix4(), zero: new Matrix4().makeScale(0, 0, 0), frame: 0, limbs: null });
-  const bind = useCallback(
-    (key: PartKey) => (m: InstancedMesh | null) => {
-      if (refs.current.get(key) !== (m ?? undefined)) scratch.current.limbs = null;
-      if (m) refs.current.set(key, m);
-      else refs.current.delete(key);
-    },
+  const scratch = useRef<Scratch>({ pos: new Vector3(), q: new Quaternion(), sc: new Vector3(), M: new Matrix4(), T: new Matrix4(), R: new Matrix4(), J: new Matrix4(), out: new Matrix4(), frame: 0, limbs: null });
+  const bind = useMemo(
+    () =>
+      cachedByKey((key: PartKey) => (m: InstancedMesh | null) => {
+        if (refs.current.get(key) !== (m ?? undefined)) scratch.current.limbs = null;
+        if (m) refs.current.set(key, m);
+        else refs.current.delete(key);
+      }),
     [],
   );
   const geo = useMemo(

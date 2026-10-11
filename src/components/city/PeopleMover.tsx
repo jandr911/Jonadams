@@ -16,7 +16,7 @@ import {
 } from "three";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
-import { fillInstances } from "./instancing";
+import { fillInstances, setEmissiveIntensity } from "./instancing";
 import { labelTexture } from "./labels";
 import { PEOPLE_MOVER_X, PEOPLE_MOVER_Z, ROAD_HALF, roadLinesX, roadLinesZ } from "./layout";
 import { enableReflection } from "./layers";
@@ -109,10 +109,6 @@ const LED_GOLD = "#f3c46e";
 const LED_OFFSET = 0.77;
 const MAGLEV_PULSE = new Color("#fff3d0").multiplyScalar(4);
 
-function setLedGlow(mat: MeshStandardMaterial, night: number) {
-  mat.emissiveIntensity = 0.8 + night * 1.6;
-}
-
 function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: CanvasTexture }) {
   const joints = useRef<InstancedMesh>(null);
   const walkway = useRef<InstancedMesh>(null);
@@ -124,7 +120,7 @@ function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canv
   const dn = useDayNight();
   const [led] = useState(() => new MeshStandardMaterial({ color: "#2a2620", emissive: LED_GOLD, emissiveIntensity: 0, toneMapped: false }));
   useEffect(() => () => led.dispose(), [led]);
-  useEffect(() => setLedGlow(led, dn.night), [led, dn.night]);
+  useEffect(() => setEmissiveIntensity(led, 0.8 + dn.night * 1.6), [led, dn.night]);
   const dummy = useMemo(() => new Object3D(), []);
   const segLen = useMemo(() => curve.getLength() / GUIDEWAY_SEGMENTS, [curve]);
   useEffect(() => {
@@ -254,7 +250,7 @@ function TrainCar({ index, winMat, headMat }: { index: number; winMat?: React.Re
                 </mesh>
                 <mesh position={[0, 0.55, 0]}>
                   <sphereGeometry args={[0.14, 7, 6]} />
-                  <meshStandardMaterial color={["#e0ac7e", "#8d5524", "#f1c9a5", "#5c3a1e"][(k + x > 0 ? 1 : 0) % 4]} roughness={0.7} />
+                  <meshStandardMaterial color={k + x > 0 ? "#8d5524" : "#e0ac7e"} roughness={0.7} />
                 </mesh>
               </>
             )}
