@@ -2,7 +2,7 @@
 
 import { useFrame } from "@react-three/fiber";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BufferGeometry, CircleGeometry, Color, ConeGeometry, CylinderGeometry, DoubleSide, Group, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, Object3D, PlaneGeometry, Texture } from "three";
+import { BufferGeometry, CircleGeometry, Color, ConeGeometry, CylinderGeometry, DoubleSide, Group, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, PlaneGeometry, Texture } from "three";
 import { labelTexture } from "./labels";
 import { fillInstances, fillPlacements, mergeParts, useBaseBoxGeometry, type Placement } from "./instancing";
 import { useWindowMaterial } from "./useWindowMaterial";
@@ -19,7 +19,7 @@ const LOT = 11;
 const STREET = 62;
 const RING = 400;
 const GROUND = 0.25;
-const PAD = STREET - 7;
+const LOT_PAD = STREET - 7;
 const DETAIL_REACH = 560;
 const LIGHT_REACH = 1500;
 const VACANT_SHARE = 0.12;
@@ -93,9 +93,9 @@ function placed(x: number, y: number, z: number, sx: number, sy: number, sz: num
 }
 
 function placeFeatureBlock(kind: BlockKind, cx: number, cz: number, rand: () => number, f: Features, trees: TreePlace[], midrise: MidLot[]) {
-  const half = PAD / 2;
+  const half = LOT_PAD / 2;
   if (kind === "park") {
-    f.lawns.push(placed(cx, 0.02, cz, PAD - 2, 1, PAD - 2));
+    f.lawns.push(placed(cx, 0.02, cz, LOT_PAD - 2, 1, LOT_PAD - 2));
     f.fields.push(placed(cx + 9, 0.04, cz + 9, 9, 1, 9));
     f.boxes.push(placed(cx - 12, 1.5, cz - 12, 6, 3, 6, 0, new Color("#5a4636")));
     f.roofs.push(placed(cx - 12, 3, cz - 12, 1.3, 0.8, 1.3, 0, new Color("#3a3230")));
@@ -104,7 +104,7 @@ function placeFeatureBlock(kind: BlockKind, cx: number, cz: number, rand: () => 
   }
   if (kind === "church") {
     const body = new Color(pick(rand, BOX_COLORS.church));
-    f.lawns.push(placed(cx, 0.02, cz, PAD - 2, 1, PAD - 2));
+    f.lawns.push(placed(cx, 0.02, cz, LOT_PAD - 2, 1, LOT_PAD - 2));
     f.boxes.push(placed(cx - 6, 4.5, cz, 14, 9, 24, 0, body));
     f.roofs.push(placed(cx - 6, 9, cz, 2.05, 1.6, 3.5, 0, new Color("#3a3230")));
     f.boxes.push(placed(cx - 6, 8, cz + 10.5, 3.2, 16, 3.2, 0, body));
@@ -115,7 +115,7 @@ function placeFeatureBlock(kind: BlockKind, cx: number, cz: number, rand: () => 
   }
   if (kind === "school") {
     const body = new Color(pick(rand, BOX_COLORS.school));
-    f.lawns.push(placed(cx, 0.02, cz, PAD - 2, 1, PAD - 2));
+    f.lawns.push(placed(cx, 0.02, cz, LOT_PAD - 2, 1, LOT_PAD - 2));
     f.boxes.push(placed(cx, 4, cz - 14, 42, 8, 14, 0, body));
     f.boxes.push(placed(cx - 16, 2.5, cz - 2, 10, 5, 10, 0, body));
     f.lots.push(placed(cx + 12, 0.03, cz - 1, 22, 1, 12));
@@ -137,7 +137,7 @@ function placeFeatureBlock(kind: BlockKind, cx: number, cz: number, rand: () => 
     spot.placements.push(placed(cx, 4.2, cz - 11.9, 16, 3.2, 1, 0));
     f.boxes.push(placed(cx + 20, 4, cz + 8, 0.5, 8, 0.5, 0, new Color("#5a5a78")));
     spot.placements.push(placed(cx + 20, 9, cz + 8, 8, 2, 1, Math.PI / 2));
-    f.lawns.push(placed(cx, 0.02, cz + 18, PAD - 2, 1, 16));
+    f.lawns.push(placed(cx, 0.02, cz + 18, LOT_PAD - 2, 1, 16));
     for (let k = 0; k < 4; k++) trees.push({ x: cx + range(rand, -half + 3, half - 3), z: cz + range(rand, 13, half - 3), s: range(rand, 0.9, 1.3) });
     return;
   }
@@ -146,7 +146,7 @@ function placeFeatureBlock(kind: BlockKind, cx: number, cz: number, rand: () => 
       midrise.push({ x: cx + ox, z: cz + oz, w: 18, d: 13, h: range(rand, 9, 15), color: new Color(pick(rand, MID_COLORS)), seed: rand() * 100 });
     }
     f.lots.push(placed(cx, 0.03, cz - 1, 20, 1, 12));
-    f.lawns.push(placed(cx, 0.02, cz, PAD - 2, 1, PAD - 2));
+    f.lawns.push(placed(cx, 0.02, cz, LOT_PAD - 2, 1, LOT_PAD - 2));
     for (let k = 0; k < 6; k++) trees.push({ x: cx + range(rand, -half + 3, half - 3), z: cz + range(rand, -half + 3, half - 3), s: range(rand, 0.9, 1.5) });
     return;
   }
@@ -377,7 +377,7 @@ function Banks({ banks }: { banks: Bank[] }) {
   useEffect(() => {
     const m = ref.current;
     if (!m) return;
-    fillInstances(m, new Object3D(), banks.length, (i, d) => {
+    fillInstances(m, banks.length, (i, d) => {
       const b = banks[i];
       d.position.set(b.x, b.y, b.z);
       d.scale.set(b.w, b.h, b.d);
@@ -490,7 +490,7 @@ function useSuburbTextures(): SuburbTextures {
     const lawn = makeLawnTexture();
     lawn.repeat.set(2, 4.5);
     const concrete = makeConcreteTexture();
-    concrete.repeat.set(PAD / 4, PAD / 4);
+    concrete.repeat.set(LOT_PAD / 4, LOT_PAD / 4);
     return { shingles, lawn, concrete };
   }, []);
   useEffect(() => () => {
@@ -508,8 +508,7 @@ function Houses({ houses, pads, textures }: { houses: House[]; pads: { x: number
   const parts = useMemo(() => placeHouseParts(houses), [houses]);
   const { shingles, lawn, concrete } = textures;
   useEffect(() => {
-    const dummy = new Object3D();
-    fillInstances(padMesh.current, dummy, pads.length, (i, d) => {
+    fillInstances(padMesh.current, pads.length, (i, d) => {
       d.position.set(pads[i].x, 0, pads[i].z);
     });
   }, [pads]);
@@ -519,7 +518,7 @@ function Houses({ houses, pads, textures }: { houses: House[]; pads: { x: number
   return (
     <group name="houses">
       <instancedMesh ref={padMesh} args={[undefined, undefined, pads.length]} receiveShadow>
-        <boxGeometry args={[PAD, GROUND * 2, PAD]} />
+        <boxGeometry args={[LOT_PAD, GROUND * 2, LOT_PAD]} />
         <meshStandardMaterial color="#63615c" map={concrete} roughness={1} />
       </instancedMesh>
       <Parts items={parts.yard} geometry={YARD_GEOMETRY}>
@@ -554,7 +553,7 @@ function SuburbLights({ pads }: { pads: { x: number; z: number }[] }) {
   const headMat = useRef<MeshStandardMaterial>(null);
   const spots = useMemo(() => {
     const out: { x: number; z: number }[] = [];
-    const e = PAD / 2 - 0.7;
+    const e = LOT_PAD / 2 - 0.7;
     for (const p of pads) {
       if (Math.hypot(p.x, p.z - CITY_HALF_Z) > LIGHT_REACH) continue;
       out.push({ x: p.x - e, z: p.z - e });
@@ -563,9 +562,8 @@ function SuburbLights({ pads }: { pads: { x: number; z: number }[] }) {
     return out;
   }, [pads]);
   useEffect(() => {
-    const dummy = new Object3D();
-    fillInstances(poles.current, dummy, spots.length, (i, d) => d.position.set(spots[i].x, GROUND + 3.2, spots[i].z));
-    fillInstances(heads.current, dummy, spots.length, (i, d) => d.position.set(spots[i].x, GROUND + 6.3, spots[i].z));
+    fillInstances(poles.current, spots.length, (i, d) => d.position.set(spots[i].x, GROUND + 3.2, spots[i].z));
+    fillInstances(heads.current, spots.length, (i, d) => d.position.set(spots[i].x, GROUND + 6.3, spots[i].z));
   }, [spots]);
   useEffect(() => {
     if (headMat.current) headMat.current.emissiveIntensity = 0.1 + dn.night * 1.6;
@@ -598,7 +596,7 @@ function buildRingParking(pads: { x: number; z: number }[]): { slots: ParkingSlo
   for (const p of pads) {
     if (!nearDowntown(p.x, p.z) || rand() < 0.8) continue;
     const side = rand() < 0.5 ? -1 : 1;
-    slots.push({ x: p.x + side * (PAD / 2 + 1.7), z: p.z + range(rand, -PAD / 2 + 4, PAD / 2 - 4), rot: side < 0 ? 0 : Math.PI });
+    slots.push({ x: p.x + side * (LOT_PAD / 2 + 1.7), z: p.z + range(rand, -LOT_PAD / 2 + 4, LOT_PAD / 2 - 4), rot: side < 0 ? 0 : Math.PI });
     items.push({ kind: pick(rand, kinds), color: new Color(pick(rand, FLEET_COLORS)) });
   }
   return { slots, items };
@@ -634,7 +632,7 @@ function MidRise({ lots }: { lots: MidLot[] }) {
   useEffect(() => {
     const m = ref.current;
     if (!m) return;
-    fillInstances(m, new Object3D(), lots.length, (i, d) => {
+    fillInstances(m, lots.length, (i, d) => {
       const l = lots[i];
       d.position.set(l.x, 0, l.z);
       d.scale.set(l.w, l.h, l.d);
@@ -683,8 +681,7 @@ function SuburbStreets() {
     return out;
   }, []);
   useEffect(() => {
-    const dummy = new Object3D();
-    fillInstances(ref.current, dummy, items.length, (i, d) => {
+    fillInstances(ref.current, items.length, (i, d) => {
       d.position.set(items[i].x, -0.06, items[i].z);
       d.rotation.y = items[i].rot;
     });
@@ -754,9 +751,8 @@ function Freeway() {
   const pose = useCallback<PoseFn>((i, out, time) => poseFreewayCar(fleet, i, out, time), [fleet]);
   const pylonCount = Math.floor((FREEWAY_Z1 - FREEWAY_Z0) / 40);
   useEffect(() => {
-    const dummy = new Object3D();
-    fillInstances(pylons.current, dummy, pylonCount, (i, d) => d.position.set(FREEWAY_X, FREEWAY_Y / 2 - 0.5, FREEWAY_Z0 + i * 40));
-    fillInstances(lamps.current, dummy, pylonCount, (i, d) => d.position.set(FREEWAY_X + (i % 2 ? 7.5 : -7.5), FREEWAY_Y + 6, FREEWAY_Z0 + i * 40 + 20));
+    fillInstances(pylons.current, pylonCount, (i, d) => d.position.set(FREEWAY_X, FREEWAY_Y / 2 - 0.5, FREEWAY_Z0 + i * 40));
+    fillInstances(lamps.current, pylonCount, (i, d) => d.position.set(FREEWAY_X + (i % 2 ? 7.5 : -7.5), FREEWAY_Y + 6, FREEWAY_Z0 + i * 40 + 20));
   }, [pylonCount]);
   useEffect(() => {
     if (lampMat.current) lampMat.current.emissiveIntensity = 0.2 + dn.night * 1.3;
@@ -819,8 +815,7 @@ function Riprap() {
     return out;
   }, []);
   useEffect(() => {
-    const dummy = new Object3D();
-    fillInstances(ref.current, dummy, stones.length, (i, d) => {
+    fillInstances(ref.current, stones.length, (i, d) => {
       const st = stones[i];
       d.position.set(st.x, st.y, st.z);
       d.rotation.set(st.ry * 0.3, st.ry, 0);

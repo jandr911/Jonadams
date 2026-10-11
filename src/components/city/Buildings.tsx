@@ -8,7 +8,6 @@ import {
   InstancedBufferAttribute,
   InstancedMesh,
   MeshStandardMaterial,
-  Object3D,
 } from "three";
 import { useDayNight } from "./DayNightContext";
 import {
@@ -276,13 +275,12 @@ function InstancedLots({ lots }: { lots: Lot[] }) {
   const mat = useWindowMaterial({ glow: 0.1, architecture: true });
   const lotGeometry = useBaseBoxGeometry();
   const ref = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const seeds = useMemo(() => new Float32Array(lots.map((l) => l.seed)), [lots]);
   const arch = useMemo(() => new Float32Array(lots.flatMap((l) => [STYLE_CODE[l.style], l.blank, l.lit])), [lots]);
   useEffect(() => {
     const m = ref.current;
     if (!m) return;
-    fillInstances(m, dummy, lots.length, (i, d) => {
+    fillInstances(m, lots.length, (i, d) => {
       const l = lots[i];
       d.position.set(l.x, PAD + (l.y ?? 0), l.z);
       d.scale.set(l.w, l.h, l.d);
@@ -291,7 +289,7 @@ function InstancedLots({ lots }: { lots: Lot[] }) {
     m.geometry.setAttribute("aSeed", new InstancedBufferAttribute(seeds, 1));
     m.geometry.setAttribute("aArch", new InstancedBufferAttribute(arch, 3));
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
-  }, [lots, seeds, arch, dummy]);
+  }, [lots, seeds, arch]);
   return (
     <instancedMesh ref={ref} args={[lotGeometry, mat, lots.length]} castShadow receiveShadow />
   );
@@ -325,14 +323,13 @@ function ShopSigns({ spots, sign }: { spots: SignSpot[]; sign: (typeof SHOP_SIGN
   const tubeMat = useRef<MeshStandardMaterial>(null);
   const tex = useMemo(() => labelTexture(sign.text, { width: 512, height: 112, bg: sign.bg, fg: sign.fg, border: sign.border, size: 64, weathered: true }), [sign]);
   useEffect(() => {
-    const dummy = new Object3D();
-    fillInstances(ref.current, dummy, spots.length, (i, d) => {
+    fillInstances(ref.current, spots.length, (i, d) => {
       const it = spots[i];
       d.position.set(it.x, PAD + 3.8, it.z);
       d.rotation.set(0, it.rot, 0);
       d.scale.set(it.w, it.w * 0.22, 1);
     });
-    fillInstances(tubes.current, dummy, spots.length, (i, d) => {
+    fillInstances(tubes.current, spots.length, (i, d) => {
       const it = spots[i];
       d.position.set(it.x + Math.sin(it.rot) * 0.1, PAD + 3.8 - it.w * 0.11 - 0.12, it.z + Math.cos(it.rot) * 0.1);
       d.rotation.set(0, it.rot, 0);
@@ -359,7 +356,6 @@ function ShopSigns({ spots, sign }: { spots: SignSpot[]; sign: (typeof SHOP_SIGN
 
 function StreetLevel({ lots }: { lots: Lot[] }) {
   const awnings = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const rand = mulberry32(777);
     const awn: { x: number; z: number; rot: number; color: Color; w: number }[] = [];
@@ -395,7 +391,7 @@ function StreetLevel({ lots }: { lots: Lot[] }) {
   useEffect(() => {
     const a = awnings.current;
     if (!a) return;
-    fillInstances(a, dummy, items.awn.length, (i, d) => {
+    fillInstances(a, items.awn.length, (i, d) => {
       const it = items.awn[i];
       d.position.set(it.x, PAD + 3.1, it.z);
       d.rotation.set(0.35, it.rot, 0);
@@ -403,7 +399,7 @@ function StreetLevel({ lots }: { lots: Lot[] }) {
     });
     items.awn.forEach((it, i) => a.setColorAt(i, it.color));
     if (a.instanceColor) a.instanceColor.needsUpdate = true;
-  }, [items, dummy]);
+  }, [items]);
   return (
     <group name="street-level">
       <instancedMesh ref={awnings} args={[undefined, undefined, items.awn.length]}>
@@ -421,7 +417,7 @@ function ContactShadows({ lots }: { lots: Lot[] }) {
   useEffect(() => () => texture.dispose(), [texture]);
   const bases = useMemo(() => lots.filter((l) => !l.y), [lots]);
   useEffect(() => {
-    fillInstances(ref.current, new Object3D(), bases.length, (i, d) => {
+    fillInstances(ref.current, bases.length, (i, d) => {
       const l = bases[i];
       d.position.set(l.x, 0.46, l.z);
       d.rotation.set(-Math.PI / 2, 0, 0);
@@ -441,7 +437,6 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
   const tanks = useRef<InstancedMesh>(null);
   const masts = useRef<InstancedMesh>(null);
   const beaconMat = useRef<MeshStandardMaterial>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const tankLots = useMemo(() => lots.filter((l) => l.roofKind === 1 && !hasCrown(l)), [lots]);
   const bulkheads = useRef<InstancedMesh>(null);
   const units = useRef<InstancedMesh>(null);
@@ -512,27 +507,27 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
     if (skylightMat.current) skylightMat.current.emissiveIntensity = 0.05 + dn.night * 0.7;
   }, [dn]);
   useEffect(() => {
-    fillInstances(bulkheads.current, dummy, bulkLots.length, (i, d) => {
+    fillInstances(bulkheads.current, bulkLots.length, (i, d) => {
       const l = bulkLots[i];
       d.position.set(l.x - l.w * 0.2, PAD + l.h + 1.3, l.z + l.d * 0.15);
       d.scale.set(Math.min(3.2, l.w * 0.3), 1, Math.min(3.2, l.d * 0.3));
     });
-    fillInstances(units.current, dummy, unitLots.length, (i, d) => {
+    fillInstances(units.current, unitLots.length, (i, d) => {
       const u = unitLots[i];
       d.position.set(u.x, u.y, u.z);
       d.scale.set(u.s, 1, u.s);
     });
-    fillInstances(tanks.current, dummy, tankLots.length, (i, d) => {
+    fillInstances(tanks.current, tankLots.length, (i, d) => {
       const l = tankLots[i];
       d.position.set(l.x + l.w * 0.22, PAD + (l.y ?? 0) + l.h + 1.1, l.z - l.d * 0.2);
     });
-    fillInstances(masts.current, dummy, mastLots.length, (i, d) => {
+    fillInstances(masts.current, mastLots.length, (i, d) => {
       const l = mastLots[i];
       const mh = 3 + (l.h > 44 ? 5 : 0);
       d.position.set(l.x, PAD + topOf(l) + mh / 2, l.z);
       d.scale.set(1, mh, 1);
     });
-  }, [tankLots, mastLots, bulkLots, unitLots, dummy]);
+  }, [tankLots, mastLots, bulkLots, unitLots]);
   useEffect(() => {
     if (beaconMat.current) beaconMat.current.emissiveIntensity = 0.6 + dn.night * 3;
   }, [dn]);
@@ -607,7 +602,7 @@ function BillboardFaces({ spots, ad }: { spots: Placement[]; ad: (typeof BILLBOA
   const mat = useRef<MeshStandardMaterial>(null);
   const tex = useMemo(() => labelTexture(ad.text, { width: 512, height: 184, bg: ad.bg, fg: ad.fg, border: ad.border, size: 75, weathered: true }), [ad]);
   useEffect(() => {
-    fillInstances(ref.current, new Object3D(), spots.length, (i, d) => {
+    fillInstances(ref.current, spots.length, (i, d) => {
       const it = spots[i];
       d.position.set(it.x + Math.sin(it.ry) * 0.17, it.y, it.z + Math.cos(it.ry) * 0.17);
       d.rotation.set(0, it.ry, 0);
@@ -637,21 +632,20 @@ function RoofBillboards({ items }: { items: Placement[] }) {
     return groups;
   }, [items]);
   useEffect(() => {
-    const dummy = new Object3D();
-    fillInstances(backs.current, dummy, items.length, (i, d) => {
+    fillInstances(backs.current, items.length, (i, d) => {
       const it = items[i];
       d.position.set(it.x, it.y, it.z);
       d.rotation.set(0, it.ry, 0);
       d.scale.set(it.sx + 0.3, it.sy + 0.3, 0.3);
     });
-    fillInstances(legs.current, dummy, items.length * 2, (j, d) => {
+    fillInstances(legs.current, items.length * 2, (j, d) => {
       const it = items[j >> 1];
       const side = j & 1 ? 1 : -1;
       const legH = 2.6 - it.sy / 2;
       d.position.set(it.x + Math.cos(it.ry) * side * it.sx * 0.35, it.y - it.sy / 2 - legH / 2, it.z - Math.sin(it.ry) * side * it.sx * 0.35);
       d.scale.set(1, legH, 1);
     });
-    fillInstances(lamps.current, dummy, items.length, (i, d) => {
+    fillInstances(lamps.current, items.length, (i, d) => {
       const it = items[i];
       d.position.set(it.x + Math.sin(it.ry) * 0.35, it.y + it.sy / 2 + 0.12, it.z + Math.cos(it.ry) * 0.35);
       d.rotation.set(0, it.ry, 0);
@@ -873,7 +867,7 @@ function crownColor(l: Lot) {
 
 function fillCrowns(mesh: InstancedMesh | null, lots: Lot[]) {
   if (!mesh) return;
-  fillInstances(mesh, new Object3D(), lots.length, (i, d) => {
+  fillInstances(mesh, lots.length, (i, d) => {
     const l = lots[i];
     d.position.set(l.x, PAD + topOf(l), l.z);
     d.scale.set(l.w * CROWN_INSET, crownHeight(l), l.d * CROWN_INSET);
@@ -914,8 +908,7 @@ function GhostAdWall({ ad, lots }: { ad: (typeof GHOST_ADS)[number]; lots: Lot[]
   const ref = useRef<InstancedMesh>(null);
   const tex = useMemo(() => ghostAdTexture(ad.lines, ad.ground, ad.ink), [ad]);
   useEffect(() => {
-    const dummy = new Object3D();
-    fillInstances(ref.current, dummy, lots.length, (i, o) => {
+    fillInstances(ref.current, lots.length, (i, o) => {
       const l = lots[i];
       const side = l.blank === 1 ? 1 : -1;
       const { bottom, height } = adSpan(l);

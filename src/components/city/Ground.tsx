@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { Color, Group, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
+import { Color, Group, InstancedMesh, MeshStandardMaterial } from "three";
 import { useDayNight } from "./DayNightContext";
 import {
   BLOCK,
@@ -25,7 +25,6 @@ import { fillInstances } from "./instancing";
 
 function BlockPads() {
   const ref = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const concrete = useMemo(() => {
     const t = makeConcreteTexture();
     t.repeat.set(5, 5);
@@ -35,12 +34,12 @@ function BlockPads() {
   const blocks = useMemo(() => allBlocks(), []);
   const count = blocks.length;
   useEffect(() => {
-    fillInstances(ref.current, dummy, count, (i, d) => {
+    fillInstances(ref.current, count, (i, d) => {
       const [x, z] = blockCenter(blocks[i].c, blocks[i].r);
       d.position.set(x, PAD / 2, z);
       d.scale.set(BLOCK + 2.4, PAD, BLOCK + 2.4);
     });
-  }, [dummy, blocks, count]);
+  }, [blocks, count]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, count]} receiveShadow>
       <boxGeometry args={[1, 1, 1]} />
@@ -64,13 +63,12 @@ function Riverwalk() {
   const root = useRef<Group>(null);
   useEffect(() => enableReflection(root.current), []);
   const postsRef = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const postCount = 70;
   useEffect(() => {
-    fillInstances(postsRef.current, dummy, postCount, (i, d) => {
+    fillInstances(postsRef.current, postCount, (i, d) => {
       d.position.set(-RIVERWALK_HALF + (i / (postCount - 1)) * (RIVERWALK_HALF * 2), 0.9, WALK_Z1 - 1.2);
     });
-  }, [dummy]);
+  }, []);
   return (
     <group ref={root}>
       <mesh position={[0, 0.25, z0 + depth / 2]} receiveShadow>
@@ -132,10 +130,10 @@ function Asphalt() {
     return t;
   }, []);
   const asphaltFar = useMemo(() => {
-    const t = makeAsphaltTexture();
+    const t = asphalt.clone();
     t.repeat.set(400, 400);
     return t;
-  }, []);
+  }, [asphalt]);
   useEffect(() => () => asphalt.dispose(), [asphalt]);
   useEffect(() => () => asphaltFar.dispose(), [asphaltFar]);
   useEffect(() => {

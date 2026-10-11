@@ -1020,15 +1020,11 @@ function Fisher() {
   );
 }
 
-function setStadiumGlow(mat: MeshStandardMaterial, night: number) {
-  mat.emissiveIntensity = 0.3 + night * 4;
-}
-
 function StadiumLights({ radius, height, count }: { radius: number; height: number; count: number }) {
   const dn = useDayNight();
   const [lamp] = useState(() => new MeshStandardMaterial({ color: "#fff6d8", emissive: "#fff2c0", emissiveIntensity: 3, toneMapped: false }));
   useEffect(() => () => lamp.dispose(), [lamp]);
-  useEffect(() => setStadiumGlow(lamp, dn.night), [lamp, dn.night]);
+  useEffect(() => setEmissiveIntensity(lamp, 0.3 + dn.night * 4), [lamp, dn.night]);
   return (
     <group>
       {Array.from({ length: count }).map((_, i) => {

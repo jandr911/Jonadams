@@ -2,7 +2,7 @@
 
 import { Text } from "@react-three/drei";
 import { useEffect, useMemo, useRef } from "react";
-import { AdditiveBlending, Color, InstancedMesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
+import { AdditiveBlending, Color, InstancedMesh, MeshBasicMaterial, MeshStandardMaterial } from "three";
 import { useDayNight } from "./DayNightContext";
 import { CITY_HALF_X, CITY_HALF_Z, CORNER_OFFSET, CROSSWALK_OFFSET, OUTER_HALF_X, OUTER_MIN_Z, PITCH, ROAD_HALF, STREETS_EW, STREETS_NS, WOODWARD_INDEX, nearIntersection, outerRoadLinesX, outerRoadLinesZ, roadLinesX, roadLinesZ } from "./layout";
 import { DISPLAY_FONT } from "./NeonSign";
@@ -18,7 +18,6 @@ const ROAD_ZS = roadLinesZ();
 function LaneDashes() {
   const ref = useRef<InstancedMesh>(null);
   const dn = useDayNight();
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const out: { x: number; z: number; rot: number }[] = [];
     const step = 4.5;
@@ -37,11 +36,11 @@ function LaneDashes() {
     return out;
   }, []);
   useEffect(() => {
-    fillInstances(ref.current, dummy, items.length, (i, d) => {
+    fillInstances(ref.current, items.length, (i, d) => {
       d.position.set(items[i].x, 0.03, items[i].z);
       d.rotation.set(0, items[i].rot, 0);
     });
-  }, [items, dummy]);
+  }, [items]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <boxGeometry args={[0.28, 0.04, 2.2]} />
@@ -53,7 +52,6 @@ function LaneDashes() {
 function EdgeLines() {
   const ref = useRef<InstancedMesh>(null);
   const dn = useDayNight();
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const out: { x: number; z: number; rot: number; len: number }[] = [];
     const xs = outerRoadLinesX();
@@ -75,12 +73,12 @@ function EdgeLines() {
     return out;
   }, []);
   useEffect(() => {
-    fillInstances(ref.current, dummy, items.length, (i, d) => {
+    fillInstances(ref.current, items.length, (i, d) => {
       d.position.set(items[i].x, 0.03, items[i].z);
       d.rotation.set(0, items[i].rot, 0);
       d.scale.set(1, 1, items[i].len);
     });
-  }, [items, dummy]);
+  }, [items]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <boxGeometry args={[0.18, 0.03, 1]} />
@@ -91,7 +89,6 @@ function EdgeLines() {
 
 function Crosswalks() {
   const ref = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const out: { x: number; z: number; rot: number }[] = [];
     for (const x of outerRoadLinesX()) {
@@ -107,11 +104,11 @@ function Crosswalks() {
     return out;
   }, []);
   useEffect(() => {
-    fillInstances(ref.current, dummy, items.length, (i, d) => {
+    fillInstances(ref.current, items.length, (i, d) => {
       d.position.set(items[i].x, 0.025, items[i].z);
       d.rotation.set(0, items[i].rot, 0);
     });
-  }, [items, dummy]);
+  }, [items]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <boxGeometry args={[0.5, 0.03, 1.6]} />
@@ -124,16 +121,15 @@ function LightPools({ items }: { items: { x: number; z: number }[] }) {
   const dn = useDayNight();
   const ref = useRef<InstancedMesh>(null);
   const poolMat = useRef<MeshBasicMaterial>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const texture = useMemo(() => makePoolTexture(), []);
   useEffect(() => () => texture.dispose(), [texture]);
   useEffect(() => {
-    fillInstances(ref.current, dummy, items.length, (i, d) => {
+    fillInstances(ref.current, items.length, (i, d) => {
       d.position.set(items[i].x, 0.06, items[i].z);
       d.rotation.set(-Math.PI / 2, 0, 0);
       d.scale.set(9, 9, 1);
     });
-  }, [items, dummy]);
+  }, [items]);
   useEffect(() => {
     if (poolMat.current) poolMat.current.opacity = 0.55 * dn.night;
   }, [dn]);
@@ -150,7 +146,6 @@ function Streetlights() {
   const poles = useRef<InstancedMesh>(null);
   const heads = useRef<InstancedMesh>(null);
   const headMat = useRef<MeshStandardMaterial>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const out: { x: number; z: number }[] = [];
     for (const x of outerRoadLinesX()) {
@@ -162,9 +157,9 @@ function Streetlights() {
     return out;
   }, []);
   useEffect(() => {
-    fillInstances(poles.current, dummy, items.length, (i, d) => d.position.set(items[i].x, 3.2, items[i].z));
-    fillInstances(heads.current, dummy, items.length, (i, d) => d.position.set(items[i].x, 6.3, items[i].z));
-  }, [items, dummy]);
+    fillInstances(poles.current, items.length, (i, d) => d.position.set(items[i].x, 3.2, items[i].z));
+    fillInstances(heads.current, items.length, (i, d) => d.position.set(items[i].x, 6.3, items[i].z));
+  }, [items]);
   useEffect(() => {
     if (!headMat.current) return;
     headMat.current.emissiveIntensity = 0.1 + dn.night * 1.2;
@@ -193,7 +188,6 @@ function Streetlights() {
 
 function WoodwardMedian() {
   const ref = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const segments = useMemo(() => {
     const out: { z: number; len: number }[] = [];
     for (let i = 0; i < ROAD_ZS.length - 1; i++) out.push({ z: (ROAD_ZS[i] + ROAD_ZS[i + 1]) / 2, len: PITCH - 12 });
@@ -201,11 +195,11 @@ function WoodwardMedian() {
   }, []);
   useEffect(() => {
     const x = ROAD_XS[WOODWARD_INDEX];
-    fillInstances(ref.current, dummy, segments.length, (i, d) => {
+    fillInstances(ref.current, segments.length, (i, d) => {
       d.position.set(x, 0.12, segments[i].z);
       d.scale.set(1, 1, segments[i].len);
     });
-  }, [segments, dummy]);
+  }, [segments]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, segments.length]}>
       <boxGeometry args={[1.2, 0.24, 1]} />

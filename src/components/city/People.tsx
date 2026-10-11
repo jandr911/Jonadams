@@ -2,7 +2,7 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BoxGeometry, BufferGeometry, Color, InstancedMesh, Matrix4, MeshStandardMaterial, Quaternion, SphereGeometry, TorusGeometry, Vector3 } from "three";
+import { BoxGeometry, BufferGeometry, Color, DoubleSide, InstancedMesh, Matrix4, MeshStandardMaterial, Quaternion, SphereGeometry, TorusGeometry, Vector3 } from "three";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import { HIDDEN_MATRIX, cachedByKey, mergeParts } from "./instancing";
@@ -534,7 +534,7 @@ function ConeyCart({ at }: { at: [number, number, number] }) {
       </mesh>
       <mesh position={[0, 2.6, 0]}>
         <coneGeometry args={[1.8, 0.6, 10, 1, true]} />
-        <meshStandardMaterial color="#c8102e" side={2} roughness={0.8} />
+        <meshStandardMaterial color="#c8102e" side={DoubleSide} roughness={0.8} />
       </mesh>
       <mesh position={[0, 1.02, 0.68]}>
         <boxGeometry args={[2.2, 0.5, 0.02]} />

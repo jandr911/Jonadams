@@ -2,7 +2,7 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BoxGeometry, CapsuleGeometry, Color, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
+import { BoxGeometry, CapsuleGeometry, Color, DoubleSide, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
 import { useDayNight } from "./DayNightContext";
 import { fillInstances } from "./instancing";
 import MacArthurBridge from "./MacArthurBridge";
@@ -207,10 +207,10 @@ function Gulls() {
         <meshStandardMaterial color="#f4f1ea" />
       </instancedMesh>
       <instancedMesh ref={wingL} args={[GULL_WING_LEFT, undefined, flock.length]} frustumCulled={false}>
-        <meshStandardMaterial color="#e8e2d2" side={2} />
+        <meshStandardMaterial color="#e8e2d2" side={DoubleSide} />
       </instancedMesh>
       <instancedMesh ref={wingR} args={[GULL_WING_RIGHT, undefined, flock.length]} frustumCulled={false}>
-        <meshStandardMaterial color="#e8e2d2" side={2} />
+        <meshStandardMaterial color="#e8e2d2" side={DoubleSide} />
       </instancedMesh>
     </group>
   );
@@ -387,7 +387,7 @@ function SatelliteDishes() {
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <sphereGeometry args={[0.55, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2.4]} />
-      <meshStandardMaterial color="#d8d8e0" roughness={0.5} metalness={0.3} side={2} />
+      <meshStandardMaterial color="#d8d8e0" roughness={0.5} metalness={0.3} side={DoubleSide} />
     </instancedMesh>
   );
 }

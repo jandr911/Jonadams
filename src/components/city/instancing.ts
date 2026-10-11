@@ -3,8 +3,15 @@ import { BoxGeometry, BufferAttribute, Matrix4, Object3D } from "three";
 import type { BufferGeometry, Color, InstancedMesh, MeshStandardMaterial } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
-export function fillInstances(mesh: InstancedMesh | null, dummy: Object3D, count: number, place: (i: number, d: Object3D) => void) {
+type PlaceInstance = (i: number, d: Object3D) => void;
+
+const scratch = new Object3D();
+
+export function fillInstances(mesh: InstancedMesh | null, count: number, place: PlaceInstance): void;
+export function fillInstances(mesh: InstancedMesh | null, dummy: Object3D, count: number, place: PlaceInstance): void;
+export function fillInstances(mesh: InstancedMesh | null, ...args: [number, PlaceInstance] | [Object3D, number, PlaceInstance]) {
   if (!mesh) return;
+  const [dummy, count, place] = args.length === 2 ? [scratch, ...args] : args;
   for (let i = 0; i < count; i++) {
     dummy.position.set(0, 0, 0);
     dummy.rotation.set(0, 0, 0);
@@ -31,7 +38,7 @@ export interface Placement {
 
 export function fillPlacements(mesh: InstancedMesh | null, items: Placement[]) {
   if (!mesh) return;
-  fillInstances(mesh, new Object3D(), items.length, (i, d) => {
+  fillInstances(mesh, items.length, (i, d) => {
     const it = items[i];
     d.position.set(it.x, it.y, it.z);
     d.rotation.set(it.rx ?? 0, it.ry, 0);

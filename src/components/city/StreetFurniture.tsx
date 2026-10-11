@@ -69,9 +69,7 @@ function benchGeometry() {
   return mergeParts([seat, back, ...legs, ...arm], "bench");
 }
 function rackGeometry() {
-  const u = new TorusGeometry(0.4, 0.03, 6, 14, Math.PI).toNonIndexed();
-  u.translate(0, 0.4, 0);
-  return u;
+  return new TorusGeometry(0.4, 0.03, 6, 14, Math.PI).translate(0, 0.4, 0);
 }
 function bikeGeometry() {
   const wheelA = new TorusGeometry(0.34, 0.025, 6, 16);
@@ -142,8 +140,7 @@ function drainGeometry() {
   return mergeParts([frame, ...bars], "drain");
 }
 function rampGeometry() {
-  const r = new BoxGeometry(1.6, CURB_HEIGHT, RAMP_LENGTH).toNonIndexed();
-  return r;
+  return new BoxGeometry(1.6, CURB_HEIGHT, RAMP_LENGTH);
 }
 
 function buildItems(): Item[] {
