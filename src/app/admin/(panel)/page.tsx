@@ -1,0 +1,31 @@
+import Link from "next/link";
+import { getContent } from "@/lib/content";
+import { SECTIONS } from "./sections";
+
+export default async function AdminHome() {
+  const { listen, watch, creatives, links } = await getContent();
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const counts: Record<string, string> = {
+    "/admin/videos/listen": plural(listen.length, "video", "videos"),
+    "/admin/videos/watch": plural(watch.length, "video", "videos"),
+    "/admin/creatives": plural(creatives.length, "person", "people"),
+    "/admin/links": `${links.filter((l) => l.href).length} showing`,
+  };
+  return (
+    <>
+      <header className="admin-head">
+        <h1 className="admin-title">What would you like to change?</h1>
+        <p className="admin-lede">Pick a part of the site. Whatever you save shows on the site straight away.</p>
+      </header>
+      <nav className="admin-menu" aria-label="Sections">
+        {SECTIONS.map((s) => (
+          <Link key={s.href} href={s.href} className="admin-menu__item">
+            <span className="admin-menu__label">{s.label}</span>
+            <span className="admin-menu__note">{s.note}</span>
+            {counts[s.href] && <span className="admin-menu__count">{counts[s.href]}</span>}
+          </Link>
+        ))}
+      </nav>
+    </>
+  );
+}

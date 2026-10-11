@@ -1,31 +1,19 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { destinationById } from "@/components/city/layout";
 import Room, { districtIndex, roomMetadata } from "@/components/Room";
-import { CLUB_WALLS, ROOMS } from "@/content/site";
+import ClubScene from "@/components/room/ClubScene";
+import { getContent } from "@/lib/content";
 
-export const metadata: Metadata = roomMetadata("club", ROOMS.club.description);
+export async function generateMetadata(): Promise<Metadata> {
+  const { copy } = await getContent();
+  return roomMetadata(copy, "club", copy.ROOMS.club.description);
+}
 
-export default function ClubPage() {
-  return (
-    <Room district="club" lead={ROOMS.club.lead}>
-      <div className="grid-2">
-        {CLUB_WALLS.map((w) => {
-          const d = destinationById(w.district);
-          return (
-            <Link key={w.label} href={d.href} className="panel wall-card" style={{ ["--accent" as string]: d.accent }}>
-              <div className="wall-card__art" aria-hidden>
-                <span className="wall-card__index">{districtIndex(w.district)}</span>
-              </div>
-              <div className="wall-card__body">
-                <span className="wall-card__label">{w.label}</span>
-                <span className="wall-card__note">{w.note}</span>
-              </div>
-              <span className="wall-card__arrow" aria-hidden>→</span>
-            </Link>
-          );
-        })}
-      </div>
-    </Room>
-  );
+export default async function ClubPage() {
+  const { copy } = await getContent();
+  const walls = copy.CLUB_WALLS.map((w) => {
+    const d = destinationById(w.district);
+    return { district: w.district, href: d.href, accent: d.accent, index: districtIndex(w.district), label: w.label, note: w.note };
+  });
+  return <Room district="club" scene={{ art: <ClubScene walls={walls} />, phone: null, plaques: copy.CLUB_DESK, links: walls }} />;
 }

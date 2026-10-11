@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { HEADER } from "@/content/site";
+import { useCopy } from "@/content/CopyProvider";
 
 export interface MenuLink {
   href: string;
@@ -21,6 +21,7 @@ interface MenuCta {
 const DESKTOP = "(min-width: 900px)";
 
 export default function SiteMenu({ links, cta, current }: { links: MenuLink[]; cta: MenuCta; current?: string }) {
+  const { HEADER } = useCopy();
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLElement>(null);

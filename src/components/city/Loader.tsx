@@ -2,7 +2,10 @@
 
 import { useProgress } from "@react-three/drei";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { COORDINATES, EQ_BARS, LOADER, SITE, TAGLINE } from "@/content/site";
+import { fill } from "@/content/copy";
+import { COORDINATES, EQ_BARS } from "@/content/site";
+import { useCopy } from "@/content/CopyProvider";
+import { startMusic, useMusicStatus } from "../SiteMusic";
 
 const VISITED_KEY = "city-visited";
 
@@ -38,11 +41,6 @@ export function markVisited() {
 
 const RAMP_MS = 2800;
 const QUICK_RAMP_MS = 700;
-const STAGES: [number, string][] = [
-  [30, LOADER.stages.skyline],
-  [62, LOADER.stages.neon],
-  [100, LOADER.stages.doors],
-];
 const BARS = [...EQ_BARS, 0.85, 0.5];
 
 const DETROIT_SKYLINE_FROM_WINDSOR = [
@@ -103,11 +101,21 @@ function Skyline({ mirror = false }: { mirror?: boolean }) {
   );
 }
 
-export default function Loader({ ready, returning }: { ready: boolean; returning: boolean }) {
+type LoaderProps = { ready: boolean; released: boolean; onRelease: () => void; returning: boolean };
+
+export default function Loader({ ready, released, onRelease, returning }: LoaderProps) {
+  const { LOADER, MUSIC, SITE, TAGLINE } = useCopy();
+  const stages: [number, string][] = [
+    [30, LOADER.stages.skyline],
+    [62, LOADER.stages.neon],
+    [100, LOADER.stages.doors],
+  ];
   const { progress: assets } = useProgress();
   const [shown, setShown] = useState(0);
   const [done, setDone] = useState(false);
   const [gone, setGone] = useState(false);
+  const music = useMusicStatus();
+  const awaitingEnter = ready && !released && Boolean(MUSIC.src) && music === "blocked";
   const start = useRef(0);
   const assetsRef = useRef(0);
   const shownRef = useRef(0);
@@ -137,19 +145,23 @@ export default function Loader({ ready, returning }: { ready: boolean; returning
   }, [ready, returning]);
 
   useEffect(() => {
-    if (!ready) return;
+    if (ready && !released && !awaitingEnter) onRelease();
+  }, [ready, released, awaitingEnter, onRelease]);
+
+  useEffect(() => {
+    if (!released) return;
     const a = setTimeout(() => setDone(true), returning ? 120 : 500);
     const b = setTimeout(() => setGone(true), returning ? 900 : 2100);
     return () => {
       clearTimeout(a);
       clearTimeout(b);
     };
-  }, [ready, returning]);
+  }, [released, returning]);
 
   if (gone) return null;
   const pct = Math.round(shown);
   const welcome = returning ? LOADER.welcomeBack : LOADER.welcome;
-  const stage = ready ? welcome : STAGES.find(([max]) => pct < max)?.[1] ?? LOADER.stages.doors;
+  const stage = ready ? welcome : stages.find(([max]) => pct < max)?.[1] ?? LOADER.stages.doors;
 
   return (
     <div className={`loader ${returning ? "loader--quick" : ""} ${done ? "is-done" : ""}`} aria-busy={!ready}>
@@ -171,17 +183,17 @@ export default function Loader({ ready, returning }: { ready: boolean; returning
 
       <span className="loader__corner loader__corner--tl" aria-hidden>
         <i className="loader__dot" />
-        {LOADER.established}
+        {fill(LOADER.established, { year: SITE.year, city: SITE.city })}
       </span>
       <span className="loader__corner loader__corner--tr" aria-hidden>{LOADER.nowEntering}</span>
 
-      <div className="loader__center" aria-hidden>
-        <span className="loader__eyebrow">{LOADER.presents}</span>
-        <div className="loader__title">
+      <div className="loader__center">
+        <span className="loader__eyebrow" aria-hidden>{fill(LOADER.presents, { artist: SITE.artist })}</span>
+        <div className="loader__title" aria-hidden>
           <span style={{ animationDelay: "0.1s" }}>{SITE.surname}</span>
           <span style={{ animationDelay: "0.3s" }}>{SITE.cityName}</span>
         </div>
-        <span className="loader__caps">{LOADER.caps}</span>
+        <span className="loader__caps" aria-hidden>{LOADER.caps}</span>
 
         <div className="loader__eq" aria-hidden>
           {BARS.map((h, i) => (
@@ -189,13 +201,26 @@ export default function Loader({ ready, returning }: { ready: boolean; returning
           ))}
         </div>
 
-        <div className="loader__meter">
+        <div className="loader__meter" aria-hidden>
           <span className="loader__stage">{stage}</span>
           <span className="loader__pct">{pct}</span>
           <div className="loader__bar">
             <div style={{ width: `${shown}%` }} />
           </div>
         </div>
+
+        {awaitingEnter && (
+          <button
+            type="button"
+            className="btn-outline loader__enter"
+            onClick={() => {
+              startMusic();
+              onRelease();
+            }}
+          >
+            {LOADER.enter}
+          </button>
+        )}
       </div>
 
       <span className="loader__corner loader__corner--bl" aria-hidden>{TAGLINE}</span>

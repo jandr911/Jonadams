@@ -1,5 +1,4 @@
 import { Color } from "three";
-import { CITY_HUD } from "@/content/site";
 
 export type TimePreset = "auto" | "day" | "dusk" | "night";
 
@@ -66,7 +65,7 @@ function smooth(a: number, b: number, x: number) {
   return t * t * (3 - 2 * t);
 }
 
-export function presetHour(preset: TimePreset, now = new Date()): number {
+export function presetHour(preset: TimePreset, now?: Date): number {
   switch (preset) {
     case "day":
       return 13;
@@ -74,8 +73,10 @@ export function presetHour(preset: TimePreset, now = new Date()): number {
       return 19.4;
     case "night":
       return 23;
-    default:
-      return now.getHours() + now.getMinutes() / 60;
+    default: {
+      const at = now ?? new Date();
+      return at.getHours() + at.getMinutes() / 60;
+    }
   }
 }
 
@@ -120,9 +121,11 @@ export function computeDayNight(hour: number, cloud = OVERCAST_BASELINE): DayNig
   };
 }
 
-export function labelFor(hour: number) {
-  if (hour >= 6 && hour < 8) return CITY_HUD.phases.sunrise;
-  if (hour >= 8 && hour < 18) return CITY_HUD.phases.day;
-  if (hour >= 18 && hour < 21) return CITY_HUD.phases.dusk;
-  return CITY_HUD.phases.night;
+export type Phase = "sunrise" | "day" | "dusk" | "night";
+
+export function phaseFor(hour: number): Phase {
+  if (hour >= 6 && hour < 8) return "sunrise";
+  if (hour >= 8 && hour < 18) return "day";
+  if (hour >= 18 && hour < 21) return "dusk";
+  return "night";
 }

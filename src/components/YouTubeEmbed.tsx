@@ -1,29 +1,31 @@
-import { ROOMS, type VideoSlot } from "@/content/site";
+import type { VideoSlot } from "@/content/site";
 import { indexLabel } from "./city/layout";
+import YouTubeFrame from "./YouTubeFrame";
+import { youtubeHref } from "./youtube";
 
-export default function YouTubeEmbed({ slot, index }: { slot: VideoSlot; index: number }) {
+export default function YouTubeEmbed({ slot, index, pending, openYoutube }: { slot: VideoSlot; index: number; pending: string; openYoutube: string }) {
   return (
     <figure className="media-card">
       <div className="media-card__frame">
         {slot.id ? (
-          <iframe
-            src={`https://www.youtube-nocookie.com/embed/${slot.id}?rel=0&modestbranding=1`}
-            title={slot.title}
-            loading="lazy"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
+          <YouTubeFrame slot={slot} />
         ) : (
           <div className="media-card__empty">
             <span className="media-card__play" aria-hidden />
-            <span className="eyebrow">{ROOMS.listen.pending}</span>
+            <span className="eyebrow">{pending}</span>
           </div>
         )}
       </div>
       <figcaption className="media-card__caption">
         <span className="media-card__index">{indexLabel(index)}</span>
         <span className="media-card__title">{slot.title}</span>
-        <span className="media-card__kind">{slot.kind}</span>
+        {slot.id ? (
+          <a className="media-card__kind media-card__link" href={youtubeHref(slot.id)} target="_blank" rel="noreferrer">
+            {openYoutube}
+          </a>
+        ) : (
+          <span className="media-card__kind">{slot.kind}</span>
+        )}
       </figcaption>
     </figure>
   );

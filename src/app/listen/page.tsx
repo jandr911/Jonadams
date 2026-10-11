@@ -1,31 +1,22 @@
 import type { Metadata } from "next";
-import { destinationById } from "@/components/city/layout";
-import Room, { districtIndex, roomMetadata } from "@/components/Room";
+import Room, { roomLinks, roomMetadata } from "@/components/Room";
+import ListenScene from "@/components/room/ListenScene";
 import YouTubeEmbed from "@/components/YouTubeEmbed";
-import { ROOMS, VIDEOS, VISUALS, districtEyebrow } from "@/content/site";
+import { getContent } from "@/lib/content";
 
-export const metadata: Metadata = roomMetadata("listen", ROOMS.listen.description);
+export async function generateMetadata(): Promise<Metadata> {
+  const { copy } = await getContent();
+  return roomMetadata(copy, "listen", copy.ROOMS.listen.description);
+}
 
-export default function ListenPage() {
-  const live = VIDEOS.some((v) => v.id);
-  return (
-    <Room district="listen" lead={live ? ROOMS.listen.lead : ROOMS.listen.leadEmpty}>
-      <div className="grid-2">
-        {VIDEOS.map((v, i) => (
-          <YouTubeEmbed key={v.title} slot={v} index={i} />
-        ))}
-      </div>
-
-      <section id="watch" className="room__section">
-        <span className="eyebrow">{districtEyebrow(districtIndex("watch"))}</span>
-        <h2 className="room__subtitle">{destinationById("watch").label}</h2>
-        <p className="room__lead">{ROOMS.watch.lead}</p>
-        <div className="grid-2">
-          {VISUALS.map((v, i) => (
-            <YouTubeEmbed key={v.title} slot={v} index={i} />
-          ))}
-        </div>
-      </section>
-    </Room>
+export default async function ListenPage() {
+  const { copy, listen } = await getContent();
+  const phone = (
+    <div className="stage__list">
+      {listen.map((v, i) => (
+        <YouTubeEmbed key={v.uid} slot={v} index={i} pending={copy.ROOMS.listen.pending} openYoutube={copy.ROOMS.listen.openYoutube} />
+      ))}
+    </div>
   );
+  return <Room district="listen" scene={{ art: <ListenScene videos={listen} />, phone, plaques: copy.LISTEN_DESK, links: roomLinks(["club", "watch", "creatives"]) }} />;
 }

@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Space_Grotesk } from "next/font/google";
-import { DESCRIPTION, SITE } from "@/content/site";
+import SiteMusicGate from "@/components/SiteMusicGate";
+import { CopyProvider } from "@/content/CopyProvider";
+import { fill } from "@/content/copy";
+import { SHARE_IMAGE } from "@/content/site";
+import { getContent } from "@/lib/content";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -15,20 +19,29 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-body",
 });
 
-export const metadata: Metadata = {
-  title: { default: SITE.name, template: `%s · ${SITE.name}` },
-  description: DESCRIPTION,
-  openGraph: { type: "website", siteName: SITE.name, title: SITE.name, description: DESCRIPTION },
-  twitter: { card: "summary_large_image", title: SITE.name, description: DESCRIPTION },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { copy } = await getContent();
+  const { SITE, DESCRIPTION } = copy;
+  const images = { url: "/opengraph-image", ...SHARE_IMAGE, alt: fill(SHARE_IMAGE.alt, { name: SITE.name, artist: SITE.artist }) };
+  return {
+    title: { default: SITE.name, template: `%s · ${SITE.name}` },
+    description: DESCRIPTION,
+    openGraph: { type: "website", siteName: SITE.name, title: SITE.name, description: DESCRIPTION, images },
+    twitter: { card: "summary_large_image", title: SITE.name, description: DESCRIPTION, images },
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const { copy } = await getContent();
   return (
     <html lang="en">
       <body className={`${cormorant.variable} ${spaceGrotesk.variable} antialiased`}>
-        {children}
+        <CopyProvider copy={copy}>
+          {children}
+          {copy.MUSIC.src && <SiteMusicGate />}
+        </CopyProvider>
       </body>
     </html>
   );

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HEADER, SITE } from "@/content/site";
+import { getContent } from "@/lib/content";
 import { DESTINATIONS, indexLabel } from "./city/layout";
 import SiteMenu, { type MenuLink } from "./SiteMenu";
 import Wordmark from "./Wordmark";
@@ -12,7 +12,9 @@ const NAV: MenuLink[] = DESTINATIONS.map((d, i) => ({
   index: indexLabel(i),
 }));
 
-export default function SiteHeader({ back = false, current }: { back?: boolean; current?: string }) {
+export default async function SiteHeader({ back = false, current }: { back?: boolean; current?: string }) {
+  const { copy } = await getContent();
+  const { HEADER, SITE } = copy;
   const cta = back
     ? { href: "/", label: HEADER.back, short: HEADER.backShort }
     : { href: SITE.joinHref, label: HEADER.join, short: HEADER.joinShort };

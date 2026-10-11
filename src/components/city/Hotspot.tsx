@@ -17,12 +17,12 @@ import {
   UniformsLib,
   UniformsUtils,
 } from "three";
-import { SITE } from "@/content/site";
 import { useCity, useHovered } from "./CityContext";
 import { HOLOGRAM_TIME } from "./HologramClock";
 import { gradientColors } from "./instancing";
 import { seedOf } from "./rng";
 import { HOVER_SCALE, LABEL_FADE_STYLE, type Destination } from "./layout";
+import { useCopy } from "@/content/CopyProvider";
 
 const BEACON_HEIGHT = 10;
 const CRYSTAL_LIFT = 1.6;
@@ -114,6 +114,7 @@ interface HotspotProps {
 }
 
 export default function Hotspot({ dest, position, children }: HotspotProps) {
+  const { SITE } = useCopy();
   const { setHovered, flyTo, navigating } = useCity();
   const { hovered, leaving } = useHovered();
   const lift = useRef(0);

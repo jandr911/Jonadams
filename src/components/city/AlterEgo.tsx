@@ -4,7 +4,8 @@ import { Html, useTexture } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
 import { Color, DoubleSide, Group, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, SRGBColorSpace, Vector3, type Texture } from "three";
-import { ALTER_EGO } from "@/content/site";
+import { ALTER_EGO_ART } from "@/content/site";
+import { useCopy } from "@/content/CopyProvider";
 import { DETROIT_POLICE, HELI_PITCH, HELI_SKID_DROP, HELI_SKID_X, HelicopterBody, spinHelicopter, type HelicopterParts } from "./Aircraft";
 import { useCity } from "./CityContext";
 import { type DayNight } from "./dayNight";
@@ -16,10 +17,10 @@ import { makeShadowBlobTexture } from "./textures";
 
 const STAND_H = 20;
 const WALK_H = STAND_H * 1.075;
-const STANDING = { src: ALTER_EGO.art.standing, aspect: 430 / 775, anchor: { x: -0.0721, y: 0 } };
-const SMOKE = { src: ALTER_EGO.art.smoke, aspect: 314 / 298, height: 0.3845 * STAND_H, anchor: { x: -0.4108, y: 0 } };
+const STANDING = { src: ALTER_EGO_ART.standing, aspect: 430 / 775, anchor: { x: -0.0721, y: 0 } };
+const SMOKE = { src: ALTER_EGO_ART.smoke, aspect: 314 / 298, height: 0.3845 * STAND_H, anchor: { x: -0.4108, y: 0 } };
 const SMOKE_ROOT = new Vector3(-0.0942 * STAND_H, 0.9626 * STAND_H, 0.02);
-const WALKING = { src: ALTER_EGO.art.walking, aspect: 394 / 913, anchor: { x: 0.04, y: 0.62 } };
+const WALKING = { src: ALTER_EGO_ART.walking, aspect: 394 / 913, anchor: { x: 0.04, y: 0.62 } };
 const ROPE_END = new Vector3(0, (0.9 - WALKING.anchor.y) * WALK_H, -0.8);
 const ROPE = 12;
 
@@ -456,6 +457,7 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
     }
   });
 
+  const { ALTER_EGO } = useCopy();
   const named = ALTER_EGO.name.length > 0;
 
   return (

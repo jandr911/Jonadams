@@ -1,39 +1,40 @@
 import type { Metadata } from "next";
-import { SHARE_IMAGE, SITE, districtEyebrow } from "@/content/site";
+import { fill, type SiteCopy } from "@/content/copy";
+import { SHARE_IMAGE } from "@/content/site";
 import { DESTINATIONS, destinationById, indexLabel } from "./city/layout";
-import SiteFooter from "./SiteFooter";
+import RoomStage, { type Plaque, type RoomScene } from "./room/RoomStage";
 import SiteHeader from "./SiteHeader";
 
 export function districtIndex(id: string) {
   return indexLabel(DESTINATIONS.indexOf(destinationById(id)));
 }
 
-export function roomMetadata(district: string, description: string): Metadata {
-  const title = destinationById(district).label;
-  const shared = { title: `${title} · ${SITE.name}`, description, images: { url: "/opengraph-image", ...SHARE_IMAGE } };
+export function roomLinks(ids: string[]): Plaque[] {
+  return ids.map((id) => {
+    const d = destinationById(id);
+    return { label: d.label, note: d.blurb, href: d.href };
+  });
+}
+
+export function roomMetadata(copy: SiteCopy, district: string, description: string, title = destinationById(district).label): Metadata {
+  const shared = { title: `${title} · ${copy.SITE.name}`, description, images: { url: "/opengraph-image", ...SHARE_IMAGE, alt: fill(SHARE_IMAGE.alt, { name: copy.SITE.name, artist: copy.SITE.artist }) } };
   return {
     title,
     description,
-    openGraph: { type: "website", siteName: SITE.name, ...shared },
+    openGraph: { type: "website", siteName: copy.SITE.name, ...shared },
     twitter: { card: "summary_large_image", ...shared },
   };
 }
 
-export default function Room({ district, lead, children }: { district: string; lead: string; children: React.ReactNode }) {
+export default function Room({ district, scene }: { district: string; scene: RoomScene }) {
   const d = destinationById(district);
   const index = districtIndex(district);
   return (
     <div className="room" style={{ ["--accent" as string]: d.accent }}>
       <SiteHeader back current={index} />
-      <main className="room__main">
-        <section className="room__hero">
-          <span className="eyebrow">{districtEyebrow(index)}</span>
-          <h1 className="room__title">{d.label}</h1>
-          <p className="room__lead">{lead}</p>
-        </section>
-        {children}
+      <main className="room__stage">
+        <RoomStage destination={d} index={index} scene={scene} />
       </main>
-      <SiteFooter />
     </div>
   );
 }

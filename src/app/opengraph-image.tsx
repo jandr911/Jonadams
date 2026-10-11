@@ -1,9 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { EQ_BARS, SHARE_IMAGE, SITE, TAGLINE } from "@/content/site";
+import { fill } from "@/content/copy";
+import { EQ_BARS, SHARE_IMAGE, SITE as DEFAULT_SITE } from "@/content/site";
+import { getContent } from "@/lib/content";
 
-export const alt = SHARE_IMAGE.alt;
+export const alt = fill(SHARE_IMAGE.alt, { name: DEFAULT_SITE.name, artist: DEFAULT_SITE.artist });
 export const size = { width: SHARE_IMAGE.width, height: SHARE_IMAGE.height };
 export const contentType = "image/png";
 
@@ -15,6 +17,7 @@ const PAPER = "#f4f1ea";
 const MUTED = "#9a95a8";
 
 export default async function Image() {
+  const { SITE, TAGLINE } = (await getContent()).copy;
   const caps = await readFile(join(process.cwd(), "public/fonts/BebasNeue-Regular.ttf"));
   return new ImageResponse(
     (
