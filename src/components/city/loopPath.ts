@@ -7,6 +7,10 @@ export interface LoopPose {
   into: number;
 }
 
+export function newLoopPose(): LoopPose {
+  return { a: 0, b: 0, ha: 1, hb: 0, leg: 0, into: 0 };
+}
+
 export function loopLength(straight: number, radius: number) {
   return 2 * straight + 2 * Math.PI * radius;
 }

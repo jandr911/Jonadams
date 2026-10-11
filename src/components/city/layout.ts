@@ -12,6 +12,8 @@ export const ROWS = 6;
 
 export const CITY_HALF_X = (COLS * PITCH) / 2;
 export const CITY_HALF_Z = (ROWS * PITCH) / 2;
+export const RIVERWALK_HALF = CITY_HALF_X + 40;
+export const PAD = 0.4;
 
 export const RIVER_NEAR = CITY_HALF_Z + 12;
 export const RIVER_FAR = RIVER_NEAR + 70;
@@ -26,17 +28,17 @@ export const AMBASSADOR_X = -186;
 export const AMBASSADOR_CLEAR_HALF = 9;
 export const AMBASSADOR_RAMP_Z = [-23, RIVER_FAR + 125] as const;
 
-export const HOME_CAMERA = {
+const HOME_CAMERA = {
   position: [0, 62, CITY_HALF_Z + 206] as [number, number, number],
   target: [0, 28, -10] as [number, number, number],
 };
 
-export const HOME_FOV = 40;
-export const PORTRAIT_HOME_CAMERA = {
+const HOME_FOV = 40;
+const PORTRAIT_HOME_CAMERA = {
   position: [0, 50, CITY_HALF_Z + 150] as [number, number, number],
   target: [0, 22, -10] as [number, number, number],
 };
-export const PORTRAIT_FOV = 56;
+const PORTRAIT_FOV = 56;
 
 export function homeCamera(aspect: number) {
   return aspect < 1 ? { ...PORTRAIT_HOME_CAMERA, fov: PORTRAIT_FOV } : { ...HOME_CAMERA, fov: HOME_FOV };
@@ -82,7 +84,7 @@ export function outerRoadLinesZ(): number[] {
   return zs;
 }
 
-export const LIGHT_CYCLE = 16;
+const LIGHT_CYCLE = 16;
 export const TRAFFIC_CLOCK = { time: 0 };
 const GREEN_UNTIL = 0.35;
 const AMBER_UNTIL = 0.42;
@@ -139,7 +141,6 @@ export interface Destination {
   color: string;
   accent: string;
   block: [number, number];
-  offset: [number, number];
   view: { from: [number, number, number]; at: [number, number, number] };
   markerHeight: number;
 }
@@ -154,7 +155,6 @@ export const DESTINATIONS: Destination[] = [
     color: "#ff4fa3",
     accent: "var(--pink)",
     block: [5, 5],
-    offset: [0, 0],
     view: { from: [16, 34, 66], at: [0, 30, 0] },
     markerHeight: 78,
   },
@@ -167,7 +167,6 @@ export const DESTINATIONS: Destination[] = [
     color: "#ffb02e",
     accent: "var(--amber)",
     block: [1, 5],
-    offset: [0, 0],
     view: { from: [6, 20, 48], at: [0, 18, 0] },
     markerHeight: 46,
   },
@@ -180,7 +179,6 @@ export const DESTINATIONS: Destination[] = [
     color: "#49f2d6",
     accent: "var(--cyan)",
     block: [0, 5],
-    offset: [0, 0],
     view: { from: [10, 26, 58], at: [0, 24, 0] },
     markerHeight: 56,
   },
@@ -193,7 +191,6 @@ export const DESTINATIONS: Destination[] = [
     color: "#49d2f2",
     accent: "var(--blue)",
     block: [6, 5],
-    offset: [0, 0],
     view: { from: [-8, 16, 44] , at: [0, 12, 0] },
     markerHeight: 34,
   },
@@ -206,7 +203,6 @@ export const DESTINATIONS: Destination[] = [
     color: "#c9a6ff",
     accent: "var(--violet)",
     block: [2, 4],
-    offset: [0, 0],
     view: { from: [4, 22, 44], at: [0, 20, 0] },
     markerHeight: 34,
   },
@@ -217,8 +213,11 @@ export const STREETS_NS = ["Third Ave", "Cass Ave", "Washington Blvd", "Griswold
 export const WOODWARD_INDEX = 4;
 
 export function destinationPosition(d: Destination): [number, number] {
-  const [cx, cz] = blockCenter(d.block[0], d.block[1]);
-  return [cx + d.offset[0], cz + d.offset[1]];
+  return blockCenter(d.block[0], d.block[1]);
+}
+
+export function indexLabel(index: number) {
+  return String(index + 1).padStart(2, "0");
 }
 
 export function destinationById(id: string): Destination {

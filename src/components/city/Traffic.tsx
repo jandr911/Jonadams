@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, BoxGeometry, Color, Group, InstancedMesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
-import { gradientColors } from "./instancing";
+import { gradientColors, setEmissiveIntensity } from "./instancing";
 import { CITY_HALF_Z, CROSSWALK_OFFSET, LANE_OFFSET, MEDIAN_LANE_OFFSET, OUTER_COLS, OUTER_HALF_X, PITCH, ROAD_HALF, WOODWARD_INDEX, isMedianLine, lightIsAmber, lightIsGreen, outerRoadLinesX, TRAFFIC_CLOCK, outerRoadLinesZ } from "./layout";
 import { mulberry32, pick, range } from "./rng";
 import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
@@ -19,7 +19,6 @@ const CAR_Y = 0.4;
 const ROAD_OVERRUN = 16;
 const X_ROAD_MIN = -OUTER_HALF_X - ROAD_OVERRUN;
 const X_ROAD_MAX = OUTER_HALF_X + ROAD_OVERRUN;
-const BOX_HALF = ROAD_HALF;
 const AXIS_Z = 1;
 const AXIS_X = 2;
 
@@ -266,7 +265,7 @@ function crossKey(w: World, axis: Axis, lineIndex: number, k: number) {
 
 function markOccupied(w: World, axis: Axis, lineIndex: number, along: number, dir: Dir, len: number, vel: number, reach = Infinity) {
   const cross = axis === "z" ? w.zs : w.xs;
-  const probe = (along - dir * (BOX_HALF + len / 2) - cross[0]) / PITCH;
+  const probe = (along - dir * (ROAD_HALF + len / 2) - cross[0]) / PITCH;
   const k = dir === 1 ? Math.ceil(probe) : Math.floor(probe);
   if (k < 0 || k >= cross.length || Math.abs(cross[k]) > reach) return;
   const ahead = (cross[k] - along) * dir;
@@ -304,7 +303,7 @@ function blockHasRoom(w: World, axis: Axis, lineIndex: number, dir: Dir, from: n
   const k = dir === 1 ? Math.floor(probe) + 1 : Math.ceil(probe) - 1;
   if (k < 0 || k >= cross.length) return true;
   const length = (cross[k] - from) * dir - STOP_LINE_BACK;
-  const committedFrom = -(2 * BOX_HALF + STOP_LINE_BACK);
+  const committedFrom = -(2 * ROAD_HALF + STOP_LINE_BACK);
   let used = len;
   const lane = laneList(w, axis, lineIndex, dir);
   for (let j = 0; j < lane.length; j++) {
@@ -363,7 +362,7 @@ function junctionStop(w: World, axis: Axis, lineIndex: number, along: number, di
     const room = blockHasRoom(w, self.nextAxis, self.nextIndex, self.nextDir, endAlong - self.nextDir * TURN_R, self.lineIndex, len, self, laneList(w, axis, lineIndex, dir));
     return room && !tramBlocksTurn(w, self, endAlong) ? Infinity : distance;
   }
-  return blockHasRoom(w, axis, lineIndex, dir, cross[k] + dir * BOX_HALF, k, len, self, null) ? Infinity : distance;
+  return blockHasRoom(w, axis, lineIndex, dir, cross[k] + dir * ROAD_HALF, k, len, self, null) ? Infinity : distance;
 }
 
 function drive(c: { vel: number; acc: number }, limit: number, gain: number, accel: number, hardBrake: number, dt: number) {
@@ -637,10 +636,6 @@ function poseCar(w: World, i: number, out: VehiclePose, time: number) {
   out.spin = c.spin;
   out.brake = c.brake;
   out.pitch = Math.max(-0.012, Math.min(0.02, -c.acc * DIVE_PER_ACCEL));
-}
-
-function setEmissiveIntensity(mat: MeshStandardMaterial, value: number) {
-  mat.emissiveIntensity = value;
 }
 
 function Streetcars({ world }: { world: World }) {

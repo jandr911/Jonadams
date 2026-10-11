@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { SHARE_IMAGE, SITE } from "@/content/site";
+import { EQ_BARS, SHARE_IMAGE, SITE, TAGLINE } from "@/content/site";
 
 export const alt = SHARE_IMAGE.alt;
 export const size = { width: SHARE_IMAGE.width, height: SHARE_IMAGE.height };
@@ -13,8 +13,6 @@ const GOLD = "#d6b56e";
 const GOLD_2 = "#f3dfae";
 const PAPER = "#f4f1ea";
 const MUTED = "#9a95a8";
-
-const BARS = [0.55, 0.9, 0.7, 1, 0.6];
 
 export default async function Image() {
   const caps = await readFile(join(process.cwd(), "public/fonts/BebasNeue-Regular.ttf"));
@@ -34,18 +32,18 @@ export default async function Image() {
         }}
       >
         <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
-          {BARS.map((h, i) => (
+          {EQ_BARS.map((h, i) => (
             <div key={i} style={{ width: 10, height: 56 * h, background: GOLD, borderRadius: 2 }} />
           ))}
           <div style={{ marginLeft: 20, fontFamily: "Bebas", fontSize: 30, letterSpacing: 8, color: GOLD }}>{SITE.city}</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontFamily: "Bebas", fontSize: 168, letterSpacing: 10, lineHeight: 0.95, color: GOLD_2 }}>Adams</div>
+          <div style={{ fontFamily: "Bebas", fontSize: 168, letterSpacing: 10, lineHeight: 0.95, color: GOLD_2 }}>{SITE.surname}</div>
           <div style={{ fontFamily: "Bebas", fontSize: 96, letterSpacing: 18, lineHeight: 1.05, color: PAPER }}>{SITE.cityName}</div>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "Bebas", fontSize: 30, letterSpacing: 6, color: MUTED }}>
           <span>{SITE.artist}</span>
-          <span>Music · Art · The Creatives</span>
+          <span>{TAGLINE}</span>
         </div>
       </div>
     ),

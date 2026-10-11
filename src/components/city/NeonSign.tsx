@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import { Color, Group, MeshStandardMaterial } from "three";
 import { useCity } from "./CityContext";
+import { setEmissiveIntensity } from "./instancing";
 import { seedOf } from "./rng";
 
 export const DISPLAY_FONT = "/fonts/BebasNeue-Regular.ttf";
@@ -25,10 +26,6 @@ interface NeonSignProps {
   glow?: number;
   depth?: number;
   doubleSided?: boolean;
-}
-
-function setGlow(mat: MeshStandardMaterial, intensity: number) {
-  mat.emissiveIntensity = intensity;
 }
 
 export default function NeonSign({
@@ -63,7 +60,7 @@ export default function NeonSign({
     if (!reducedMotion && blink === "slow") on = Math.sin(t * 1.6) > -0.6 ? 1 : 0.15;
     else if (!reducedMotion && blink === "fast") on = Math.sin(t * 7) > 0 ? 1 : 0.2;
     else if (!reducedMotion && blink === "marquee") on = 0.75 + 0.25 * Math.sin(t * 3.2);
-    setGlow(frameMat, glow * on);
+    setEmissiveIntensity(frameMat, glow * on);
     for (let i = 0; i < textGroups.current.length; i++) {
       const g = textGroups.current[i];
       if (!g) continue;

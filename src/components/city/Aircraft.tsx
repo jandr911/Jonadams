@@ -10,7 +10,9 @@ import { useDayNight } from "./DayNightContext";
 import { gradientColors } from "./instancing";
 import { labelTexture } from "./labels";
 import { enableReflection } from "./layers";
+import { destinationById } from "./layout";
 import { SCRIPT_FONT } from "./NeonSign";
+import { LitWindow } from "./Watercraft";
 
 const SEARCHLIGHT_LENGTH = 60;
 
@@ -43,6 +45,16 @@ function Strobe({ position, color, rate, offset = 0, size = 0.22, base = 0.3 }: 
     <mesh position={position}>
       <sphereGeometry args={[size, 8, 6]} />
       <meshStandardMaterial ref={mat} color={color} emissive={color} emissiveIntensity={base} toneMapped={false} />
+    </mesh>
+  );
+}
+
+function NavLight({ position, color, size }: { position: [number, number, number]; color: string; size: number }) {
+  const dn = useDayNight();
+  return (
+    <mesh position={position}>
+      <sphereGeometry args={[size, 6, 6]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4 + dn.night * 3} toneMapped={false} />
     </mesh>
   );
 }
@@ -83,7 +95,6 @@ function Blimp() {
   const rig = useRef<Group>(null);
   const props = useRef<(Group | null)[]>([]);
   const surfaces = useRef<(Mesh | null)[]>([]);
-  const nav = 0.4 + dn.night * 3;
   useFrame(({ clock }) => {
     const g = rig.current;
     if (!g) return;
@@ -148,10 +159,7 @@ function Blimp() {
               <boxGeometry args={[1.4, 4.0, 0.3]} />
               <meshStandardMaterial color={BLIMP_TRIM} roughness={0.6} />
             </mesh>
-            <mesh position={[-0.5, 8.6, 0]}>
-              <sphereGeometry args={[0.16, 6, 6]} />
-              <meshStandardMaterial color={i % 2 ? "#ff2a3c" : "#ffffff"} emissive={i % 2 ? "#ff2a3c" : "#ffffff"} emissiveIntensity={nav} toneMapped={false} />
-            </mesh>
+            <NavLight position={[-0.5, 8.6, 0]} color={i % 2 ? "#ff2a3c" : "#ffffff"} size={0.16} />
           </group>
         ))}
         <group position={[0, -5.9, 0]}>
@@ -167,13 +175,13 @@ function Blimp() {
             [-2.6, -1.3, 0, 1.3, 2.6].map((x) => (
               <mesh key={`${s}${x}`} position={[x, 0.35, s * 1.41]}>
                 <boxGeometry args={[0.9, 0.7, 0.04]} />
-                <meshStandardMaterial color="#1d2a3a" emissive="#ffd27a" emissiveIntensity={0.3 + dn.night * 2} roughness={0.1} metalness={0.5} toneMapped={false} />
+                <LitWindow intensity={0.3 + dn.night * 2} />
               </mesh>
             )),
           )}
           <mesh position={[3.81, 0.35, 0]} rotation={[0, Math.PI / 2, 0]}>
             <boxGeometry args={[2.4, 0.8, 0.04]} />
-            <meshStandardMaterial color="#1d2a3a" emissive="#ffd27a" emissiveIntensity={0.3 + dn.night * 2} roughness={0.1} metalness={0.5} toneMapped={false} />
+            <LitWindow intensity={0.3 + dn.night * 2} />
           </mesh>
           <Pilot position={[2.9, -0.6, -0.5]} rotation={-Math.PI / 2} />
           <Pilot position={[2.9, -0.6, 0.5]} rotation={-Math.PI / 2} top="#d6b56e" />
@@ -245,14 +253,8 @@ function Blimp() {
             <meshBasicMaterial attach="material" color={nameColor} toneMapped={false} />
           </Text>
         ))}
-        <mesh position={[0, -3.2, 3.9]}>
-          <sphereGeometry args={[0.22, 6, 6]} />
-          <meshStandardMaterial color="#2aff7a" emissive="#2aff7a" emissiveIntensity={nav} toneMapped={false} />
-        </mesh>
-        <mesh position={[0, -3.2, -3.9]}>
-          <sphereGeometry args={[0.22, 6, 6]} />
-          <meshStandardMaterial color="#ff2a3c" emissive="#ff2a3c" emissiveIntensity={nav} toneMapped={false} />
-        </mesh>
+        <NavLight position={[0, -3.2, 3.9]} color="#2aff7a" size={0.22} />
+        <NavLight position={[0, -3.2, -3.9]} color="#ff2a3c" size={0.22} />
         <Strobe position={[-15.6, 0, 0]} color="#ffffff" rate={6} size={0.28} />
         <Strobe position={[0, 5.3, 0]} color="#ff2a3c" rate={4} offset={1.2} />
       </Float>
@@ -260,7 +262,7 @@ function Blimp() {
   );
 }
 
-export interface HelicopterLivery {
+interface HelicopterLivery {
   hull: string;
   trim: string;
   pilot: string;
@@ -272,7 +274,7 @@ export interface HelicopterLivery {
   lightBar: boolean;
 }
 
-export const ADAMS_AIR: HelicopterLivery = {
+const ADAMS_AIR: HelicopterLivery = {
   hull: "#1d1d3f",
   trim: "#d6b56e",
   pilot: "#d6b56e",
@@ -339,7 +341,6 @@ export function HelicopterBody({
     () => labelTexture(livery.tail, { width: 512, height: 256, bg: livery.tailBg, fg: livery.tailFg, border: livery.tailBorder, size: livery.tailSize }),
     [livery],
   );
-  const nav = 0.4 + dn.night * 3;
   return (
     <group ref={bodyRef}>
       <mesh rotation={[Math.PI / 2, 0, 0]}>
@@ -506,14 +507,8 @@ export function HelicopterBody({
           ))}
         </group>
       ))}
-      <mesh position={[-1.3, 0.3, 0.6]}>
-        <sphereGeometry args={[0.16, 6, 6]} />
-        <meshStandardMaterial color="#ff2a3c" emissive="#ff2a3c" emissiveIntensity={nav} toneMapped={false} />
-      </mesh>
-      <mesh position={[1.3, 0.3, 0.6]}>
-        <sphereGeometry args={[0.16, 6, 6]} />
-        <meshStandardMaterial color="#2aff7a" emissive="#2aff7a" emissiveIntensity={nav} toneMapped={false} />
-      </mesh>
+      <NavLight position={[-1.3, 0.3, 0.6]} color="#ff2a3c" size={0.16} />
+      <NavLight position={[1.3, 0.3, 0.6]} color="#2aff7a" size={0.16} />
       <Strobe position={[0, 2.6, -7.5]} color="#ffffff" rate={7} size={0.16} base={0.5} />
       <Strobe position={[0, -1.15, 0.4]} color="#ff2a3c" rate={10} size={0.2} />
       {livery.lightBar && (
@@ -527,6 +522,15 @@ export function HelicopterBody({
       </group>
     </group>
   );
+}
+
+const TANGENT_DELTA = 0.0001;
+
+function tangentAt(path: CatmullRomCurve3, u: number, a: Vector3, b: Vector3, out: Vector3) {
+  const t = path.getUtoTmapping(u, 0);
+  path.getPoint(Math.max(0, t - TANGENT_DELTA), a);
+  path.getPoint(Math.min(1, t + TANGENT_DELTA), b);
+  return out.subVectors(b, a).normalize();
 }
 
 function Helicopter() {
@@ -545,15 +549,15 @@ function Helicopter() {
       ),
     [],
   );
-  const tmp = useMemo(() => ({ p: new Vector3(), t: new Vector3(), t2: new Vector3(), look: new Vector3() }), []);
+  const tmp = useMemo(() => ({ p: new Vector3(), t: new Vector3(), t2: new Vector3(), look: new Vector3(), a: new Vector3(), b: new Vector3() }), []);
   const [parts] = useState<HelicopterParts>(() => ({ body, rotor, tail, beam }));
   useFrame(({ clock }, delta) => {
     const g = rig.current;
     if (!g) return;
     const u = (clock.elapsedTime * 0.012) % 1;
     path.getPointAt(u, tmp.p);
-    path.getTangentAt(u, tmp.t);
-    path.getTangentAt((u + 0.01) % 1, tmp.t2);
+    tangentAt(path, u, tmp.a, tmp.b, tmp.t);
+    tangentAt(path, (u + 0.01) % 1, tmp.a, tmp.b, tmp.t2);
     g.position.copy(tmp.p);
     tmp.look.copy(tmp.p).add(tmp.t);
     g.lookAt(tmp.look);
@@ -592,8 +596,7 @@ function BannerPlane() {
     },
     [bannerGeo, bannerBackGeo],
   );
-  const tex = useMemo(() => labelTexture("J. ADAMS · LIVE AT CLUB ADAMS · DETROIT", { width: 2048, height: 256, bg: "#07060f", fg: "#f3dfae", border: "#d6b56e", size: 150 }), []);
-  const nav = 0.4 + dn.night * 3;
+  const tex = useMemo(() => labelTexture(`J. ${SITE.surname.toUpperCase()} · LIVE AT ${destinationById("club").label.toUpperCase()} · DETROIT`, { width: 2048, height: 256, bg: "#07060f", fg: "#f3dfae", border: "#d6b56e", size: 150 }), []);
   useFrame(({ clock }) => {
     const g = rig.current;
     if (!g) return;
@@ -692,14 +695,8 @@ function BannerPlane() {
           </mesh>
         </group>
       ))}
-      <mesh position={[0.3, 1.0, 5.5]}>
-        <sphereGeometry args={[0.12, 6, 6]} />
-        <meshStandardMaterial color="#2aff7a" emissive="#2aff7a" emissiveIntensity={nav} toneMapped={false} />
-      </mesh>
-      <mesh position={[0.3, 1.0, -5.5]}>
-        <sphereGeometry args={[0.12, 6, 6]} />
-        <meshStandardMaterial color="#ff2a3c" emissive="#ff2a3c" emissiveIntensity={nav} toneMapped={false} />
-      </mesh>
+      <NavLight position={[0.3, 1.0, 5.5]} color="#2aff7a" size={0.12} />
+      <NavLight position={[0.3, 1.0, -5.5]} color="#ff2a3c" size={0.12} />
       <Strobe position={[-2.5, 1.7, 0]} color="#ffffff" rate={8} size={0.12} base={0.4} />
       <Strobe position={[0.2, -0.9, 0]} color="#ff2a3c" rate={6} size={0.12} />
       <mesh position={[-11.5, -0.4, 0]} rotation={[0, 0, Math.PI / 2 + 0.06]}>

@@ -1,11 +1,11 @@
 import { BufferAttribute, Color, Euler, Matrix4, Mesh, Texture, Vector2, Vector3, Vector4, type BufferGeometry, type Material, type Object3D, type InstancedMesh } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { DETAIL_CULLED } from "./DetailCull";
 
 type Tintable = Material & { color: Color; vertexColors: boolean; emissive?: Color; emissiveIntensity?: number };
 
 const BATCHABLE = new Set(["MeshStandardMaterial", "MeshLambertMaterial", "MeshBasicMaterial", "MeshPhongMaterial"]);
 const IGNORED_KEYS = new Set(["uuid", "id", "name", "version", "color", "userData", "isMaterial", "type"]);
-const CULLED = "detailCulled";
 const WARMUP_FRAMES = 90;
 const OBSERVE_EVERY = 10;
 const CHECK_EVERY = 30;
@@ -61,7 +61,7 @@ function hasHandlers(o: Object3D) {
 }
 
 function shown(o: Object3D) {
-  return o.visible || o.userData[CULLED] === true;
+  return o.visible || o.userData[DETAIL_CULLED] === true;
 }
 
 function candidate(o: Object3D, b: Batcher): o is Mesh {
@@ -214,7 +214,7 @@ function hide(b: Batcher, s: Source) {
   const m = s.mesh;
   s.kept = { visible: m.visible, raycast: Object.prototype.hasOwnProperty.call(m, "raycast") ? m.raycast : undefined };
   m.visible = false;
-  m.userData[CULLED] = false;
+  m.userData[DETAIL_CULLED] = false;
   m.userData.batched = true;
   m.raycast = ignoreRaycast;
   freeze(b, m);
@@ -388,8 +388,9 @@ function learnGates(b: Batcher, s: Source) {
 }
 
 function inspect(b: Batcher) {
-  const keep: Group[] = [];
-  for (const g of b.groups) {
+  let retained = 0;
+  for (let i = 0; i < b.groups.length; i++) {
+    const g = b.groups[i];
     let worst = 0;
     let recoloured = false;
     for (const s of g.sources) {
@@ -398,7 +399,7 @@ function inspect(b: Batcher) {
       if (!recoloured && lookChanged(s.look, s.mesh)) recoloured = true;
     }
     if (worst === 0 && !recoloured) {
-      keep.push(g);
+      b.groups[retained++] = g;
       continue;
     }
     dissolve(b, g);
@@ -413,7 +414,7 @@ function inspect(b: Batcher) {
       b.pending.push(s);
     }
   }
-  b.groups = keep;
+  b.groups.length = retained;
   if (b.pending.length === 0) return;
   const ready: Source[] = [];
   const waiting: Source[] = [];

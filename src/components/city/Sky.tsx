@@ -2,7 +2,7 @@
 
 import { Cloud, Clouds } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AdditiveBlending,
   BackSide,
@@ -23,6 +23,7 @@ import { useDayNight } from "./DayNightContext";
 import { CAMERA_CEILING } from "./layout";
 import { mulberry32, range } from "./rng";
 import { enableReflection } from "./layers";
+import { NOISE_GLSL } from "./noise";
 
 const SKY_RADIUS = 1100;
 
@@ -102,7 +103,7 @@ const starFrag = /* glsl */ `
 
 function Dome() {
   const dn = useDayNight();
-  const mat = useMemo(
+  const [mat] = useState(
     () =>
       new ShaderMaterial({
         vertexShader: skyVert,
@@ -119,8 +120,8 @@ function Dome() {
           uFog: { value: new Color() },
         },
       }),
-    [],
   );
+  useEffect(() => () => mat.dispose(), [mat]);
   const ref = useRef<Mesh>(null);
   useEffect(() => {
     const m = ref.current?.material as ShaderMaterial | undefined;
@@ -146,7 +147,7 @@ function Dome() {
 
 function Stars() {
   const dn = useDayNight();
-  const { geometry, material } = useMemo(() => {
+  const [{ geometry, material }] = useState(() => {
     const rand = mulberry32(7);
     const n = 900;
     const pos = new Float32Array(n * 3);
@@ -177,7 +178,14 @@ function Stars() {
       uniforms: { uTime: { value: 0 }, uAlpha: { value: 0 } },
     });
     return { geometry, material };
-  }, []);
+  });
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
   const ref = useRef<Points>(null);
   useEffect(() => {
     const m = ref.current?.material as ShaderMaterial | undefined;
@@ -201,16 +209,17 @@ function Stars() {
   );
 }
 
+const SUN_COLOR = new Color("#fff6d8").multiplyScalar(1.5);
+const MOON_COLOR = new Color("#f4eed7").multiplyScalar(1.35);
+const MOON_POS = new Vector3(-0.55, 0.58, -0.5).normalize().multiplyScalar(SKY_RADIUS * 0.8);
+const MOON_SHADOW_POS = MOON_POS.clone().add(new Vector3(9, 6, 0));
+
 function SunAndMoon() {
   const dn = useDayNight();
   const sunPos = useMemo(() => {
     const v = new Vector3(...dn.sunDir).normalize().multiplyScalar(SKY_RADIUS * 0.8);
     return v;
   }, [dn.sunDir]);
-  const moonPos = useMemo(
-    () => new Vector3(-0.55, 0.58, -0.5).normalize().multiplyScalar(SKY_RADIUS * 0.8),
-    [],
-  );
   const group = useRef<Group>(null);
   const camera = useThree((s) => s.camera);
   useFrame(() => {
@@ -221,17 +230,17 @@ function SunAndMoon() {
     <group ref={group}>
       <mesh position={sunPos} visible={dayAmount > 0.03}>
         <sphereGeometry args={[34, 24, 16]} />
-        <meshBasicMaterial color={new Color("#fff6d8").multiplyScalar(1.5)} toneMapped={false} fog={false} />
+        <meshBasicMaterial color={SUN_COLOR} toneMapped={false} fog={false} />
       </mesh>
       <mesh position={sunPos} visible={dayAmount > 0.03}>
         <sphereGeometry args={[110, 24, 16]} />
         <meshBasicMaterial color="#fff1c0" transparent opacity={0.22} blending={AdditiveBlending} depthWrite={false} toneMapped={false} fog={false} />
       </mesh>
-      <mesh position={moonPos} visible={dn.night > 0.4}>
+      <mesh position={MOON_POS} visible={dn.night > 0.4}>
         <sphereGeometry args={[30, 24, 16]} />
-        <meshBasicMaterial color={new Color("#f4eed7").multiplyScalar(1.35)} toneMapped={false} fog={false} />
+        <meshBasicMaterial color={MOON_COLOR} toneMapped={false} fog={false} />
       </mesh>
-      <mesh position={moonPos.clone().add(new Vector3(9, 6, 0))} visible={dn.night > 0.4}>
+      <mesh position={MOON_SHADOW_POS} visible={dn.night > 0.4}>
         <sphereGeometry args={[25, 24, 16]} />
         <meshBasicMaterial color="#0a0620" fog={false} />
       </mesh>
@@ -374,17 +383,7 @@ const coverFrag = /* glsl */ `
   varying vec2 vUv;
   varying vec3 vWorld;
 
-  float hash(vec2 p) {
-    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
-  }
-  float vnoise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
-  }
+  ${NOISE_GLSL}
   float fbm(vec2 p) {
     float v = 0.0;
     float a = 0.5;
@@ -414,7 +413,7 @@ const coverFrag = /* glsl */ `
 function CloudCover() {
   const dn = useDayNight();
   const ref = useRef<Mesh>(null);
-  const mat = useMemo(
+  const [mat] = useState(
     () =>
       new ShaderMaterial({
         vertexShader: coverVert,
@@ -431,8 +430,8 @@ function CloudCover() {
           uSunDir: { value: new Vector3(0.5, 0.8, -0.3) },
         },
       }),
-    [],
   );
+  useEffect(() => () => mat.dispose(), [mat]);
   useEffect(() => {
     const m = ref.current?.material as ShaderMaterial | undefined;
     if (!m) return;

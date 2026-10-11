@@ -1,6 +1,6 @@
 export const RENDER_CADENCE = { smooth: false };
 
-export interface Cadence {
+interface Cadence {
   last: number;
   frames: number;
 }

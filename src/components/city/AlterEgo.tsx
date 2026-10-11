@@ -3,14 +3,14 @@
 import { Html, useTexture } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
-import { Color, DoubleSide, Group, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, Quaternion, SRGBColorSpace, Vector3, type Texture } from "three";
+import { Color, DoubleSide, Group, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, SRGBColorSpace, Vector3, type Texture } from "three";
 import { ALTER_EGO } from "@/content/site";
 import { DETROIT_POLICE, HELI_PITCH, HELI_SKID_DROP, HELI_SKID_X, HelicopterBody, spinHelicopter, type HelicopterParts } from "./Aircraft";
 import { useCity } from "./CityContext";
 import { type DayNight } from "./dayNight";
 import { useDayNight } from "./DayNightContext";
-import { LISTEN_ROOF_Y, PAD } from "./Landmarks";
-import { HOVER_SCALE, LABEL_FADE_STYLE, destinationById, destinationPosition } from "./layout";
+import { LISTEN_ROOF_Y } from "./Landmarks";
+import { HOVER_SCALE, LABEL_FADE_STYLE, PAD, destinationById, destinationPosition } from "./layout";
 import { useLingeringLabel } from "./useLingeringLabel";
 import { makeShadowBlobTexture } from "./textures";
 
@@ -278,7 +278,6 @@ function ignoreRaycast() {}
 const gripWorld = new Vector3();
 const ropeEnd = new Vector3();
 const ropeDir = new Vector3();
-const ropeQuat = new Quaternion();
 
 function faceCamera(obj: Group, camera: Vector3) {
   return Math.atan2(camera.x - obj.position.x, camera.z - obj.position.z);
@@ -363,8 +362,7 @@ function poseHanging(hang: Group | null, rope: Mesh | null, body: Group | null, 
   ropeDir.subVectors(gripWorld, ropeEnd);
   rope.position.copy(ropeEnd).addScaledVector(ropeDir, 0.5);
   rope.scale.set(1, ropeDir.length(), 1);
-  ropeQuat.setFromUnitVectors(up, ropeDir.normalize());
-  rope.quaternion.copy(ropeQuat);
+  rope.quaternion.setFromUnitVectors(up, ropeDir.normalize());
 }
 
 export default function AlterEgo({ flyBy }: { flyBy: boolean }) {

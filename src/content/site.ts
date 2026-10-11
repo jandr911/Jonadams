@@ -1,5 +1,6 @@
 export const SITE = {
   name: "Adams UniverseCity",
+  surname: "Adams",
   cityName: "UniverseCity",
   artist: "Jonathan Adams",
   nickname: "Jonn",
@@ -16,6 +17,85 @@ export const MUSIC = {
   src: "",
   title: "",
 };
+
+export const TAGLINE = "Music · Art · The Creatives";
+
+export const GEO = { lat: 42.33, lon: -83.05 };
+
+export const COORDINATES = `${GEO.lat}° N, ${-GEO.lon}° W`;
+
+export const EQ_BARS = [0.55, 0.9, 0.7, 1, 0.6];
+
+export const CITY_HUD = {
+  districtsHint: (count: number) => `${count} districts · Hover to preview · Click to fly in`,
+  lockedHint: (count: number) => `${count} districts · Opening soon`,
+  readout: "All districts online · Sky lanes active",
+  geo: `Downtown Detroit · ${COORDINATES}`,
+  mouseHint: "Drag to orbit · Scroll to zoom · Shift‑drag or arrows to move · Q/E up and down",
+  touchHint: "One finger to look · Two fingers to move · Pinch to zoom",
+  padCue: "Press & hold to move",
+  playMusic: "Play music",
+  stopMusic: "Stop music",
+  localTime: "Local time",
+  preview: "Preview",
+  changeTime: (mode: string, phase: string) => `${mode} ${phase}, change time of day`,
+  phases: { sunrise: "SUNRISE", day: "DAYTIME", dusk: "DUSK", night: "NIGHT" },
+  districtsNav: "City districts",
+  padLabel: "Camera controls",
+  padHold: (title: string) => `${title}, press and hold`,
+  pad: {
+    forward: "Move forward (W / ↑)",
+    left: "Move left (A / ←)",
+    home: "Reset view (R)",
+    right: "Move right (D / →)",
+    back: "Move back (S / ↓)",
+    up: "Move up (E / PageUp)",
+    down: "Move down (Q / PageDown)",
+    in: "Zoom in (+)",
+    out: "Zoom out (−)",
+  },
+};
+
+export const LOADER = {
+  stages: {
+    skyline: "Lighting the skyline",
+    neon: "Warming up the neon",
+    doors: "Opening the doors",
+  },
+  welcome: "Welcome to the city",
+  welcomeBack: "Welcome back",
+  established: `Est. ${SITE.year} · ${SITE.city}`,
+  nowEntering: "Now entering",
+  presents: `${SITE.artist} presents`,
+  caps: "A city built on music · Downtown Detroit",
+};
+
+export const JOIN = {
+  title: "Join the list",
+  body: (email: string) => `Please add ${email} to the ${SITE.name} list.`,
+  placeholder: "you@email.com",
+  placeholderClosed: "List opens soon",
+  submit: "Join",
+};
+
+export const HEADER = {
+  nav: "Primary",
+  home: `${SITE.name}, home`,
+  join: "Join the list",
+  joinShort: "Join",
+  back: "Back to the city",
+  backShort: "Back",
+  openMenu: "Open menu",
+  closeMenu: "Close menu",
+};
+
+export const FOOTER = {
+  booking: "Booking",
+  press: "Press",
+  elsewhere: "Elsewhere",
+};
+
+export const districtEyebrow = (index: string) => `District ${index}`;
 
 export const CITY_FALLBACK = "This browser can't draw the 3D city. The districts below still take you everywhere.";
 
@@ -42,6 +122,7 @@ export const ROOMS = {
     description: "Listen to Jonathan Adams: singles, the latest release and live sessions, plus official videos and behind the scenes.",
     lead: "Press play right here. Every play on this page counts on the channel.",
     leadEmpty: "The first tracks land here soon. Every play on this page will count on the channel.",
+    pending: "Arriving soon",
   },
   watch: {
     lead: "Visuals, behind the scenes, and everything in motion.",
@@ -57,6 +138,9 @@ export const ROOMS = {
     pitch: "Send your work by email. No uploads, no forms — a short note and a link is enough.",
     pitchEmpty: "No uploads, no forms. When submissions open, a short note and a link will be all it takes.",
     soon: "Submissions open soon",
+    ask: "Want on the wall?",
+    submit: "Email your work",
+    subject: "Feature me on The Creatives",
   },
 };
 
@@ -67,7 +151,7 @@ export const CLUB_WALLS = [
   { district: "creatives", label: "The Wall", note: "Creatives on display" },
 ];
 
-export interface SiteLink {
+interface SiteLink {
   label: string;
   href: string;
 }

@@ -2,8 +2,8 @@
 
 import { Preload } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Suspense, useEffect, useMemo, useRef } from "react";
-import { Color, InstancedMesh, PMREMGenerator, Scene as ThreeScene, Texture } from "three";
+import { Suspense, useEffect, useRef } from "react";
+import { InstancedMesh, PMREMGenerator, Scene as ThreeScene, Texture, type WebGLRenderer } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import Aircraft from "./Aircraft";
 import AlterEgo from "./AlterEgo";
@@ -20,8 +20,7 @@ import HoloBillboards from "./HoloBillboards";
 import HologramClock from "./HologramClock";
 import Landmarks from "./Landmarks";
 import { LIT_IN_REFLECTION } from "./layers";
-import { requestShadowUpdate, setShadowManual } from "./mirrorRender";
-import { cadenceDue } from "./renderCadence";
+import { cadenceDue, type CadenceRate } from "./renderCadence";
 import PeopleMover from "./PeopleMover";
 import Roads from "./Roads";
 import Sky from "./Sky";
@@ -30,6 +29,7 @@ import StaticBatch from "./StaticBatch";
 import Steam from "./Steam";
 import Traffic from "./Traffic";
 import { TreeWind } from "./TreeStand";
+import { WindowClock } from "./useWindowMaterial";
 import Watercraft from "./Watercraft";
 
 function ignoreFailure() {}
@@ -63,8 +63,17 @@ function Ambience() {
   return null;
 }
 
-const SHADOW_NORMAL = { frames: 6, hz: 10 };
-const SHADOW_SMOOTH = { frames: 2, hz: 30 };
+const SHADOW_NORMAL: CadenceRate = { frames: 6, hz: 10 };
+const SHADOW_SMOOTH: CadenceRate = { frames: 2, hz: 30 };
+
+function setShadowManual(gl: WebGLRenderer) {
+  gl.shadowMap.autoUpdate = false;
+  gl.shadowMap.needsUpdate = true;
+}
+
+function requestShadowUpdate(gl: WebGLRenderer) {
+  gl.shadowMap.needsUpdate = true;
+}
 
 function ShadowThrottle() {
   const gl = useThree((s) => s.gl);
@@ -94,10 +103,9 @@ export default function Scene({ onReady }: { onReady: () => void }) {
   const dn = useDayNight();
   const { quality } = useCity();
   const extras = quality === "high";
-  const fogColor = useMemo(() => new Color().copy(dn.fog), [dn.fog]);
   return (
     <>
-      <fog attach="fog" args={[fogColor, 420 + dn.night * 60, 1250 + dn.night * 150]} />
+      <fog attach="fog" args={[dn.fog, 420 + dn.night * 60, 1250 + dn.night * 150]} />
       <ambientLight layers={LIT_IN_REFLECTION} intensity={dn.ambient * 0.6} color={dn.hemiSky} />
       <hemisphereLight layers={LIT_IN_REFLECTION} args={[dn.hemiSky, dn.hemiGround, dn.ambient * 1.6]} />
       <directionalLight
@@ -159,6 +167,7 @@ export default function Scene({ onReady }: { onReady: () => void }) {
       </Suspense>
       <Ambience />
       <HologramClock />
+      <WindowClock />
       <Effects />
       <ShadowThrottle />
       <DetailCull />

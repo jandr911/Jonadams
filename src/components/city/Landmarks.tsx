@@ -3,8 +3,8 @@
 import { Html, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AdditiveBlending, BoxGeometry, Color, ConeGeometry, CylinderGeometry, Group, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
-import { SITE } from "@/content/site";
+import { AdditiveBlending, BoxGeometry, Color, ConeGeometry, CylinderGeometry, DoubleSide, Group, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
+import { EQ_BARS, SITE } from "@/content/site";
 import AmbassadorBridge from "./AmbassadorBridge";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
@@ -16,6 +16,7 @@ import {
   destinationById,
   destinationPosition,
   LABEL_FADE_STYLE,
+  PAD,
 } from "./layout";
 import { useLingeringLabel } from "./useLingeringLabel";
 import { carvedStoneTexture, handPaintedBillboardTexture, wheatpastePosterTexture } from "./labels";
@@ -24,11 +25,9 @@ import PaintedSign from "./PaintedSign";
 import { mulberry32 } from "./rng";
 import TreeStand, { plantTrees } from "./TreeStand";
 import { useWindowMaterial } from "./useWindowMaterial";
-import { baseBoxGeometry, fillInstances, mergeParts } from "./instancing";
+import { baseBoxGeometry, fillInstances, mergeParts, setEmissiveIntensity } from "./instancing";
 import { enableReflection } from "./layers";
 import type { WindowMaterialOptions } from "./windowMaterial";
-
-export const PAD = 0.4;
 
 const BASE_BOX = baseBoxGeometry();
 const FOUNTAIN_PLUME = new CylinderGeometry(0.6, 1.6, 9.5, 10).translate(0, 4.75, 0);
@@ -168,7 +167,6 @@ const CLUB_WING_HEIGHT = 54;
 const CLUB_PODIUM_HEIGHT = 8;
 const CLUB_TOWER = new CylinderGeometry(0.72, 1, 1, 40, 1).translate(0, 0.5, 0);
 const CLUB_RING_COUNT = 9;
-const CLUB_BAR_HEIGHTS = [0.55, 0.9, 0.7, 1, 0.6];
 const CLUB_BAR_MAX = 9;
 const CLUB_BAR_STEP_FRAMES = 14;
 const GOLD = "#d6b56e";
@@ -184,8 +182,7 @@ function ClubLightRings() {
   const mat = useRef<MeshStandardMaterial>(null);
   const ref = useRef<InstancedMesh>(null);
   useEffect(() => {
-    const dummy = new Object3D();
-    fillInstances(ref.current, dummy, CLUB_RING_COUNT, (i, d) => {
+    fillInstances(ref.current, CLUB_RING_COUNT, (i, d) => {
       const t = (i + 1) / (CLUB_RING_COUNT + 1);
       const r = 1 - 0.28 * t;
       d.position.set(0, CLUB_PODIUM_HEIGHT + t * CLUB_TOWER_HEIGHT, 0);
@@ -223,12 +220,12 @@ function ClubCrownBars() {
       const b = bars.current[i];
       if (!b) continue;
       const k = 0.35 + 0.65 * Math.abs(Math.sin(t * (0.9 + i * 0.23) + i));
-      b.scale.y = CLUB_BAR_MAX * CLUB_BAR_HEIGHTS[i] * k;
+      b.scale.y = CLUB_BAR_MAX * EQ_BARS[i] * k;
     }
   });
   return (
     <group position={[0, CLUB_PODIUM_HEIGHT + CLUB_TOWER_HEIGHT, 0]}>
-      {CLUB_BAR_HEIGHTS.map((h, i) => (
+      {EQ_BARS.map((h, i) => (
         <mesh
           key={i}
           ref={(el) => {
@@ -341,7 +338,7 @@ function ClubAdams() {
       </mesh>
       <mesh position={[0, deckY + 1.5, 0]} scale={[9.1, 1, 6.9]}>
         <cylinderGeometry args={[1, 1, 1.4, 40, 1, true]} />
-        <meshStandardMaterial color="#9fd8ff" roughness={0.05} metalness={0.3} transparent opacity={0.3} side={2} />
+        <meshStandardMaterial color="#9fd8ff" roughness={0.05} metalness={0.3} transparent opacity={0.3} side={DoubleSide} />
       </mesh>
       <mesh position={[0, deckY + 1.6, -4]}>
         <boxGeometry args={[6, 1.6, 2.2]} />
@@ -377,7 +374,7 @@ function ChasingBulbs({ points, position = [0, 0, 0] }: { points: Point[]; posit
   const lastStep = useRef(-1);
   useEffect(() => {
     const m = ref.current;
-    fillInstances(m, new Object3D(), points.length, (i, o) => o.position.set(...points[i]));
+    fillInstances(m, points.length, (i, o) => o.position.set(...points[i]));
     if (m) paintChase(m, points.length, 0);
   }, [points]);
   useFrame(({ clock }) => {
@@ -590,10 +587,6 @@ const MC_MUNTINS: Box[] = MC_ARCH_X.flatMap((ax) => [
   { x: ax, y: 7.2, z: MC_FRONT + 0.32, sx: 5.4, sy: 0.12, sz: 0.3 },
 ]);
 const MC_BALUSTER_COUNT = 25;
-
-function setEmissiveIntensity(mat: MeshStandardMaterial, value: number) {
-  mat.emissiveIntensity = value;
-}
 const MC_PILASTER_X = [-11.4, -6.8, -2.3, 2.3, 6.8, 11.4];
 
 function MichiganCentral() {
@@ -612,17 +605,16 @@ function MichiganCentral() {
     setEmissiveIntensity(glass, 0.08 + dn.night * 0.9);
   }, [dn, glass]);
   useEffect(() => {
-    const dummy = new Object3D();
     const box = (list: Box[]) => (i: number, o: Object3D) => {
       const b = list[i];
       o.position.set(b.x, b.y, b.z);
       o.scale.set(b.sx, b.sy, b.sz);
     };
-    fillInstances(trim.current, dummy, MC_TRIM.length, box(MC_TRIM));
-    fillInstances(muntins.current, dummy, MC_MUNTINS.length, box(MC_MUNTINS));
-    fillInstances(columns.current, dummy, MC_COLUMN_X.length, (i, o) => o.position.set(MC_COLUMN_X[i], 5.3, MC_FRONT + 0.6));
-    fillInstances(balusters.current, dummy, MC_BALUSTER_COUNT, (i, o) => o.position.set(-12 + i, 14.2, MC_FRONT - 0.4));
-    fillInstances(pilasters.current, dummy, MC_PILASTER_X.length, (i, o) => {
+    fillInstances(trim.current, MC_TRIM.length, box(MC_TRIM));
+    fillInstances(muntins.current, MC_MUNTINS.length, box(MC_MUNTINS));
+    fillInstances(columns.current, MC_COLUMN_X.length, (i, o) => o.position.set(MC_COLUMN_X[i], 5.3, MC_FRONT + 0.6));
+    fillInstances(balusters.current, MC_BALUSTER_COUNT, (i, o) => o.position.set(-12 + i, 14.2, MC_FRONT - 0.4));
+    fillInstances(pilasters.current, MC_PILASTER_X.length, (i, o) => {
       o.position.set(MC_PILASTER_X[i], 29, 2.2);
       o.scale.set(0.7, 44, 0.5);
     });
@@ -794,7 +786,7 @@ function HartPlaza() {
       </group>
       <mesh position={[-6, 1.4, 7]}>
         <cylinderGeometry args={[4, 4, 2.2, 24, 1, true]} />
-        <meshStandardMaterial color="#8a8ab0" side={2} />
+        <meshStandardMaterial color="#8a8ab0" side={DoubleSide} />
       </mesh>
     </Landmark>
   );
@@ -1025,15 +1017,11 @@ function Fisher() {
   );
 }
 
-function setStadiumGlow(mat: MeshStandardMaterial, night: number) {
-  mat.emissiveIntensity = 0.3 + night * 4;
-}
-
 function StadiumLights({ radius, height, count }: { radius: number; height: number; count: number }) {
   const dn = useDayNight();
   const [lamp] = useState(() => new MeshStandardMaterial({ color: "#fff6d8", emissive: "#fff2c0", emissiveIntensity: 3, toneMapped: false }));
   useEffect(() => () => lamp.dispose(), [lamp]);
-  useEffect(() => setStadiumGlow(lamp, dn.night), [lamp, dn.night]);
+  useEffect(() => setEmissiveIntensity(lamp, 0.3 + dn.night * 4), [lamp, dn.night]);
   return (
     <group>
       {Array.from({ length: count }).map((_, i) => {
@@ -1060,7 +1048,7 @@ function ComericaPark() {
     <Landmark name="Comerica Park" note="Home of the Tigers" position={[x, PAD, z]} labelHeight={24}>
       <mesh position={[0, 3.6, 0]}>
         <cylinderGeometry args={[10.5, 11, 7.2, 36, 1, true, Math.PI * 0.15, Math.PI * 1.7]} />
-        <meshStandardMaterial color="#8a4a3a" roughness={0.8} side={2} />
+        <meshStandardMaterial color="#8a4a3a" roughness={0.8} side={DoubleSide} />
       </mesh>
       <mesh position={[0, 7.3, 0]} rotation={[Math.PI / 2, 0, Math.PI * 0.15]}>
         <torusGeometry args={[10.6, 0.4, 8, 36, Math.PI * 1.7]} />
@@ -1160,7 +1148,7 @@ function MillikenLighthouse() {
       <group ref={beam} position={[4, 18.2, 5]}>
         <mesh position={[12, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
           <coneGeometry args={[2.2, 24, 10, 1, true]} />
-          <meshBasicMaterial color="#fff2c0" transparent opacity={0.08} blending={2} depthWrite={false} toneMapped={false} />
+          <meshBasicMaterial color="#fff2c0" transparent opacity={0.08} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
         </mesh>
       </group>
       <TreeStand trees={MILLIKEN_TREES} quality="near" seed={1879} castShadow />
