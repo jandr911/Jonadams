@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { CITY_HUD } from "@/content/site";
 import { clockSnapshot, readClock, subscribeMinute } from "../city/clock";
+import { MusicToggle } from "../SiteMusic";
 import { labelFor, phaseFor, presetHour, type TimePreset } from "../city/dayNight";
 
 const PRESETS: TimePreset[] = ["auto", "day", "dusk", "night"];
@@ -24,11 +25,14 @@ export default function StageShell({ room, children }: { room: string; children:
   return (
     <section className="stage" data-room={room} data-phase={phase} data-phase-anim={override !== null || undefined}>
       {children}
-      <button type="button" className="city-pill stage__phase" onClick={cycle} aria-label={CITY_HUD.changeTime(mode, labelFor(hour))}>
-        <span className="city-pill__dot" data-night={phase === "night"} />
-        <span className="stage__phase-mode">{mode}</span>
-        <small>{labelFor(hour)}</small>
-      </button>
+      <div className="stage__controls">
+        <button type="button" className="city-pill" onClick={cycle} aria-label={CITY_HUD.changeTime(mode, labelFor(hour))}>
+          <span className="city-pill__dot" data-night={phase === "night"} />
+          <span className="stage__phase-mode">{mode}</span>
+          <small>{labelFor(hour)}</small>
+        </button>
+        <MusicToggle />
+      </div>
     </section>
   );
 }

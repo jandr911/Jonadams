@@ -2,12 +2,17 @@
 
 import { useState } from "react";
 import { ROOMS, type VideoSlot } from "@/content/site";
+import { pauseMusic } from "./SiteMusic";
 
 export default function YouTubeFrame({ slot }: { slot: VideoSlot }) {
   const [playing, setPlaying] = useState(false);
+  const play = () => {
+    pauseMusic();
+    setPlaying(true);
+  };
   if (!playing) {
     return (
-      <button type="button" className="yt-facade" onClick={() => setPlaying(true)} aria-label={ROOMS.listen.play(slot.title)}>
+      <button type="button" className="yt-facade" onClick={play} aria-label={ROOMS.listen.play(slot.title)}>
         <span className="media-card__play" aria-hidden />
         <span className="yt-facade__title">{slot.title}</span>
       </button>

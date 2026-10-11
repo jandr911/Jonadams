@@ -9,9 +9,9 @@ import { DayNightContext } from "./DayNightContext";
 import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
 import { clockSnapshot, readClock, subscribeMinute } from "./clock";
 import { useDetroitCloudCover } from "./DetroitWeather";
-import EntranceMusic from "./EntranceMusic";
 import StageBoundary from "./StageBoundary";
-import { CITY_FALLBACK, CITY_HUD, MUSIC, SITE } from "@/content/site";
+import { CITY_FALLBACK, CITY_HUD, SITE } from "@/content/site";
+import { MusicToggle } from "../SiteMusic";
 import { DESTINATIONS, LABEL_FADE_MS, indexLabel, type Destination } from "./layout";
 import Loader, { markVisited, useReturningVisitor } from "./Loader";
 
@@ -143,8 +143,11 @@ export default function CityCanvas() {
   const [quality, setQuality] = useState<Quality>("high");
   const [stageUp, setStageUp] = useState(false);
   const [minWait, setMinWait] = useState(false);
+  const [entered, setEntered] = useState(false);
   const ready = stageUp && minWait;
+  const live = ready && entered;
   const stageReady = useCallback(() => setStageUp(true), []);
+  const enter = useCallback(() => setEntered(true), []);
   const flyRef = useRef<((d: Destination) => Promise<void>) | null>(null);
   const homeRef = useRef<(() => void) | null>(null);
   const held = useRef(new Set<Move>());
@@ -176,8 +179,8 @@ export default function CityCanvas() {
   }, [returning]);
 
   useEffect(() => {
-    if (ready) markVisited();
-  }, [ready]);
+    if (live) markVisited();
+  }, [live]);
 
   useEffect(() => {
     if (!hovered || prefetched.has(hovered.href)) return;
@@ -216,7 +219,7 @@ export default function CityCanvas() {
     <DayNightContext.Provider value={dn}>
       <CityContext.Provider value={api}>
         <HoverContext.Provider value={hover}>
-          <div className={`city-root ${ready ? "is-live" : ""}`}>
+          <div className={`city-root ${live ? "is-live" : ""}`}>
             <StageBoundary
               name="The 3D city"
               onFail={() => setStageUp(true)}
@@ -226,7 +229,7 @@ export default function CityCanvas() {
                 </div>
               }
             >
-              <CityStage live={ready} onQuality={setQuality} onReady={stageReady} />
+              <CityStage live={live} onQuality={setQuality} onReady={stageReady} />
             </StageBoundary>
             <div className="city-frame" aria-hidden>
               <i />
@@ -289,7 +292,7 @@ export default function CityCanvas() {
                 <span>{pillLabel}</span>
                 <small>{labelFor(hour)}</small>
               </button>
-              {MUSIC.src && <EntranceMusic />}
+              <MusicToggle />
               <span className="city-geo">{CITY_HUD.geo}</span>
               <span className="city-readout">{CITY_HUD.readout}</span>
             </div>
@@ -304,7 +307,7 @@ export default function CityCanvas() {
             </div>
 
             <div className={`city-fade ${fade ? "is-on" : ""}`} aria-hidden />
-            <Loader ready={ready} returning={returning} />
+            <Loader ready={ready} released={entered} onRelease={enter} returning={returning} />
           </div>
         </HoverContext.Provider>
       </CityContext.Provider>
