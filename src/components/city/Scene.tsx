@@ -9,7 +9,6 @@ import Aircraft from "./Aircraft";
 import AlterEgo from "./AlterEgo";
 import StageBoundary from "./StageBoundary";
 import Buildings from "./Buildings";
-import CameraRig from "./CameraRig";
 import { useCity } from "./CityContext";
 import DetailCull from "./DetailCull";
 import Details from "./Details";
@@ -22,6 +21,7 @@ import HologramClock from "./HologramClock";
 import Landmarks from "./Landmarks";
 import { LIT_IN_REFLECTION } from "./layers";
 import { requestShadowUpdate, setShadowManual } from "./mirrorRender";
+import { cadenceDue } from "./renderCadence";
 import PeopleMover from "./PeopleMover";
 import Roads from "./Roads";
 import Sky from "./Sky";
@@ -63,13 +63,15 @@ function Ambience() {
   return null;
 }
 
+const SHADOW_NORMAL = { frames: 6, hz: 10 };
+const SHADOW_SMOOTH = { frames: 2, hz: 30 };
+
 function ShadowThrottle() {
   const gl = useThree((s) => s.gl);
-  const frame = useRef(0);
+  const cadence = useRef({ last: -Infinity, frames: 0 });
   useEffect(() => setShadowManual(gl), [gl]);
-  useFrame(() => {
-    frame.current += 1;
-    if (frame.current % 6 === 0) requestShadowUpdate(gl);
+  useFrame(({ clock }) => {
+    if (cadenceDue(cadence.current, clock.elapsedTime, SHADOW_NORMAL, SHADOW_SMOOTH)) requestShadowUpdate(gl);
   }, -2);
   return null;
 }
@@ -157,7 +159,6 @@ export default function Scene({ onReady }: { onReady: () => void }) {
       </Suspense>
       <Ambience />
       <HologramClock />
-      <CameraRig />
       <Effects />
       <ShadowThrottle />
       <DetailCull />

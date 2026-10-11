@@ -9,6 +9,7 @@ import { labelTexture } from "./labels";
 import { enableReflection } from "./layers";
 import { RIVER_FAR, RIVER_NEAR } from "./layout";
 import NeonSign, { DISPLAY_FONT } from "./NeonSign";
+import { loopLength, loopPose, type LoopPose } from "./loopPath";
 import { mulberry32, pick, range } from "./rng";
 
 const WATER_Y = -0.6;
@@ -84,7 +85,7 @@ function Smoke({ at, size = 0.5, drift = -1 }: { at: [number, number, number]; s
       m.position.set(at[0] + drift * u * 6 + Math.sin(t + i) * 0.3, at[1] + u * 6, at[2] + Math.cos(t * 0.7 + i) * 0.4);
       const s = size * (0.6 + u * 2.2);
       m.scale.setScalar(s);
-      (m.material as MeshStandardMaterial).opacity = (1 - u) * 0.35;
+      (m.material as MeshStandardMaterial).opacity = Math.min(1, u / 0.15) * (1 - u) * 0.35;
     }
   });
   return (
@@ -1168,67 +1169,53 @@ interface CraftPose {
   z: number;
   yaw: number;
   calm: number;
+  lean: number;
 }
 
-const WEAVE_EASE = 20;
+const TURN_LEAN = 0.22;
+const TURN_LEAN_EASE = 8;
 
-function easeFromEnds(s: number, straight: number) {
-  return Math.min(1, Math.min(s, straight - s) / WEAVE_EASE);
+const WEAVE_EASE = 20;
+const PLANING_TRIM = 0.06;
+
+function easeFromEnds(s: number, length: number, ease: number) {
+  return Math.min(1, Math.min(s, length - s) / ease);
 }
 
 function laneLength(b: Craft) {
   const straight = b.max - b.min;
   if (b.returnZ === undefined) return straight;
-  return 2 * straight + Math.PI * Math.abs(b.returnZ - b.z);
+  return loopLength(straight, (b.returnZ - b.z) / 2);
 }
+
+const craftLoop: LoopPose = { a: 0, b: 0, ha: 1, hb: 0, leg: 0, into: 0 };
 
 function poseCraft(b: Craft, travelled: number, out: CraftPose) {
   const straight = b.max - b.min;
-  const length = laneLength(b);
-  let s = ((travelled % length) + length) % length;
   out.calm = 1;
+  out.lean = 0;
   if (b.returnZ === undefined) {
+    const s = ((travelled % straight) + straight) % straight;
     out.x = b.speed > 0 ? b.min + s : b.max - s;
     out.z = b.z;
     out.yaw = b.speed > 0 ? 0 : -Math.PI;
     return;
   }
   const r = (b.returnZ - b.z) / 2;
-  const turn = Math.PI * r;
-  if (s < straight) {
-    out.x = b.min + s;
-    out.z = b.z;
-    out.yaw = 0;
-    out.calm = easeFromEnds(s, straight);
-    return;
+  const loop = loopPose(travelled, straight, r, craftLoop);
+  out.x = (b.min + b.max) / 2 + loop.a;
+  out.z = b.z + r + loop.b;
+  out.yaw = -Math.atan2(loop.hb, loop.ha);
+  if (loop.leg % 2 === 0) out.calm = easeFromEnds(loop.into, straight, WEAVE_EASE);
+  else {
+    out.calm = 0;
+    out.lean = TURN_LEAN * easeFromEnds(loop.into, Math.PI * r, TURN_LEAN_EASE);
   }
-  s -= straight;
-  out.calm = 0;
-  if (s < turn) {
-    const a = s / r;
-    out.x = b.max + Math.sin(a) * r;
-    out.z = b.z + r - Math.cos(a) * r;
-    out.yaw = -a;
-    return;
-  }
-  s -= turn;
-  if (s < straight) {
-    out.x = b.max - s;
-    out.z = b.returnZ;
-    out.yaw = -Math.PI;
-    out.calm = easeFromEnds(s, straight);
-    return;
-  }
-  s -= straight;
-  const a = s / r;
-  out.x = b.min - Math.sin(a) * r;
-  out.z = b.returnZ - r + Math.cos(a) * r;
-  out.yaw = -Math.PI - a;
 }
 
 const CHANNEL = { min: -LOOP / 2, max: LOOP / 2 };
 const LANES = {
-  north: { z: RIVER_NEAR + 2.5, returnZ: RIVER_NEAR + 6, speed: 10, min: -480, max: 200 },
+  north: { z: RIVER_NEAR + 2.5, returnZ: RIVER_NEAR + 20.5, speed: 10, min: -480, max: 200 },
   princess: { z: RIVER_FAR - 25, speed: 2.4, ...CHANNEL },
   sail: { z: RIVER_FAR - 18.7, speed: -2, ...CHANNEL },
   laker: { z: RIVER_FAR - 11, speed: 1.7, ...CHANNEL },
@@ -1266,7 +1253,7 @@ export default function Watercraft() {
   const [fleet] = useState(() => buildFleet());
   const refs = useRef<(Group | null)[]>([]);
   const root = useRef<Group>(null);
-  const [pose] = useState<CraftPose>(() => ({ x: 0, z: 0, yaw: 0, calm: 1 }));
+  const [pose] = useState<CraftPose>(() => ({ x: 0, z: 0, yaw: 0, calm: 1, lean: 0 }));
   useEffect(() => enableReflection(root.current), []);
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
@@ -1281,7 +1268,8 @@ export default function Watercraft() {
       g.position.set(pose.x, WATER_Y + 0.55 + Math.sin(t * 1.1 + i) * b.bob, pose.z + weave);
       const heading = weaving ? Math.atan2(Math.cos(t * 0.9 + i) * sway * 0.9, Math.abs(b.speed)) : 0;
       const along = Math.cos(pose.yaw) >= 0 ? 1 : -1;
-      g.rotation.set(Math.sin(t * 0.9 + i) * b.bob * 0.12, pose.yaw - along * heading, Math.sin(t * 0.7 + i) * b.bob * 0.15 + (weaving ? -Math.cos(t * 0.9 + i) * 0.2 * pose.calm : 0));
+      const trim = b.kind === "speed" || b.kind === "jetski" ? PLANING_TRIM : 0;
+      g.rotation.set(Math.sin(t * 0.9 + i) * b.bob * 0.12 + pose.lean + (weaving ? -along * Math.sin(t * 0.9 + i) * 0.2 * pose.calm : 0), pose.yaw - along * heading, Math.sin(t * 0.7 + i) * b.bob * 0.15 + trim, "YXZ");
     }
   });
   return (

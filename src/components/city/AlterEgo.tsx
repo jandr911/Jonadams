@@ -3,14 +3,15 @@
 import { Html, useTexture } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
-import { Color, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, Quaternion, SRGBColorSpace, Vector3, type Texture } from "three";
+import { Color, DoubleSide, Group, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, Quaternion, SRGBColorSpace, Vector3, type Texture } from "three";
 import { ALTER_EGO } from "@/content/site";
 import { DETROIT_POLICE, HELI_PITCH, HELI_SKID_DROP, HELI_SKID_X, HelicopterBody, spinHelicopter, type HelicopterParts } from "./Aircraft";
 import { useCity } from "./CityContext";
 import { type DayNight } from "./dayNight";
 import { useDayNight } from "./DayNightContext";
 import { LISTEN_ROOF_Y, PAD } from "./Landmarks";
-import { destinationById, destinationPosition } from "./layout";
+import { HOVER_SCALE, LABEL_FADE_STYLE, destinationById, destinationPosition } from "./layout";
+import { useLingeringLabel } from "./useLingeringLabel";
 import { makeShadowBlobTexture } from "./textures";
 
 const STAND_H = 20;
@@ -27,7 +28,8 @@ const GRIP = new Vector3(HELI_SKID_X, -HELI_SKID_DROP, 0);
 const ROOF_SPOT = { x: -6, z: 4.5 };
 const SHADOW = { x: 0.6, width: 5.2, depth: 4.4 };
 const ROPE_COLOR = "#c8582a";
-const HOTSPOT_GROW = 0.035;
+const HOTSPOT_GROW = HOVER_SCALE - 1;
+const ROOF_RISE = LISTEN_ROOF_Y - PAD;
 
 const [FOX_X, FOX_Z] = destinationPosition(destinationById("listen"));
 const STAND = new Vector3(FOX_X + ROOF_SPOT.x, LISTEN_ROOF_Y, FOX_Z + ROOF_SPOT.z);
@@ -39,22 +41,24 @@ const HOVER = new Vector3(
 );
 
 const CYCLE = 115;
-const VISIBLE = [50, 113] as const;
+const VISIBLE = [46, 113] as const;
 const PICKUP = 67.5;
 const DROP = 96.5;
 const HOLDS = [
-  [65.2, 69.8],
-  [94.2, 98.8],
+  [64.6, 69.8],
+  [95.2, 98.8],
 ] as const;
+const ROPE_REACH_SECONDS = 1.6;
+const DRIFT_CLEAR_SECONDS = 1.5;
 
 const at = (dx: number, dy: number, dz: number) => new Vector3(HOVER.x + dx, HOVER.y + dy, HOVER.z + dz);
 
 const FLIGHT: { t: number; p: Vector3 }[] = [
-  { t: 50, p: new Vector3(-800, 72, 100) },
-  { t: 61, p: new Vector3(-200, 64, 100) },
-  { t: 64, p: at(0, 3, 12) },
-  { t: 65, p: at(0, 3, 0) },
-  { t: 66, p: at(0, 0, 0) },
+  { t: 46, p: new Vector3(-800, 72, 100) },
+  { t: 58, p: new Vector3(-200, 64, 100) },
+  { t: 62.5, p: at(-4, 3, 14) },
+  { t: 64.6, p: at(0, 3, 2) },
+  { t: 65.8, p: at(0, 0, 0) },
   { t: 69, p: at(0, 0, 0) },
   { t: 69.8, p: at(0, 3, 0) },
   { t: 71, p: at(0, 3, 12) },
@@ -64,9 +68,9 @@ const FLIGHT: { t: number; p: Vector3 }[] = [
   { t: 84.5, p: new Vector3(125, 60, 100) },
   { t: 89, p: new Vector3(20, 60, 100) },
   { t: 92.5, p: new Vector3(-70, 64, 99) },
-  { t: 94, p: at(0, 3, 12) },
-  { t: 95, p: at(0, 3, 0) },
-  { t: 95.8, p: at(0, 0, 0) },
+  { t: 94.2, p: at(4, 3, 14) },
+  { t: 95.2, p: at(0, 2, 3) },
+  { t: 96.2, p: at(0, 0, 0) },
   { t: 98, p: at(0, 0, 0) },
   { t: 99, p: at(0, 3, 0) },
   { t: 101, p: at(0, 3, 14) },
@@ -75,6 +79,7 @@ const FLIGHT: { t: number; p: Vector3 }[] = [
 ];
 
 const BEAT_HZ = 1.53;
+const BAR_SWELL_HZ = BEAT_HZ / 8;
 const PUFF_SECONDS = 9;
 const SMOKE_OPACITY = 0.94;
 const PUFF_DRIFT = 1.2;
@@ -94,6 +99,9 @@ interface Flight {
   ahead: Vector3;
   yaw: number;
   lastT: number;
+  speed: number;
+  accel: number;
+  pitch: number;
 }
 
 function tangentAt(i: number, out: Vector3) {
@@ -134,6 +142,9 @@ const ENTRY_YAW = Math.atan2(FLIGHT[1].p.x - FLIGHT[0].p.x, FLIGHT[1].p.z - FLIG
 function resetFlight(f: Flight) {
   f.lastT = -1;
   f.yaw = ENTRY_YAW;
+  f.speed = 0;
+  f.accel = 0;
+  f.pitch = HELI_PITCH;
 }
 
 function inHold(t: number) {
@@ -156,7 +167,29 @@ function steerFlight(f: Flight, t: number) {
   const target = hold ? 0 : Math.hypot(vx, vz) > 0.1 ? Math.atan2(vx, vz) : f.yaw;
   const before = f.yaw;
   f.yaw = wrapAngle(f.yaw + wrapAngle(target - f.yaw) * (1 - Math.exp(-dt * (hold ? 4 : 2.5))));
+  const speed = f.ahead.distanceTo(f.pos) / 0.05;
+  if (dt > 0) f.accel += ((speed - f.speed) / dt - f.accel) * (1 - Math.exp(-dt * 4));
+  f.speed = speed;
+  f.pitch = hold ? HELI_PITCH : HELI_PITCH + Math.min(speed * 0.004, 0.12) + Math.max(-0.2, Math.min(0.08, f.accel * 0.03));
   return dt > 0 ? wrapAngle(f.yaw - before) / dt : 0;
+}
+
+function holdDrift(t: number, c: number, out: Vector3) {
+  let envelope = 0;
+  for (let i = 0; i < HOLDS.length; i++) {
+    const [from, to] = HOLDS[i];
+    if (c > from && c < to) envelope = Math.min(1, c - from, to - c);
+  }
+  envelope *= Math.min(1, Math.abs(c - PICKUP) / DRIFT_CLEAR_SECONDS, Math.abs(c - DROP) / DRIFT_CLEAR_SECONDS);
+  return out.set(Math.sin(t * 0.9) * 0.4, Math.sin(t * 1.3) * 0.2, Math.cos(t * 0.7) * 0.35).multiplyScalar(envelope);
+}
+
+function ropeReach(c: number) {
+  const lowering = (c - (PICKUP - ROPE_REACH_SECONDS)) / ROPE_REACH_SECONDS;
+  if (lowering > 0 && lowering < 1) return MathUtils.smoothstep(lowering, 0, 1);
+  const raising = (c - DROP) / ROPE_REACH_SECONDS;
+  if (raising >= 0 && raising < 1) return 1 - MathUtils.smoothstep(raising, 0, 1);
+  return 0;
 }
 
 interface Swing {
@@ -256,28 +289,41 @@ interface RoofLift {
   hang: number;
 }
 
+const reachHang = new Vector3();
+
+function poseRopeReach(rope: Mesh, body: Group, camera: Vector3, reach: number, lift: number) {
+  body.updateWorldMatrix(true, false);
+  gripWorld.copy(GRIP).applyMatrix4(body.matrixWorld);
+  reachHang.set(gripWorld.x, gripWorld.y - ROPE + lift, gripWorld.z);
+  const yaw = Math.atan2(camera.x - reachHang.x, camera.z - reachHang.z);
+  const cos = Math.cos(yaw);
+  const sin = Math.sin(yaw);
+  ropeEnd.set(ROPE_END.x * cos + ROPE_END.z * sin, ROPE_END.y, -ROPE_END.x * sin + ROPE_END.z * cos).add(reachHang);
+  ropeEnd.lerpVectors(gripWorld, ropeEnd, reach);
+  ropeDir.subVectors(gripWorld, ropeEnd);
+  rope.position.copy(ropeEnd).addScaledVector(ropeDir, 0.5);
+  rope.scale.set(1, ropeDir.length(), 1);
+  rope.quaternion.setFromUnitVectors(up, ropeDir.normalize());
+}
+
 function liftWithHotspot(lift: RoofLift, listenHovered: boolean, dt: number, carried: boolean, held: boolean) {
-  const target = listenHovered ? (LISTEN_ROOF_Y - PAD) * HOTSPOT_GROW : 0;
+  const target = listenHovered ? ROOF_RISE * HOTSPOT_GROW : 0;
   lift.value += (target - lift.value) * (1 - Math.exp(-dt * 10));
   lift.hang = carried ? lift.hang + ((held ? lift.value : 0) - lift.hang) * (1 - Math.exp(-dt * 4)) : lift.value;
 }
 
 function poseRoof(roof: Group, shadow: Mesh | null, camera: Vector3, t: number, still: boolean, lift: number) {
-  const beat = still ? 0 : t * BEAT_HZ * Math.PI * 2;
-  roof.position.copy(STAND);
-  roof.position.y += lift;
-  roof.rotation.set(0, faceCamera(roof, camera), still ? 0 : Math.sin(beat * 0.5) * 0.035, "YXZ");
-  const bounce = still ? 0 : Math.abs(Math.sin(beat));
+  const beat = still ? 0 : t * BEAT_HZ * Math.PI;
+  const spread = lift / ROOF_RISE;
+  roof.position.set(STAND.x + ROOF_SPOT.x * spread, STAND.y + lift, STAND.z + ROOF_SPOT.z * spread);
+  roof.rotation.set(0, faceCamera(roof, camera), still ? 0 : Math.sin(beat) * 0.035, "YXZ");
+  const accent = 0.75 + 0.25 * Math.sin(t * BAR_SWELL_HZ * Math.PI * 2);
+  const bounce = still ? 0 : Math.sin(beat * 2) ** 2 * accent;
   roof.scale.set(1 - bounce * 0.012, 1 + bounce * 0.025, 1);
   if (shadow) {
-    shadow.position.set(STAND.x + SHADOW.x, STAND.y + lift + 0.05, STAND.z);
+    shadow.position.set(roof.position.x + SHADOW.x, STAND.y + lift + 0.05, roof.position.z);
     shadow.scale.setScalar(1 - bounce * 0.04);
   }
-}
-
-function smoothstep(a: number, b: number, x: number) {
-  const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return k * k * (3 - 2 * k);
 }
 
 function poseSmoke(smoke: Group, mat: MeshBasicMaterial, t: number, still: boolean) {
@@ -290,20 +336,21 @@ function poseSmoke(smoke: Group, mat: MeshBasicMaterial, t: number, still: boole
     return;
   }
   const p = (t % PUFF_SECONDS) / PUFF_SECONDS;
-  const born = smoothstep(0, 0.14, p);
-  const gone = smoothstep(0.66, 0.95, p);
+  const born = MathUtils.smoothstep(p, 0, 0.14);
+  const gone = MathUtils.smoothstep(p, 0.62, 0.95);
+  const travel = 1 - (1 - p) * (1 - p);
   mat.opacity = SMOKE_OPACITY * born * (1 - gone);
   smoke.visible = mat.opacity > 0.01;
-  smoke.position.set(SMOKE_ROOT.x + gone * PUFF_DRIFT, SMOKE_ROOT.y + gone * PUFF_RISE, SMOKE_ROOT.z);
-  smoke.rotation.set(0, 0, Math.sin(t * 0.8) * 0.05 - gone * 0.1);
-  smoke.scale.setScalar((0.55 + 0.45 * born + PUFF_SWELL * gone) * (1 + Math.sin(t * 2.1) * 0.015));
+  smoke.position.set(SMOKE_ROOT.x + travel * PUFF_DRIFT + Math.sin(t * 0.6) * 0.08, SMOKE_ROOT.y + travel * PUFF_RISE, SMOKE_ROOT.z);
+  smoke.rotation.set(0, 0, Math.sin(t * 0.8) * 0.05 - travel * 0.1);
+  smoke.scale.setScalar((0.55 + 0.45 * born + PUFF_SWELL * travel) * (1 + Math.sin(t * 2.1) * 0.015));
 }
 
-function poseHanging(hang: Group | null, rope: Mesh | null, body: Group | null, swing: Swing, camera: Vector3, dt: number, hold: boolean, still: boolean, lift: number) {
+function poseHanging(hang: Group | null, rope: Mesh | null, body: Group | null, swing: Swing, camera: Vector3, dt: number, hold: boolean, lift: number) {
   if (!hang || !rope || !body) return;
   body.updateWorldMatrix(true, false);
   gripWorld.copy(GRIP).applyMatrix4(body.matrixWorld);
-  if (!swing.active || still) settleSwing(swing, gripWorld);
+  if (!swing.active) settleSwing(swing, gripWorld);
   else stepSwing(swing, gripWorld, dt, hold);
   hang.position.copy(swing.pos);
   hang.position.y += lift;
@@ -322,7 +369,7 @@ function poseHanging(hang: Group | null, rope: Mesh | null, body: Group | null, 
 
 export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
   const dn = useDayNight();
-  const { reducedMotion, navigating, hovered } = useCity();
+  const { reducedMotion, navigating, hoveredRef } = useCity();
   const [lift] = useState<RoofLift>(() => ({ value: 0, hang: 0 }));
   const [standingMap, smokeMap, walkingMap] = useTexture([STANDING.src, SMOKE.src, WALKING.src]);
   const gl = useThree((s) => s.gl);
@@ -357,9 +404,10 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
   );
   useEffect(() => matchTimeOfDay(art, dn), [art, dn]);
 
-  const [flight] = useState<Flight>(() => ({ pos: new Vector3(), ahead: new Vector3(), yaw: ENTRY_YAW, lastT: -1 }));
+  const [flight] = useState<Flight>(() => ({ pos: new Vector3(), ahead: new Vector3(), yaw: ENTRY_YAW, lastT: -1, speed: 0, accel: 0, pitch: HELI_PITCH }));
+  const [drift] = useState(() => new Vector3());
   const [swing] = useState<Swing>(() => ({ pos: new Vector3(), vel: new Vector3(), grip: new Vector3(), active: false }));
-  const [hover, setHover] = useState(false);
+  const label = useLingeringLabel();
   const roof = useRef<Group>(null);
   const smoke = useRef<Group>(null);
   const shadow = useRef<Mesh>(null);
@@ -376,7 +424,7 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
     const t = clock.elapsedTime;
     const dt = Math.min(0.1, delta);
     const c = t % CYCLE;
-    const flying = flyBy && c >= VISIBLE[0] && c <= VISIBLE[1];
+    const flying = flyBy && !reducedMotion && c >= VISIBLE[0] && c <= VISIBLE[1];
     const hanging = flying && c >= PICKUP && c < DROP;
     const hold = inHold(c);
     const heli = chopper.current;
@@ -384,9 +432,9 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
       heli.visible = flying;
       if (flying) {
         const yawRate = steerFlight(flight, c);
-        heli.position.copy(flight.pos);
+        heli.position.copy(flight.pos).add(holdDrift(t, c, drift));
         heli.rotation.set(0, flight.yaw, 0);
-        spinHelicopter(parts, t, hold ? 0 : -yawRate * 0.83, hold);
+        spinHelicopter(parts, t, dt, hold ? 0 : -yawRate * 0.83, flight.pitch, hold);
       } else {
         resetFlight(flight);
       }
@@ -394,16 +442,20 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
     const onRoof = roof.current;
     if (onRoof) {
       onRoof.visible = !hanging;
-      liftWithHotspot(lift, hovered?.id === "listen", dt, hanging, hold);
+      liftWithHotspot(lift, hoveredRef.current?.id === "listen", dt, hanging, hold);
       if (!hanging) poseRoof(onRoof, shadow.current, camera.position, t, reducedMotion, lift.value);
     }
     if (shadow.current) shadow.current.visible = !hanging;
     if (smoke.current && !hanging) poseSmoke(smoke.current, art.smoke, t, reducedMotion);
-    if (hanging && hover) setHover(false);
+    if (hanging && label.on) label.hide();
     if (hang.current) hang.current.visible = hanging;
-    if (rope.current) rope.current.visible = hanging;
-    if (hanging) poseHanging(hang.current, rope.current, body.current, swing, camera.position, dt, hold, reducedMotion, lift.hang);
-    else releaseSwing(swing);
+    const reach = flying && !hanging ? ropeReach(c) : 0;
+    if (rope.current) rope.current.visible = hanging || reach > 0.001;
+    if (hanging) poseHanging(hang.current, rope.current, body.current, swing, camera.position, dt, hold, lift.hang);
+    else {
+      releaseSwing(swing);
+      if (reach > 0.001 && rope.current && body.current) poseRopeReach(rope.current, body.current, camera.position, reach, lift.value);
+    }
   });
 
   const named = ALTER_EGO.name.length > 0;
@@ -424,17 +476,17 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
         ref={roof}
         position={STAND.toArray()}
         onPointerOver={() => {
-          if (named && roof.current?.visible) setHover(true);
+          if (named && roof.current?.visible) label.show();
         }}
-        onPointerOut={() => setHover(false)}
+        onPointerOut={label.hide}
       >
         <mesh geometry={art.standingGeo} material={art.standing} />
         <group ref={smoke} position={SMOKE_ROOT.toArray()}>
           <mesh geometry={art.smokeGeo} material={art.smoke} renderOrder={1} raycast={ignoreRaycast} />
         </group>
-        {hover && named && !navigating && (
+        {label.mounted && named && !navigating && (
           <Html position={[0, TAG_Y, 0]} center distanceFactor={90} style={{ pointerEvents: "none" }} zIndexRange={[40, 0]}>
-            <div className="landmark-label">
+            <div className={`landmark-label ${label.on ? "is-on" : ""}`} style={LABEL_FADE_STYLE}>
               <strong>{ALTER_EGO.name}</strong>
               <span>{ALTER_EGO.note}</span>
             </div>

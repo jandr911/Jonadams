@@ -858,8 +858,26 @@ a.site-nav__link:hover .site-nav__sub,
   backdrop-filter: blur(12px);
   white-space: nowrap;
   box-shadow: 0 0 40px color-mix(in srgb, var(--c) 35%, transparent);
-  transform: scale(1.25);
+  transform: translateY(10px) scale(1.16);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity calc(var(--fade, 340ms) * 0.65) ease,
+    transform var(--fade, 340ms) cubic-bezier(0.2, 0.8, 0.2, 1),
+    visibility 0s linear var(--fade, 340ms);
   position: relative;
+}
+.hotspot-label.is-on {
+  transform: scale(1.25);
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+@starting-style {
+  .hotspot-label.is-on {
+    transform: translateY(10px) scale(1.16);
+    opacity: 0;
+  }
 }
 .hotspot-label::before,
 .hotspot-label::after {
@@ -1882,6 +1900,21 @@ a.site-nav__link:hover .site-nav__sub,
   background: rgba(7, 6, 15, 0.8);
   backdrop-filter: blur(10px);
   white-space: nowrap;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity calc(var(--fade, 340ms) * 0.55) ease,
+    transform calc(var(--fade, 340ms) * 0.75) cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.landmark-label.is-on {
+  opacity: 1;
+  transform: none;
+}
+@starting-style {
+  .landmark-label.is-on {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 .landmark-label strong {
   font-family: var(--font-serif), serif;
@@ -2059,7 +2092,9 @@ a.site-nav__link:hover .site-nav__sub,
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .city-root .city-frame {
+  .city-root .city-frame,
+  .hotspot-label,
+  .landmark-label {
     transition: none;
   }
   .city-pad__btn,

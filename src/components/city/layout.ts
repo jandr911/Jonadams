@@ -18,6 +18,10 @@ export const RIVER_FAR = RIVER_NEAR + 70;
 
 export const CAMERA_CEILING = 250;
 
+export const HOVER_SCALE = 1.05;
+export const LABEL_FADE_MS = 340;
+export const LABEL_FADE_STYLE = { ["--fade" as string]: `${LABEL_FADE_MS}ms` };
+
 export const AMBASSADOR_X = -186;
 export const AMBASSADOR_CLEAR_HALF = 9;
 export const AMBASSADOR_RAMP_Z = [-23, RIVER_FAR + 125] as const;
@@ -39,7 +43,7 @@ export function homeCamera(aspect: number) {
 }
 
 export const INTRO_CAMERA = {
-  position: [-260, 200, CITY_HALF_Z + 440] as [number, number, number],
+  position: [-260, 200, CITY_HALF_Z + 372] as [number, number, number],
   target: [0, 20, 0] as [number, number, number],
 };
 
@@ -79,6 +83,7 @@ export function outerRoadLinesZ(): number[] {
 }
 
 export const LIGHT_CYCLE = 16;
+export const TRAFFIC_CLOCK = { time: 0 };
 const GREEN_UNTIL = 0.35;
 const AMBER_UNTIL = 0.42;
 
