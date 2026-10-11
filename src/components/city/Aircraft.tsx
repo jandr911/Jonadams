@@ -10,7 +10,9 @@ import { useDayNight } from "./DayNightContext";
 import { gradientColors } from "./instancing";
 import { labelTexture } from "./labels";
 import { enableReflection } from "./layers";
+import { destinationById } from "./layout";
 import { SCRIPT_FONT } from "./NeonSign";
+import { LitWindow } from "./Watercraft";
 
 const SEARCHLIGHT_LENGTH = 60;
 
@@ -55,10 +57,6 @@ function NavLight({ position, color, size }: { position: [number, number, number
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4 + dn.night * 3} toneMapped={false} />
     </mesh>
   );
-}
-
-function LitWindow({ intensity }: { intensity: number }) {
-  return <meshStandardMaterial color="#1d2a3a" emissive="#ffd27a" emissiveIntensity={intensity} roughness={0.1} metalness={0.5} toneMapped={false} />;
 }
 
 function Glass() {
@@ -276,7 +274,7 @@ export interface HelicopterLivery {
   lightBar: boolean;
 }
 
-export const ADAMS_AIR: HelicopterLivery = {
+const ADAMS_AIR: HelicopterLivery = {
   hull: "#1d1d3f",
   trim: "#d6b56e",
   pilot: "#d6b56e",
@@ -526,6 +524,15 @@ export function HelicopterBody({
   );
 }
 
+const TANGENT_DELTA = 0.0001;
+
+function tangentAt(path: CatmullRomCurve3, u: number, a: Vector3, b: Vector3, out: Vector3) {
+  const t = path.getUtoTmapping(u, 0);
+  path.getPoint(Math.max(0, t - TANGENT_DELTA), a);
+  path.getPoint(Math.min(1, t + TANGENT_DELTA), b);
+  return out.subVectors(b, a).normalize();
+}
+
 function Helicopter() {
   const rig = useRef<Group>(null);
   const body = useRef<Group>(null);
@@ -542,15 +549,15 @@ function Helicopter() {
       ),
     [],
   );
-  const tmp = useMemo(() => ({ p: new Vector3(), t: new Vector3(), t2: new Vector3(), look: new Vector3() }), []);
+  const tmp = useMemo(() => ({ p: new Vector3(), t: new Vector3(), t2: new Vector3(), look: new Vector3(), a: new Vector3(), b: new Vector3() }), []);
   const [parts] = useState<HelicopterParts>(() => ({ body, rotor, tail, beam }));
   useFrame(({ clock }, delta) => {
     const g = rig.current;
     if (!g) return;
     const u = (clock.elapsedTime * 0.012) % 1;
     path.getPointAt(u, tmp.p);
-    path.getTangentAt(u, tmp.t);
-    path.getTangentAt((u + 0.01) % 1, tmp.t2);
+    tangentAt(path, u, tmp.a, tmp.b, tmp.t);
+    tangentAt(path, (u + 0.01) % 1, tmp.a, tmp.b, tmp.t2);
     g.position.copy(tmp.p);
     tmp.look.copy(tmp.p).add(tmp.t);
     g.lookAt(tmp.look);
@@ -589,7 +596,7 @@ function BannerPlane() {
     },
     [bannerGeo, bannerBackGeo],
   );
-  const tex = useMemo(() => labelTexture("J. ADAMS · LIVE AT CLUB ADAMS · DETROIT", { width: 2048, height: 256, bg: "#07060f", fg: "#f3dfae", border: "#d6b56e", size: 150 }), []);
+  const tex = useMemo(() => labelTexture(`J. ADAMS · LIVE AT ${destinationById("club").label.toUpperCase()} · DETROIT`, { width: 2048, height: 256, bg: "#07060f", fg: "#f3dfae", border: "#d6b56e", size: 150 }), []);
   useFrame(({ clock }) => {
     const g = rig.current;
     if (!g) return;

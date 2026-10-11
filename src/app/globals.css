@@ -1804,7 +1804,6 @@ a.site-nav__link:hover .site-nav__sub,
   flex-direction: column;
   gap: 8px;
   padding: 14px 14px 20px;
-  transition: border-color 0.3s, transform 0.3s;
 }
 .product-card:hover,
 .creative-card:hover {

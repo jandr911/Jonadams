@@ -12,7 +12,7 @@ import {
 } from "three";
 import { REFLECT_LAYER } from "./layers";
 
-export interface MirrorScratch {
+interface MirrorScratch {
   virtualCamera: PerspectiveCamera;
   reflectorPos: Vector3;
   cameraPos: Vector3;

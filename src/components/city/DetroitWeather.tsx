@@ -7,7 +7,7 @@ const LONGITUDE = -83.05;
 const FORECAST_URL = `https://api.open-meteo.com/v1/forecast?latitude=${LATITUDE}&longitude=${LONGITUDE}&current=temperature_2m,weather_code,cloud_cover&temperature_unit=fahrenheit`;
 const REFRESH_MS = 15 * 60_000;
 
-export type Weather = { kind: "loading" } | { kind: "offline" } | { kind: "ok"; tempF: number; code: number; cloud: number };
+type Weather = { kind: "loading" } | { kind: "offline" } | { kind: "ok"; tempF: number; code: number; cloud: number };
 
 export function useDetroitWeather(): Weather {
   const [weather, setWeather] = useState<Weather>({ kind: "loading" });

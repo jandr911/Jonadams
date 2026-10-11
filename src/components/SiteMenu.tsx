@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { HEADER } from "@/content/site";
 
 export interface MenuLink {
   href: string;
@@ -59,7 +60,7 @@ export default function SiteMenu({ links, cta, current }: { links: MenuLink[]; c
         ref={button}
         type="button"
         className={`btn-outline site-menu__btn ${open ? "is-open" : ""}`}
-        aria-label={open ? "Close menu" : "Open menu"}
+        aria-label={open ? HEADER.closeMenu : HEADER.openMenu}
         aria-expanded={open}
         aria-controls={open ? "site-menu-panel" : undefined}
         onClick={() => setOpen((v) => !v)}

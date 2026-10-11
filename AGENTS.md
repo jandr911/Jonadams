@@ -175,8 +175,11 @@ The budget is held by deliberate choices. Do not undo them without a measured re
   one without the others.
 - Repeated geometry is instanced. A loop that mounts one mesh per building, car, window,
   or house is wrong here.
-- Procedural canvas textures live in `textures.ts`. Do not add image textures without
-  asking; there is no asset pipeline and the memory ceiling is real.
+- Procedural canvas textures live in `textures.ts`, and text and sign textures in
+  `labels.ts`. Do not add image textures without asking; there is no asset pipeline and
+  the memory ceiling is real.
+- `labels.ts` textures are cached globally and shared. Never dispose one from a
+  consumer; the next sign to ask for it gets a dead texture.
 
 **Measure, do not guess.** `window.__cityGL` (the renderer) and `window.__cityControls`
 (camera-controls) are exposed in development for exactly this. Check the home view, a
@@ -207,8 +210,9 @@ Add a token to `globals.css` if one is missing.
 
 - Reuse the existing utilities before writing new CSS: `eyebrow`, `btn-outline`,
   `btn-solid`, `panel`, `shell`, `room`, and the card classes already in the sheet.
-- Fonts come from `next/font` in the root layout: Cormorant Garamond for display
-  (`font-serif`), Space Grotesk for body (`font-body`). Do not load a font any other way.
+- DOM fonts come from `next/font` in the root layout: Cormorant Garamond for display
+  (`font-serif`), Space Grotesk for body (`font-body`). Do not load a DOM font any other
+  way. The 3D scene and the share image use only the font files in `public/fonts`.
 - The site is a single dark theme by design. Do not add a light theme.
 - Inside the 3D scene, colours are Three.js values and belong in the component that
   owns the material or in `dayNight.ts`, where the day and night palettes live.

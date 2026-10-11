@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SITE } from "@/content/site";
+import { HEADER, JOIN, SITE } from "@/content/site";
 import { DESTINATIONS, indexLabel } from "./city/layout";
 import SiteMenu, { type MenuLink } from "./SiteMenu";
 import Wordmark from "./Wordmark";
@@ -14,8 +14,8 @@ const NAV: MenuLink[] = DESTINATIONS.map((d, i) => ({
 
 export default function SiteHeader({ back = false, current }: { back?: boolean; current?: string }) {
   const cta = back
-    ? { href: "/", label: "Back to the city", short: "Back" }
-    : { href: SITE.joinHref, label: "Join the list", short: "Join" };
+    ? { href: "/", label: HEADER.back, short: HEADER.backShort }
+    : { href: SITE.joinHref, label: JOIN.title, short: JOIN.submit };
   return (
     <header className="site-header">
       <Wordmark />

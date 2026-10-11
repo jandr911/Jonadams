@@ -2,8 +2,8 @@
 
 import { Preload } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Suspense, useEffect, useMemo, useRef } from "react";
-import { Color, InstancedMesh, PMREMGenerator, Scene as ThreeScene, Texture, type WebGLRenderer } from "three";
+import { Suspense, useEffect, useRef } from "react";
+import { InstancedMesh, PMREMGenerator, Scene as ThreeScene, Texture, type WebGLRenderer } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import Aircraft from "./Aircraft";
 import AlterEgo from "./AlterEgo";
@@ -103,10 +103,9 @@ export default function Scene({ onReady }: { onReady: () => void }) {
   const dn = useDayNight();
   const { quality } = useCity();
   const extras = quality === "high";
-  const fogColor = useMemo(() => new Color().copy(dn.fog), [dn.fog]);
   return (
     <>
-      <fog attach="fog" args={[fogColor, 420 + dn.night * 60, 1250 + dn.night * 150]} />
+      <fog attach="fog" args={[dn.fog, 420 + dn.night * 60, 1250 + dn.night * 150]} />
       <ambientLight layers={LIT_IN_REFLECTION} intensity={dn.ambient * 0.6} color={dn.hemiSky} />
       <hemisphereLight layers={LIT_IN_REFLECTION} args={[dn.hemiSky, dn.hemiGround, dn.ambient * 1.6]} />
       <directionalLight

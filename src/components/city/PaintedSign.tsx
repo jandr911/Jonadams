@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { BoxGeometry, MeshStandardMaterial, type BufferGeometry, type Texture } from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { useDayNight } from "./DayNightContext";
+import { mergeParts } from "./instancing";
 import { labelTexture } from "./labels";
 
 const FLOODLIGHT = "#ffd9a8";
@@ -42,10 +42,7 @@ function lampHeads(width: number, height: number, depth: number, sides: number[]
         .rotateY(ry),
     ),
   );
-  const merged = mergeGeometries(parts);
-  for (const part of parts) part.dispose();
-  if (!merged) throw new Error("sign lamp heads could not be merged");
-  return merged;
+  return mergeParts(parts, "sign lamp heads");
 }
 
 function light(face: MeshStandardMaterial, lamp: MeshStandardMaterial, night: number) {

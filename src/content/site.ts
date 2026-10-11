@@ -32,6 +32,24 @@ export const CITY_HUD = {
   padCue: "Press & hold to move",
   playMusic: "Play music",
   stopMusic: "Stop music",
+  localTime: "Local time",
+  preview: "Preview",
+  changeTime: (mode: string, phase: string) => `${mode} ${phase}, change time of day`,
+  phases: { sunrise: "SUNRISE", day: "DAYTIME", dusk: "DUSK", night: "NIGHT" },
+  districtsNav: "City districts",
+  padLabel: "Camera controls",
+  padHold: (title: string) => `${title}, press and hold`,
+  pad: {
+    forward: "Move forward (W / ↑)",
+    left: "Move left (A / ←)",
+    home: "Reset view (R)",
+    right: "Move right (D / →)",
+    back: "Move back (S / ↓)",
+    up: "Move up (E / PageUp)",
+    down: "Move down (Q / PageDown)",
+    in: "Zoom in (+)",
+    out: "Zoom out (−)",
+  },
 };
 
 export const LOADER = {
@@ -56,7 +74,22 @@ export const JOIN = {
   submit: "Join",
 };
 
-export const CITY_FALLBACK = "This browser can't draw the 3D city. The districts below still take you everywhere.";
+export const HEADER = {
+  back: "Back to the city",
+  backShort: "Back",
+  openMenu: "Open menu",
+  closeMenu: "Close menu",
+};
+
+export const FOOTER = {
+  booking: "Booking",
+  press: "Press",
+  elsewhere: "Elsewhere",
+};
+
+export const districtEyebrow = (index: string) => `District ${index}`;
+
+export const CITY_FALLBACK ="This browser can't draw the 3D city. The districts below still take you everywhere.";
 
 export const ALTER_EGO = {
   name: "",

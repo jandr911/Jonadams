@@ -17,7 +17,6 @@ import Loader, { markVisited, useReturningVisitor } from "./Loader";
 const CityStage = dynamic(() => import("./CityStage"), { ssr: false });
 
 const PRESETS: TimePreset[] = ["auto", "day", "dusk", "night"];
-const OVERCAST_DEFAULT = 0.6;
 const DISTRICTS_HINT = CITY_HUD.districtsHint(DESTINATIONS.length);
 const LOCKED_HINT = CITY_HUD.lockedHint(DESTINATIONS.length);
 
@@ -62,7 +61,7 @@ function NavPad({ held, homeRef }: { held: React.RefObject<Set<Move>>; homeRef: 
     <button
       type="button"
       className={`city-pad__btn ${cls}`}
-      aria-label={`${title}, press and hold`}
+      aria-label={CITY_HUD.padHold(title)}
       title={title}
       onPointerDown={(e) => {
         e.preventDefault();
@@ -87,25 +86,25 @@ function NavPad({ held, homeRef }: { held: React.RefObject<Set<Move>>; homeRef: 
     </button>
   );
   return (
-    <div className="city-pad" role="group" aria-label="Camera controls">
+    <div className="city-pad" role="group" aria-label={CITY_HUD.padLabel}>
       <div className="city-pad__grid">
         <span />
-        {btn("forward", "↑", "Move forward (W / ↑)")}
+        {btn("forward", "↑", CITY_HUD.pad.forward)}
         <span />
-        {btn("left", "←", "Move left (A / ←)")}
-        <button type="button" className="city-pad__btn city-pad__btn--home" aria-label="Reset view (R)" title="Reset view (R)" onClick={() => homeRef.current?.()}>
+        {btn("left", "←", CITY_HUD.pad.left)}
+        <button type="button" className="city-pad__btn city-pad__btn--home" aria-label={CITY_HUD.pad.home} title={CITY_HUD.pad.home} onClick={() => homeRef.current?.()}>
           ⌂
         </button>
-        {btn("right", "→", "Move right (D / →)")}
+        {btn("right", "→", CITY_HUD.pad.right)}
         <span />
-        {btn("back", "↓", "Move back (S / ↓)")}
+        {btn("back", "↓", CITY_HUD.pad.back)}
         <span />
       </div>
       <div className="city-pad__col">
-        {btn("up", "⇡", "Move up (E / PageUp)")}
-        {btn("down", "⇣", "Move down (Q / PageDown)")}
-        {btn("in", "+", "Zoom in (+)")}
-        {btn("out", "−", "Zoom out (−)")}
+        {btn("up", "⇡", CITY_HUD.pad.up)}
+        {btn("down", "⇣", CITY_HUD.pad.down)}
+        {btn("in", "+", CITY_HUD.pad.in)}
+        {btn("out", "−", CITY_HUD.pad.out)}
       </div>
     </div>
   );
@@ -200,7 +199,7 @@ export default function CityCanvas() {
   }, [hovered, router]);
 
   const weather = useDetroitWeather();
-  const cloud = weather.kind === "ok" ? weather.cloud : OVERCAST_DEFAULT;
+  const cloud = weather.kind === "ok" ? weather.cloud : undefined;
   const dn = useMemo(() => computeDayNight(hour, cloud), [hour, cloud]);
 
 
@@ -225,7 +224,7 @@ export default function CityCanvas() {
     [setHovered, navigating, flyTo, quality, reducedMotion],
   );
 
-  const pillLabel = preset === "auto" ? "Local time" : "Preview";
+  const pillLabel = preset === "auto" ? CITY_HUD.localTime : CITY_HUD.preview;
   const cyclePreset = () => setOverride(PRESETS[(PRESETS.indexOf(preset) + 1) % PRESETS.length]);
 
   return (
@@ -251,7 +250,7 @@ export default function CityCanvas() {
               <i />
             </div>
 
-            <nav aria-label="City districts" className="city-hud city-hud--districts">
+            <nav aria-label={CITY_HUD.districtsNav} className="city-hud city-hud--districts">
               <span className="districts__hint">{hovered ? hovered.blurb : SITE.navLocked ? LOCKED_HINT : DISTRICTS_HINT}</span>
               <div className="districts">
                 <div ref={trackRef} className="districts__track" role={SITE.navLocked ? "list" : undefined}>
@@ -300,7 +299,7 @@ export default function CityCanvas() {
             </nav>
 
             <div className="city-hud city-hud--status">
-              <button type="button" className="city-pill" onClick={cyclePreset} aria-label={`${pillLabel} ${labelFor(hour)}, change time of day`}>
+              <button type="button" className="city-pill" onClick={cyclePreset} aria-label={CITY_HUD.changeTime(pillLabel, labelFor(hour))}>
                 <span className="city-pill__dot" data-night={dn.night > 0.5} />
                 <span>{pillLabel}</span>
                 <small>{labelFor(hour)}</small>

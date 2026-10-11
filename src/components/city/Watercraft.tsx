@@ -4,6 +4,7 @@ import { Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, CanvasTexture, Color, DoubleSide, ExtrudeGeometry, Group, InstancedMesh, Mesh, MeshStandardMaterial, Object3D, Shape, ShapeGeometry } from "three";
+import { SITE } from "@/content/site";
 import { useDayNight } from "./DayNightContext";
 import { labelTexture } from "./labels";
 import { fillInstances } from "./instancing";
@@ -16,8 +17,9 @@ import { mulberry32, pick, range } from "./rng";
 const WATER_Y = -0.6;
 const LOOP = 1000;
 const LINE_NAME_COLOR = new Color("#f3dfae").multiplyScalar(1.3);
+const ARTIST_CAPS = SITE.artist.toUpperCase();
 
-function LitWindow({ intensity, color = "#1d2a3a", toneMapped = false }: { intensity: number; color?: string; toneMapped?: boolean }) {
+export function LitWindow({ intensity, color = "#1d2a3a", toneMapped = false }: { intensity: number; color?: string; toneMapped?: boolean }) {
   return <meshStandardMaterial color={color} emissive="#ffd27a" emissiveIntensity={intensity} roughness={0.1} metalness={0.5} toneMapped={toneMapped} />;
 }
 
@@ -1057,9 +1059,9 @@ function Laker({ night }: { night: number }) {
         <sphereGeometry args={[0.2, 6, 6]} />
         <meshStandardMaterial color="#fff6d8" emissive="#ffd27a" emissiveIntensity={0.4 + night * 3} toneMapped={false} />
       </instancedMesh>
-      <NamePlate text="JONATHAN ADAMS" position={[38, -1.1, 6.1]} width={14} height={1.6} bg="#1a1a22" />
-      <NamePlate text="JONATHAN ADAMS" position={[38, -1.1, -6.1]} rotation={[0, Math.PI, 0]} width={14} height={1.6} bg="#1a1a22" />
-      <NamePlate text="JONATHAN ADAMS · DETROIT" position={[-48.1, -1.0, 0]} rotation={[0, -Math.PI / 2, 0]} width={9} height={1.2} bg="#1a1a22" />
+      <NamePlate text={ARTIST_CAPS} position={[38, -1.1, 6.1]} width={14} height={1.6} bg="#1a1a22" />
+      <NamePlate text={ARTIST_CAPS} position={[38, -1.1, -6.1]} rotation={[0, Math.PI, 0]} width={14} height={1.6} bg="#1a1a22" />
+      <NamePlate text={`${ARTIST_CAPS} · DETROIT`} position={[-48.1, -1.0, 0]} rotation={[0, -Math.PI / 2, 0]} width={9} height={1.2} bg="#1a1a22" />
       <Text font={DISPLAY_FONT} fontSize={2.0} color={LINE_NAME_COLOR} anchorX="center" anchorY="middle" position={[-4, 2.4, 5.7]} letterSpacing={0.12} material-toneMapped={false}>
         ADAMS LINE
       </Text>
