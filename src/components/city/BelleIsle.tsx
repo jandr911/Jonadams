@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, type RefObject } from "react";
-import { InstancedMesh, MeshStandardMaterial, Object3D } from "three";
+import { InstancedMesh, MeshStandardMaterial } from "three";
 import { useDayNight } from "./DayNightContext";
 import { fillInstances } from "./instancing";
 import { RIVER_NEAR } from "./layout";
@@ -203,7 +203,6 @@ function GiantSlide({ m }: { m: Materials }) {
 
 export default function BelleIsle() {
   const dn = useDayNight();
-  const dummy = useMemo(() => new Object3D(), []);
   const trees = useMemo(() => buildTrees(), []);
   const loop = useMemo(() => buildLoop(), []);
   const m = useMemo(() => buildMaterials(), []);
@@ -231,21 +230,21 @@ export default function BelleIsle() {
   const lampCount = Math.floor(LOOP_SEGMENTS / LAMP_EVERY);
 
   useEffect(() => {
-    fillInstances(path.current, dummy, loop.length, (i, d) => {
+    fillInstances(path.current, loop.length, (i, d) => {
       const s = loop[i];
       d.position.set(s.x, 0.36, s.z);
       d.rotation.y = s.yaw;
       d.scale.set(2.4, 0.1, s.len);
     });
-    fillInstances(posts.current, dummy, lampCount, (i, d) => {
+    fillInstances(posts.current, lampCount, (i, d) => {
       const s = loop[i * LAMP_EVERY];
       d.position.set(s.x * 1.04, 2.1, s.z * 1.06);
     });
-    fillInstances(globes.current, dummy, lampCount, (i, d) => {
+    fillInstances(globes.current, lampCount, (i, d) => {
       const s = loop[i * LAMP_EVERY];
       d.position.set(s.x * 1.04, 4.1, s.z * 1.06);
     });
-  }, [dummy, loop, lampCount]);
+  }, [loop, lampCount]);
 
   useEffect(() => {
     if (lampMat.current) lampMat.current.emissiveIntensity = 0.3 + dn.night * 5;

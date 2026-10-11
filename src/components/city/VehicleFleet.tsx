@@ -1,7 +1,7 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, CanvasTexture, Color, Euler, InstancedMesh, Matrix4, MeshBasicMaterial, MeshStandardMaterial, Quaternion, Vector3 } from "three";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
@@ -265,9 +265,9 @@ export default function VehicleFleet({
   }, [items]);
 
   const geo = useMemo(() => sharedGeometry(), []);
-  const meshes = useRef(new Map<string, InstancedMesh>());
-  const bodies = useRef(new Map<VehicleKind, InstancedMesh[]>());
-  const mats = useRef(new Map<string, MeshStandardMaterial | MeshBasicMaterial>());
+  const [meshes] = useState(() => new Map<string, InstancedMesh>());
+  const [bodies] = useState(() => new Map<VehicleKind, InstancedMesh[]>());
+  const [mats] = useState(() => new Map<string, MeshStandardMaterial | MeshBasicMaterial>());
   const strobes = useRef<MeshStandardMaterial[]>([]);
   const scratch = useRef<Scratch>({
     p: { x: 0, y: 0, z: 0, yaw: 0, spin: 0, brake: false, pitch: 0 },
@@ -286,46 +286,46 @@ export default function VehicleFleet({
   const bind = useMemo(
     () =>
       cachedByKey((key: string) => (m: InstancedMesh | null) => {
-        if (m) meshes.current.set(key, m);
-        else meshes.current.delete(key);
-        indexBodyParts(meshes.current, bodies.current, key);
+        if (m) meshes.set(key, m);
+        else meshes.delete(key);
+        indexBodyParts(meshes, bodies, key);
       }),
-    [],
+    [meshes, bodies],
   );
   const bindMat = useMemo(
     () =>
       cachedByKey((key: string) => (m: MeshStandardMaterial | MeshBasicMaterial | null) => {
-        if (m) mats.current.set(key, m);
-        else mats.current.delete(key);
-        if (key.endsWith(":strobe")) indexStrobes(mats.current, strobes.current);
+        if (m) mats.set(key, m);
+        else mats.delete(key);
+        if (key.endsWith(":strobe")) indexStrobes(mats, strobes.current);
       }),
-    [],
+    [mats],
   );
 
   useEffect(() => {
     for (const kind of groups.kinds) {
-      const body = meshes.current.get(`${kind}:body`);
+      const body = meshes.get(`${kind}:body`);
       if (!body) continue;
       for (const i of groups.map.get(kind)!) body.setColorAt(groups.slot[i], items[i].color);
       if (body.instanceColor) body.instanceColor.needsUpdate = true;
     }
-    const tail = meshes.current.get("tail");
+    const tail = meshes.get("tail");
     if (tail) {
       for (let i = 0; i < items.length * 2; i++) tail.setColorAt(i, TAIL_IDLE);
       if (tail.instanceColor) tail.instanceColor.needsUpdate = true;
     }
     scratch.current.brakes = new Uint8Array(items.length).fill(255);
-  }, [groups, items]);
+  }, [meshes, groups, items]);
 
   useEffect(() => {
     scratch.current.night = dn.night;
-    applyNight(mats.current, dn.night);
-    if (!dynamic) runUpdate(meshes.current, bodies.current, items, groups, pose, 0, scratch.current);
-  }, [dn.night, dynamic, items, groups, pose]);
+    applyNight(mats, dn.night);
+    if (!dynamic) runUpdate(meshes, bodies, items, groups, pose, 0, scratch.current);
+  }, [dn.night, dynamic, items, groups, pose, meshes, bodies, mats]);
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    if (dynamic) runUpdate(meshes.current, bodies.current, items, groups, pose, t, scratch.current);
+    if (dynamic) runUpdate(meshes, bodies, items, groups, pose, t, scratch.current);
     const c = reducedMotion || Math.floor(t * 5) % 2 === 0 ? RED : BLUE;
     const list = strobes.current;
     for (let k = 0; k < list.length; k++) {

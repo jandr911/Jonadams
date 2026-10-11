@@ -436,10 +436,9 @@ const ROPE_SPANS = ROPE_POSTS.filter((x, i) => i > 0 && x - ROPE_POSTS[i - 1] ==
 
 function VelvetRope({ at }: { at: [number, number] }) {
   const [cx, cz] = at;
-  const posts = ROPE_POSTS;
   return (
     <group position={[cx, 0.4, cz + 10.9]}>
-      {posts.map((x) => (
+      {ROPE_POSTS.map((x) => (
         <group key={x} position={[x, 0, 0]}>
           <mesh position={[0, 0.5, 0]}>
             <cylinderGeometry args={[0.035, 0.035, 1, 6]} />
@@ -592,17 +591,17 @@ function Busker({ at }: { at: [number, number, number] }) {
 export default function People() {
   const dn = useDayNight();
   const [{ people, extras }] = useState(() => buildPeople());
-  const refs = useRef(new Map<PartKey, InstancedMesh>());
+  const [refs] = useState(() => new Map<PartKey, InstancedMesh>());
   const phoneMat = useRef<MeshStandardMaterial>(null);
-  const scratch = useRef<Scratch>({ pos: new Vector3(), q: new Quaternion(), sc: new Vector3(), M: new Matrix4(), T: new Matrix4(), R: new Matrix4(), J: new Matrix4(), out: new Matrix4(), frame: 0, limbs: null });
+  const [scratch] = useState<Scratch>(() => ({ pos: new Vector3(), q: new Quaternion(), sc: new Vector3(), M: new Matrix4(), T: new Matrix4(), R: new Matrix4(), J: new Matrix4(), out: new Matrix4(), frame: 0, limbs: null }));
   const bind = useMemo(
     () =>
       cachedByKey((key: PartKey) => (m: InstancedMesh | null) => {
-        if (refs.current.get(key) !== (m ?? undefined)) scratch.current.limbs = null;
-        if (m) refs.current.set(key, m);
-        else refs.current.delete(key);
+        if (refs.get(key) !== (m ?? undefined)) scratch.limbs = null;
+        if (m) refs.set(key, m);
+        else refs.delete(key);
       }),
-    [],
+    [refs, scratch],
   );
   const geo = useMemo(
     () => ({ box: new BoxGeometry(1, 1, 1), sphere: new SphereGeometry(1, 7, 5), eyes: eyesGeometry(), headphones: headphoneGeometry() }) as Record<string, BufferGeometry>,
@@ -611,15 +610,15 @@ export default function People() {
   useEffect(() => () => Object.values(geo).forEach((g) => g.dispose()), [geo]);
 
   useEffect(() => {
-    applyColors(refs.current, people);
-  }, [people]);
+    applyColors(refs, people);
+  }, [refs, people]);
 
   useEffect(() => {
     if (phoneMat.current) phoneMat.current.emissiveIntensity = 0.8 + dn.night * 3;
   }, [dn]);
 
   useFrame(({ clock, camera }) => {
-    updatePeople(refs.current, people, clock.elapsedTime, scratch.current, camera.position.x, camera.position.z);
+    updatePeople(refs, people, clock.elapsedTime, scratch, camera.position.x, camera.position.z);
   });
 
   const n = people.length;

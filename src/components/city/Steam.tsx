@@ -9,7 +9,6 @@ import {
   InstancedBufferGeometry,
   InstancedMesh,
   Mesh,
-  Object3D,
   PlaneGeometry,
   ShaderMaterial,
   Sphere,
@@ -206,7 +205,7 @@ function StreetSteam() {
     [geometry, material, lid],
   );
   const lids = useRef<InstancedMesh>(null);
-  useEffect(() => fillInstances(lids.current, new Object3D(), vents.length, (i, o) => o.position.set(vents[i].x, 0.04, vents[i].z)), [vents]);
+  useEffect(() => fillInstances(lids.current, vents.length, (i, o) => o.position.set(vents[i].x, 0.04, vents[i].z)), [vents]);
   useEffect(() => lightSteam(material, dn), [dn, material]);
   useFrame(({ clock }) => setTime(material, clock.elapsedTime));
   return (

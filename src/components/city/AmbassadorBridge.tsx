@@ -211,7 +211,6 @@ function poseCar(f: Fleet, i: number, out: VehiclePose, time: number) {
 
 export default function AmbassadorBridge() {
   const dn = useDayNight();
-  const dummy = useMemo(() => new Object3D(), []);
   const segments = useMemo(() => buildSegments(), []);
   const truss = useMemo(() => buildTruss(), []);
   const towerMembers = useMemo(() => buildTowerMembers(), []);
@@ -250,13 +249,13 @@ export default function AmbassadorBridge() {
   const pose = useCallback<PoseFn>((i, out, time) => poseCar(fleet, i, out, time), [fleet]);
 
   useEffect(() => {
-    fillInstances(deck.current, dummy, segments.length, (i, d) => {
+    fillInstances(deck.current, segments.length, (i, d) => {
       const s = segments[i];
       d.position.set(X, s.y, s.z);
       d.rotation.x = s.pitch;
       d.scale.set(DECK_W, 1, s.len);
     });
-    fillInstances(parapets.current, dummy, segments.length * 2, (i, d) => {
+    fillInstances(parapets.current, segments.length * 2, (i, d) => {
       const s = segments[i >> 1];
       d.position.set(X, s.y, s.z);
       d.rotation.x = s.pitch;
@@ -265,7 +264,7 @@ export default function AmbassadorBridge() {
       d.scale.set(0.3, 0.9, s.len);
     });
     const m = markings.current;
-    fillInstances(m, dummy, segments.length * 3, (i, d) => {
+    fillInstances(m, segments.length * 3, (i, d) => {
       const s = segments[Math.floor(i / 3)];
       const k = i % 3;
       d.position.set(X, s.y, s.z);
@@ -278,25 +277,25 @@ export default function AmbassadorBridge() {
       for (let i = 0; i < segments.length * 3; i++) m.setColorAt(i, i % 3 === 0 ? LINE_YELLOW : LINE_WHITE);
       if (m.instanceColor) m.instanceColor.needsUpdate = true;
     }
-    fillInstances(trussRef.current, dummy, truss.length, member(truss));
-    fillInstances(towerRef.current, dummy, towerMembers.length, member(towerMembers));
-    fillInstances(concreteRef.current, dummy, concrete.length, member(concrete));
-    fillInstances(legs.current, dummy, 4, (i, d) => {
+    fillInstances(trussRef.current, truss.length, member(truss));
+    fillInstances(towerRef.current, towerMembers.length, member(towerMembers));
+    fillInstances(concreteRef.current, concrete.length, member(concrete));
+    fillInstances(legs.current, 4, (i, d) => {
       d.position.set(X + (i & 1 ? LEG_X : -LEG_X), PIER_TOP + (TOWER_H - PIER_TOP) / 2, TOWER_Z[i >> 1]);
       d.rotation.y = Math.PI / 4;
     });
-    fillInstances(beacons.current, dummy, 4, (i, d) => d.position.set(X + (i & 1 ? LEG_X : -LEG_X), TOWER_H + 1.3, TOWER_Z[i >> 1]));
-    fillInstances(hangers.current, dummy, HANGER_Z.length * 2, (i, d) => {
+    fillInstances(beacons.current, 4, (i, d) => d.position.set(X + (i & 1 ? LEG_X : -LEG_X), TOWER_H + 1.3, TOWER_Z[i >> 1]));
+    fillInstances(hangers.current, HANGER_Z.length * 2, (i, d) => {
       const z = HANGER_Z[i >> 1];
       const len = cableY(z) - DECK_Y - 0.5;
       d.position.set(X + (i & 1 ? CABLE_X : -CABLE_X), DECK_Y + 0.5 + len / 2, z);
       d.scale.set(1, len, 1);
     });
-    fillInstances(lamps.current, dummy, HANGER_Z.length * 2, (i, d) => {
+    fillInstances(lamps.current, HANGER_Z.length * 2, (i, d) => {
       const z = HANGER_Z[i >> 1];
       d.position.set(X + (i & 1 ? CABLE_X : -CABLE_X), cableY(z) + 0.35, z);
     });
-  }, [dummy, segments, truss, towerMembers, concrete]);
+  }, [segments, truss, towerMembers, concrete]);
 
   useEffect(() => {
     if (lampMat.current) lampMat.current.emissiveIntensity = 0.3 + dn.night * 3;

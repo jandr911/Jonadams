@@ -7,18 +7,15 @@ type PlaceInstance = (i: number, d: Object3D) => void;
 
 const scratch = new Object3D();
 
-export function fillInstances(mesh: InstancedMesh | null, count: number, place: PlaceInstance): void;
-export function fillInstances(mesh: InstancedMesh | null, dummy: Object3D, count: number, place: PlaceInstance): void;
-export function fillInstances(mesh: InstancedMesh | null, ...args: [number, PlaceInstance] | [Object3D, number, PlaceInstance]) {
+export function fillInstances(mesh: InstancedMesh | null, count: number, place: PlaceInstance) {
   if (!mesh) return;
-  const [dummy, count, place] = args.length === 2 ? [scratch, ...args] : args;
   for (let i = 0; i < count; i++) {
-    dummy.position.set(0, 0, 0);
-    dummy.rotation.set(0, 0, 0);
-    dummy.scale.set(1, 1, 1);
-    place(i, dummy);
-    dummy.updateMatrix();
-    mesh.setMatrixAt(i, dummy.matrix);
+    scratch.position.set(0, 0, 0);
+    scratch.rotation.set(0, 0, 0);
+    scratch.scale.set(1, 1, 1);
+    place(i, scratch);
+    scratch.updateMatrix();
+    mesh.setMatrixAt(i, scratch.matrix);
   }
   mesh.instanceMatrix.needsUpdate = true;
   mesh.computeBoundingSphere();
@@ -44,7 +41,15 @@ export function fillPlacements(mesh: InstancedMesh | null, items: Placement[]) {
     d.rotation.set(it.rx ?? 0, it.ry, 0);
     d.scale.set(it.sx, it.sy, it.sz);
   });
-  items.forEach((it, i) => it.color && mesh.setColorAt(i, it.color));
+  fillColors(mesh, items.length, (i) => items[i].color);
+}
+
+export function fillColors(mesh: InstancedMesh | null, count: number, colorAt: (i: number) => Color | undefined) {
+  if (!mesh) return;
+  for (let i = 0; i < count; i++) {
+    const color = colorAt(i);
+    if (color) mesh.setColorAt(i, color);
+  }
   if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 }
 

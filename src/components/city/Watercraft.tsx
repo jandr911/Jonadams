@@ -3,7 +3,7 @@
 import { Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AdditiveBlending, CanvasTexture, Color, DoubleSide, ExtrudeGeometry, Group, InstancedMesh, Mesh, MeshStandardMaterial, Object3D, Shape, ShapeGeometry } from "three";
+import { AdditiveBlending, CanvasTexture, Color, DoubleSide, ExtrudeGeometry, Group, InstancedMesh, Mesh, MeshStandardMaterial, Shape, ShapeGeometry } from "three";
 import { SITE } from "@/content/site";
 import { useDayNight } from "./DayNightContext";
 import { labelTexture } from "./labels";
@@ -13,6 +13,7 @@ import { RIVER_FAR, RIVER_NEAR } from "./layout";
 import NeonSign, { DISPLAY_FONT } from "./NeonSign";
 import { loopLength, loopPose, newLoopPose } from "./loopPath";
 import { mulberry32, pick, range } from "./rng";
+import { makeWakeTexture } from "./textures";
 
 const WATER_Y = -0.6;
 const LOOP = 1000;
@@ -39,28 +40,10 @@ function hullGeometry(length: number, beam: number, height: number, bow = 0.22, 
   return g;
 }
 
-function wakeTexture() {
-  const c = document.createElement("canvas");
-  c.width = 64;
-  c.height = 128;
-  const ctx = c.getContext("2d")!;
-  const g = ctx.createLinearGradient(0, 0, 0, 128);
-  g.addColorStop(0, "rgba(255,255,255,0.9)");
-  g.addColorStop(0.5, "rgba(255,255,255,0.35)");
-  g.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.moveTo(32, 0);
-  ctx.lineTo(64, 128);
-  ctx.lineTo(0, 128);
-  ctx.closePath();
-  ctx.fill();
-  return new CanvasTexture(c);
-}
 let wakeTex: CanvasTexture | null = null;
 
 function Wake({ length, width, opacity }: { length: number; width: number; opacity: number }) {
-  const tex = useMemo(() => (wakeTex ??= wakeTexture()), []);
+  const tex = useMemo(() => (wakeTex ??= makeWakeTexture()), []);
   return (
     <mesh position={[-length / 2 - 1, WATER_Y + 0.06, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} renderOrder={1}>
       <planeGeometry args={[width, length]} />
@@ -560,7 +543,7 @@ function Sailboat({ color, night }: { color: string; night: number }) {
 function RailPosts({ length, beam, y, count }: { length: number; beam: number; y: number; count: number }) {
   const ref = useRef<InstancedMesh>(null);
   useEffect(() => {
-    fillInstances(ref.current, new Object3D(), count, (i, d) => {
+    fillInstances(ref.current, count, (i, d) => {
       const k = Math.floor(i / 2);
       d.position.set(-length / 2 + (k / (count / 2 - 1)) * length, y, (i % 2 ? 1 : -1) * beam * 0.5);
     });
@@ -586,7 +569,7 @@ function RailPosts({ length, beam, y, count }: { length: number; beam: number; y
 function StringLights({ length, beam, y, count, night }: { length: number; beam: number; y: number; count: number; night: number }) {
   const ref = useRef<InstancedMesh>(null);
   useEffect(() => {
-    fillInstances(ref.current, new Object3D(), count, (i, d) => {
+    fillInstances(ref.current, count, (i, d) => {
       const k = Math.floor(i / 2);
       d.position.set(-length / 2 + (k / (count / 2 - 1)) * length, y - Math.sin((k / (count / 2 - 1)) * Math.PI * 6) * 0.12, (i % 2 ? 1 : -1) * (beam * 0.5 + 0.08));
     });
@@ -602,7 +585,7 @@ function StringLights({ length, beam, y, count, night }: { length: number; beam:
 function Windows({ length, beam, y, count, night, h = 0.7 }: { length: number; beam: number; y: number; count: number; night: number; h?: number }) {
   const ref = useRef<InstancedMesh>(null);
   useEffect(() => {
-    fillInstances(ref.current, new Object3D(), count, (i, d) => {
+    fillInstances(ref.current, count, (i, d) => {
       const k = Math.floor(i / 2);
       d.position.set(-length / 2 + ((k + 0.5) / (count / 2)) * length, y, (i % 2 ? 1 : -1) * beam * 0.5);
     });
@@ -892,9 +875,8 @@ function Laker({ night }: { night: number }) {
   const posts = useRef<InstancedMesh>(null);
   const lamps = useRef<InstancedMesh>(null);
   useEffect(() => {
-    const d = new Object3D();
-    fillInstances(posts.current, d, 60, (i, o) => o.position.set(-44 + (Math.floor(i / 2) / 29) * 88, 0.55, (i % 2 ? 1 : -1) * 5.8));
-    fillInstances(lamps.current, d, 10, (k, o) => o.position.set(-38 + k * 8.2, 1.6, (k % 2 ? 1 : -1) * 5.6));
+    fillInstances(posts.current, 60, (i, o) => o.position.set(-44 + (Math.floor(i / 2) / 29) * 88, 0.55, (i % 2 ? 1 : -1) * 5.8));
+    fillInstances(lamps.current, 10, (k, o) => o.position.set(-38 + k * 8.2, 1.6, (k % 2 ? 1 : -1) * 5.6));
   }, []);
   const windows = (k: number) => (
     <mesh position={[0, 1.6, 0]}>

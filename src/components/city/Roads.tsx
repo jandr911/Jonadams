@@ -141,6 +141,9 @@ function LightPools({ items }: { items: { x: number; z: number }[] }) {
   );
 }
 
+const LAMP_DAY = new Color("#ffffff");
+const LAMP_NIGHT = new Color("#ffd27a");
+
 function Streetlights() {
   const dn = useDayNight();
   const poles = useRef<InstancedMesh>(null);
@@ -163,7 +166,7 @@ function Streetlights() {
   useEffect(() => {
     if (!headMat.current) return;
     headMat.current.emissiveIntensity = 0.1 + dn.night * 1.2;
-    headMat.current.color.set(new Color("#ffffff").lerp(new Color("#ffd27a"), dn.night));
+    headMat.current.color.copy(LAMP_DAY).lerp(LAMP_NIGHT, dn.night);
   }, [dn]);
   return (
     <group>

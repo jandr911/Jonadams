@@ -388,8 +388,9 @@ function learnGates(b: Batcher, s: Source) {
 }
 
 function inspect(b: Batcher) {
-  const keep: Group[] = [];
-  for (const g of b.groups) {
+  let retained = 0;
+  for (let i = 0; i < b.groups.length; i++) {
+    const g = b.groups[i];
     let worst = 0;
     let recoloured = false;
     for (const s of g.sources) {
@@ -398,7 +399,7 @@ function inspect(b: Batcher) {
       if (!recoloured && lookChanged(s.look, s.mesh)) recoloured = true;
     }
     if (worst === 0 && !recoloured) {
-      keep.push(g);
+      b.groups[retained++] = g;
       continue;
     }
     dissolve(b, g);
@@ -413,7 +414,7 @@ function inspect(b: Batcher) {
       b.pending.push(s);
     }
   }
-  b.groups = keep;
+  b.groups.length = retained;
   if (b.pending.length === 0) return;
   const ready: Source[] = [];
   const waiting: Source[] = [];

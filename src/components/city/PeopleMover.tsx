@@ -69,23 +69,22 @@ function Pylons({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canvas
   const ref = useRef<InstancedMesh>(null);
   const caps = useRef<InstancedMesh>(null);
   const feet = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const spots = useMemo(() => pylonSpots(curve), [curve]);
   const count = spots.length;
   useEffect(() => {
     const t = new Vector3();
-    fillInstances(ref.current, dummy, count, (i, d) => {
+    fillInstances(ref.current, count, (i, d) => {
       d.position.set(spots[i].p.x, TRACK_Y / 2 - 0.3, spots[i].p.z);
     });
-    fillInstances(caps.current, dummy, count, (i, d) => {
+    fillInstances(caps.current, count, (i, d) => {
       curve.getTangentAt(spots[i].u, t);
       d.position.set(spots[i].p.x, TRACK_Y - 0.85, spots[i].p.z);
       d.rotation.y = Math.atan2(t.x, t.z);
     });
-    fillInstances(feet.current, dummy, count, (i, d) => {
+    fillInstances(feet.current, count, (i, d) => {
       d.position.set(spots[i].p.x, 0.55, spots[i].p.z);
     });
-  }, [curve, dummy, spots, count]);
+  }, [curve, spots, count]);
   return (
     <group>
       <instancedMesh ref={ref} args={[undefined, undefined, count]} castShadow frustumCulled={false}>
@@ -121,13 +120,12 @@ function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canv
   const [led] = useState(() => new MeshStandardMaterial({ color: "#2a2620", emissive: LED_GOLD, emissiveIntensity: 0, toneMapped: false }));
   useEffect(() => () => led.dispose(), [led]);
   useEffect(() => setEmissiveIntensity(led, 0.8 + dn.night * 1.6), [led, dn.night]);
-  const dummy = useMemo(() => new Object3D(), []);
   const segLen = useMemo(() => curve.getLength() / GUIDEWAY_SEGMENTS, [curve]);
   useEffect(() => {
     const p = new Vector3();
     const t = new Vector3();
     const along = (ref: InstancedMesh | null, ox: number, oy: number, stretch: number) =>
-      fillInstances(ref, dummy, GUIDEWAY_SEGMENTS, (i, d) => {
+      fillInstances(ref, GUIDEWAY_SEGMENTS, (i, d) => {
         const u = (i + 0.5) / GUIDEWAY_SEGMENTS;
         curve.getPointAt(u, p);
         curve.getTangentAt(u, t);
@@ -135,7 +133,7 @@ function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canv
         d.rotation.y = Math.atan2(t.x, t.z);
         d.scale.z = segLen * stretch;
       });
-    fillInstances(joints.current, dummy, GUIDEWAY_SEGMENTS, (i, d) => {
+    fillInstances(joints.current, GUIDEWAY_SEGMENTS, (i, d) => {
       const u = i / GUIDEWAY_SEGMENTS;
       curve.getPointAt(u, p);
       curve.getTangentAt(u, t);
@@ -147,7 +145,7 @@ function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canv
     along(railL.current, -0.55, 0.72, 1.08);
     along(railR.current, 0.55, 0.72, 1.08);
     along(tray.current, -1.05, -0.1, 1.06);
-    fillInstances(leds.current, dummy, GUIDEWAY_SEGMENTS * 2, (i, d) => {
+    fillInstances(leds.current, GUIDEWAY_SEGMENTS * 2, (i, d) => {
       const u = (Math.floor(i / 2) + 0.5) / GUIDEWAY_SEGMENTS;
       const side = i % 2 === 0 ? -LED_OFFSET : LED_OFFSET;
       curve.getPointAt(u, p);
@@ -156,7 +154,7 @@ function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canv
       d.rotation.y = Math.atan2(t.x, t.z);
       d.scale.z = segLen * 1.08;
     });
-  }, [curve, dummy, segLen]);
+  }, [curve, segLen]);
   return (
     <group>
       <instancedMesh ref={beam} args={[undefined, undefined, GUIDEWAY_SEGMENTS]} castShadow>

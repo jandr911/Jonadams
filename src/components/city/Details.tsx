@@ -4,7 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BoxGeometry, CapsuleGeometry, Color, DoubleSide, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
 import { useDayNight } from "./DayNightContext";
-import { fillInstances } from "./instancing";
+import { fillColors, fillInstances } from "./instancing";
 import MacArthurBridge from "./MacArthurBridge";
 import {
   BLOCK,
@@ -52,12 +52,12 @@ function TrafficLights() {
     return out;
   }, []);
   useEffect(() => {
-    fillInstances(poles.current, dummy, items.length, (i, d) => d.position.set(items[i].x, 2.6, items[i].z));
-    fillInstances(housings.current, dummy, items.length, (i, d) => {
+    fillInstances(poles.current, items.length, (i, d) => d.position.set(items[i].x, 2.6, items[i].z));
+    fillInstances(housings.current, items.length, (i, d) => {
       d.position.set(items[i].x, 4.8, items[i].z);
       d.rotation.set(0, items[i].rot, 0);
     });
-  }, [items, dummy]);
+  }, [items]);
   const red = useMemo(() => new Color("#ff2a3c").multiplyScalar(1.6), []);
   const green = useMemo(() => new Color("#2aff7a").multiplyScalar(1.6), []);
   const amber = useMemo(() => new Color("#ffb02e").multiplyScalar(1.6), []);
@@ -102,7 +102,6 @@ function TrafficLights() {
 
 function StreetBanners() {
   const ref = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const x = roadLinesX()[WOODWARD_INDEX];
     const out: { x: number; z: number; side: number; color: Color }[] = [];
@@ -117,10 +116,9 @@ function StreetBanners() {
   useEffect(() => {
     const m = ref.current;
     if (!m) return;
-    fillInstances(m, dummy, items.length, (i, d) => d.position.set(items[i].x + items[i].side * 0.9, 4.6, items[i].z));
-    items.forEach((it, i) => m.setColorAt(i, it.color));
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
-  }, [items, dummy]);
+    fillInstances(m, items.length, (i, d) => d.position.set(items[i].x + items[i].side * 0.9, 4.6, items[i].z));
+    fillColors(m, items.length, (i) => items[i].color);
+  }, [items]);
   return (
     <group>
       <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
@@ -285,7 +283,6 @@ const SLABS: { x: number; z: number; w: number; d: number; h: number; rot: numbe
 
 function ResidentialSlabs() {
   const balconies = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const out: { x: number; y: number; z: number; rot: number }[] = [];
     SLABS.forEach((s) => {
@@ -306,11 +303,11 @@ function ResidentialSlabs() {
     return out;
   }, []);
   useEffect(() => {
-    fillInstances(balconies.current, dummy, items.length, (i, d) => {
+    fillInstances(balconies.current, items.length, (i, d) => {
       d.position.set(items[i].x, items[i].y, items[i].z);
       d.rotation.set(0, items[i].rot, 0);
     });
-  }, [items, dummy]);
+  }, [items]);
   return (
     <group>
       {SLABS.map((s, i) => (
@@ -329,7 +326,6 @@ function ResidentialSlabs() {
 
 function Clotheslines() {
   const ref = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const rand = mulberry32(2222);
     const colors = ["#f4f1ea", "#c8102e", "#2a3a7a", "#d6b56e", "#3f8a6a", "#9a95a8", "#ff8a3a"];
@@ -348,10 +344,9 @@ function Clotheslines() {
   useEffect(() => {
     const m = ref.current;
     if (!m) return;
-    fillInstances(m, dummy, items.length, (i, d) => d.position.set(items[i].x, items[i].y, items[i].z));
-    items.forEach((it, i) => m.setColorAt(i, it.color));
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
-  }, [items, dummy]);
+    fillInstances(m, items.length, (i, d) => d.position.set(items[i].x, items[i].y, items[i].z));
+    fillColors(m, items.length, (i) => items[i].color);
+  }, [items]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <boxGeometry args={[0.7, 0.9, 0.06]} />
@@ -362,7 +357,6 @@ function Clotheslines() {
 
 function SatelliteDishes() {
   const ref = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const rand = mulberry32(31);
     const out: { x: number; y: number; z: number; rot: number }[] = [];
@@ -379,11 +373,11 @@ function SatelliteDishes() {
     return out;
   }, []);
   useEffect(() => {
-    fillInstances(ref.current, dummy, items.length, (i, d) => {
+    fillInstances(ref.current, items.length, (i, d) => {
       d.position.set(items[i].x, items[i].y, items[i].z);
       d.rotation.set(-0.5, items[i].rot, 0);
     });
-  }, [items, dummy]);
+  }, [items]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <sphereGeometry args={[0.55, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2.4]} />
@@ -444,7 +438,6 @@ const POLE_EDGE = 10.7;
 function UtilityPoles() {
   const poles = useRef<InstancedMesh>(null);
   const wires = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const out: { x: number; z: number }[] = [];
     const northKerb = -CITY_HALF_Z - PITCH / 2 + POLE_EDGE;
@@ -458,8 +451,8 @@ function UtilityPoles() {
     return out;
   }, []);
   useEffect(() => {
-    fillInstances(poles.current, dummy, items.length, (i, d) => d.position.set(items[i].x, 4.5, items[i].z));
-    fillInstances(wires.current, dummy, items.length, (i, d) => {
+    fillInstances(poles.current, items.length, (i, d) => d.position.set(items[i].x, 4.5, items[i].z));
+    fillInstances(wires.current, items.length, (i, d) => {
       const it = items[i];
       const next = items[i + 1];
       if (next && Math.hypot(next.x - it.x, next.z - it.z) < 20) {
@@ -471,7 +464,7 @@ function UtilityPoles() {
         d.scale.set(0, 0, 0);
       }
     });
-  }, [items, dummy]);
+  }, [items]);
   return (
     <group>
       <instancedMesh ref={poles} args={[undefined, undefined, items.length]}>

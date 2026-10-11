@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Color, ExtrudeGeometry, InstancedMesh, MeshStandardMaterial, Object3D, Path, Shape } from "three";
+import { Color, ExtrudeGeometry, InstancedMesh, MeshStandardMaterial, Path, Shape } from "three";
 import { BRIDGE_LANDING } from "./BelleIsle";
 import { useDayNight } from "./DayNightContext";
 import { fillInstances } from "./instancing";
@@ -141,7 +141,6 @@ function Ramp({ t, descending, texture }: { t: number; descending: boolean; text
 
 export default function MacArthurBridge() {
   const dn = useDayNight();
-  const dummy = useMemo(() => new Object3D(), []);
   const panel = useMemo(() => buildArchPanel(), []);
   const concreteTex = useMemo(() => {
     const t = makeConcreteTexture();
@@ -167,11 +166,11 @@ export default function MacArthurBridge() {
 
   useEffect(() => {
     const side = (i: number) => (i & 1 ? RAIL_X : -RAIL_X);
-    fillInstances(arches.current, dummy, ARCHES, (i, d) => d.position.set(0, 0, -FLAT_LEN / 2 + SPAN * (i + 0.5)));
-    fillInstances(balusters.current, dummy, balusterCount, (i, d) => d.position.set(side(i), DECK_Y + 0.5, -FLAT_LEN / 2 + BALUSTER_STEP * ((i >> 1) + 0.5)));
-    fillInstances(posts.current, dummy, postCount, (i, d) => d.position.set(side(i), DECK_Y + 2.7, -FLAT_LEN / 2 + SPAN * 2 * (i >> 1)));
-    fillInstances(globes.current, dummy, postCount, (i, d) => d.position.set(side(i), DECK_Y + 4.6, -FLAT_LEN / 2 + SPAN * 2 * (i >> 1)));
-  }, [dummy, balusterCount, postCount]);
+    fillInstances(arches.current, ARCHES, (i, d) => d.position.set(0, 0, -FLAT_LEN / 2 + SPAN * (i + 0.5)));
+    fillInstances(balusters.current, balusterCount, (i, d) => d.position.set(side(i), DECK_Y + 0.5, -FLAT_LEN / 2 + BALUSTER_STEP * ((i >> 1) + 0.5)));
+    fillInstances(posts.current, postCount, (i, d) => d.position.set(side(i), DECK_Y + 2.7, -FLAT_LEN / 2 + SPAN * 2 * (i >> 1)));
+    fillInstances(globes.current, postCount, (i, d) => d.position.set(side(i), DECK_Y + 4.6, -FLAT_LEN / 2 + SPAN * 2 * (i >> 1)));
+  }, [balusterCount, postCount]);
 
   useEffect(() => {
     if (globeMat.current) globeMat.current.emissiveIntensity = 0.3 + dn.night * 3;

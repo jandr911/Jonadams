@@ -4,7 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BufferGeometry, CircleGeometry, Color, ConeGeometry, CylinderGeometry, DoubleSide, Group, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, PlaneGeometry, Texture } from "three";
 import { labelTexture } from "./labels";
-import { fillInstances, fillPlacements, mergeParts, useBaseBoxGeometry, type Placement } from "./instancing";
+import { fillColors, fillInstances, fillPlacements, mergeParts, useBaseBoxGeometry, type Placement } from "./instancing";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { useDayNight } from "./DayNightContext";
 import { AMBASSADOR_CLEAR_HALF, AMBASSADOR_RAMP_Z, AMBASSADOR_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR, RIVERWALK_HALF, ROAD } from "./layout";
@@ -382,8 +382,7 @@ function Banks({ banks }: { banks: Bank[] }) {
       d.position.set(b.x, b.y, b.z);
       d.scale.set(b.w, b.h, b.d);
     });
-    banks.forEach((b, i) => m.setColorAt(i, b.color));
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    fillColors(m, banks.length, (i) => banks[i].color);
   }, [banks]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, banks.length]} receiveShadow>
@@ -637,9 +636,8 @@ function MidRise({ lots }: { lots: MidLot[] }) {
       d.position.set(l.x, 0, l.z);
       d.scale.set(l.w, l.h, l.d);
     });
-    lots.forEach((l, i) => m.setColorAt(i, l.color));
+    fillColors(m, lots.length, (i) => lots[i].color);
     m.geometry.setAttribute("aSeed", new InstancedBufferAttribute(seeds, 1));
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }, [lots, seeds]);
   return (
     <instancedMesh ref={ref} args={[lotGeometry, mat, lots.length]} />

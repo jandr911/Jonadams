@@ -1,11 +1,16 @@
 import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from "three";
 import { mulberry32 } from "./rng";
 
-function noiseCanvas(size: number, base: [number, number, number], spread: number, seed: number) {
+function canvas2d(width: number, height: number) {
   const c = document.createElement("canvas");
-  c.width = size;
-  c.height = size;
+  c.width = width;
+  c.height = height;
   const ctx = c.getContext("2d")!;
+  return { c, ctx };
+}
+
+function noiseCanvas(size: number, base: [number, number, number], spread: number, seed: number) {
+  const { c, ctx } = canvas2d(size, size);
   const img = ctx.createImageData(size, size);
   const rand = mulberry32(seed);
   for (let i = 0; i < size * size; i++) {
@@ -193,10 +198,7 @@ export function makeLawnTexture() {
 
 export function makeShadowBlobTexture() {
   const size = 128;
-  const c = document.createElement("canvas");
-  c.width = size;
-  c.height = size;
-  const ctx = c.getContext("2d")!;
+  const { c, ctx } = canvas2d(size, size);
   const g = ctx.createRadialGradient(size / 2, size / 2, size * 0.18, size / 2, size / 2, size / 2);
   g.addColorStop(0, "rgba(0,0,0,0.6)");
   g.addColorStop(0.6, "rgba(0,0,0,0.28)");
@@ -208,10 +210,7 @@ export function makeShadowBlobTexture() {
 
 export function makePoolTexture() {
   const size = 128;
-  const c = document.createElement("canvas");
-  c.width = size;
-  c.height = size;
-  const ctx = c.getContext("2d")!;
+  const { c, ctx } = canvas2d(size, size);
   const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
   g.addColorStop(0, "rgba(255,214,140,0.85)");
   g.addColorStop(0.35, "rgba(255,200,120,0.35)");
@@ -222,10 +221,7 @@ export function makePoolTexture() {
 }
 
 export function makeHeadlightPoolTexture() {
-  const c = document.createElement("canvas");
-  c.width = 64;
-  c.height = 128;
-  const ctx = c.getContext("2d")!;
+  const { c, ctx } = canvas2d(64, 128);
   ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, c.width, c.height);
   ctx.translate(32, 12);
@@ -236,5 +232,21 @@ export function makeHeadlightPoolTexture() {
   g.addColorStop(1, "#000000");
   ctx.fillStyle = g;
   ctx.fillRect(-120, -20, 240, 140);
+  return new CanvasTexture(c);
+}
+
+export function makeWakeTexture() {
+  const { c, ctx } = canvas2d(64, 128);
+  const g = ctx.createLinearGradient(0, 0, 0, 128);
+  g.addColorStop(0, "rgba(255,255,255,0.9)");
+  g.addColorStop(0.5, "rgba(255,255,255,0.35)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(32, 0);
+  ctx.lineTo(64, 128);
+  ctx.lineTo(0, 128);
+  ctx.closePath();
+  ctx.fill();
   return new CanvasTexture(c);
 }

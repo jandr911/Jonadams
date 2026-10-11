@@ -183,8 +183,7 @@ function ClubLightRings() {
   const mat = useRef<MeshStandardMaterial>(null);
   const ref = useRef<InstancedMesh>(null);
   useEffect(() => {
-    const dummy = new Object3D();
-    fillInstances(ref.current, dummy, CLUB_RING_COUNT, (i, d) => {
+    fillInstances(ref.current, CLUB_RING_COUNT, (i, d) => {
       const t = (i + 1) / (CLUB_RING_COUNT + 1);
       const r = 1 - 0.28 * t;
       d.position.set(0, CLUB_PODIUM_HEIGHT + t * CLUB_TOWER_HEIGHT, 0);
@@ -376,7 +375,7 @@ function ChasingBulbs({ points, position = [0, 0, 0] }: { points: Point[]; posit
   const lastStep = useRef(-1);
   useEffect(() => {
     const m = ref.current;
-    fillInstances(m, new Object3D(), points.length, (i, o) => o.position.set(...points[i]));
+    fillInstances(m, points.length, (i, o) => o.position.set(...points[i]));
     if (m) paintChase(m, points.length, 0);
   }, [points]);
   useFrame(({ clock }) => {
@@ -607,17 +606,16 @@ function MichiganCentral() {
     setEmissiveIntensity(glass, 0.08 + dn.night * 0.9);
   }, [dn, glass]);
   useEffect(() => {
-    const dummy = new Object3D();
     const box = (list: Box[]) => (i: number, o: Object3D) => {
       const b = list[i];
       o.position.set(b.x, b.y, b.z);
       o.scale.set(b.sx, b.sy, b.sz);
     };
-    fillInstances(trim.current, dummy, MC_TRIM.length, box(MC_TRIM));
-    fillInstances(muntins.current, dummy, MC_MUNTINS.length, box(MC_MUNTINS));
-    fillInstances(columns.current, dummy, MC_COLUMN_X.length, (i, o) => o.position.set(MC_COLUMN_X[i], 5.3, MC_FRONT + 0.6));
-    fillInstances(balusters.current, dummy, MC_BALUSTER_COUNT, (i, o) => o.position.set(-12 + i, 14.2, MC_FRONT - 0.4));
-    fillInstances(pilasters.current, dummy, MC_PILASTER_X.length, (i, o) => {
+    fillInstances(trim.current, MC_TRIM.length, box(MC_TRIM));
+    fillInstances(muntins.current, MC_MUNTINS.length, box(MC_MUNTINS));
+    fillInstances(columns.current, MC_COLUMN_X.length, (i, o) => o.position.set(MC_COLUMN_X[i], 5.3, MC_FRONT + 0.6));
+    fillInstances(balusters.current, MC_BALUSTER_COUNT, (i, o) => o.position.set(-12 + i, 14.2, MC_FRONT - 0.4));
+    fillInstances(pilasters.current, MC_PILASTER_X.length, (i, o) => {
       o.position.set(MC_PILASTER_X[i], 29, 2.2);
       o.scale.set(0.7, 44, 0.5);
     });

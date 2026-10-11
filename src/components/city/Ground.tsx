@@ -120,6 +120,11 @@ function Trees() {
   return <TreeStand trees={trees} quality="mid" seed={7} castShadow groundY={PAD} />;
 }
 
+const ASPHALT_DAY = new Color("#7d7b77");
+const ASPHALT_NIGHT = new Color("#2b2a28");
+const BASE_DAY = new Color("#6c6b67");
+const BASE_NIGHT = new Color("#1a1a19");
+
 function Asphalt() {
   const dn = useDayNight();
   const mat = useRef<MeshStandardMaterial>(null);
@@ -137,8 +142,8 @@ function Asphalt() {
   useEffect(() => () => asphalt.dispose(), [asphalt]);
   useEffect(() => () => asphaltFar.dispose(), [asphaltFar]);
   useEffect(() => {
-    mat.current?.color.set(new Color("#7d7b77").lerp(new Color("#2b2a28"), dn.night));
-    base.current?.color.set(new Color("#6c6b67").lerp(new Color("#1a1a19"), dn.night));
+    mat.current?.color.copy(ASPHALT_DAY).lerp(ASPHALT_NIGHT, dn.night);
+    base.current?.color.copy(BASE_DAY).lerp(BASE_NIGHT, dn.night);
   }, [dn]);
   return (
     <group>

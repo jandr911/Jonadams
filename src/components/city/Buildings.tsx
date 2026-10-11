@@ -27,7 +27,7 @@ import { mulberry32, pick, range } from "./rng";
 import { ghostAdTexture, labelTexture } from "./labels";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { makeShadowBlobTexture } from "./textures";
-import { fillInstances, fillPlacements, mergeParts, useBaseBoxGeometry, type Placement } from "./instancing";
+import { fillColors, fillInstances, fillPlacements, mergeParts, useBaseBoxGeometry, type Placement } from "./instancing";
 import { enableReflection } from "./layers";
 import type { BufferGeometry, Group } from "three";
 
@@ -285,10 +285,9 @@ function InstancedLots({ lots }: { lots: Lot[] }) {
       d.position.set(l.x, PAD + (l.y ?? 0), l.z);
       d.scale.set(l.w, l.h, l.d);
     });
-    lots.forEach((l, i) => m.setColorAt(i, l.color));
+    fillColors(m, lots.length, (i) => lots[i].color);
     m.geometry.setAttribute("aSeed", new InstancedBufferAttribute(seeds, 1));
     m.geometry.setAttribute("aArch", new InstancedBufferAttribute(arch, 3));
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }, [lots, seeds, arch]);
   return (
     <instancedMesh ref={ref} args={[lotGeometry, mat, lots.length]} castShadow receiveShadow />
@@ -397,8 +396,7 @@ function StreetLevel({ lots }: { lots: Lot[] }) {
       d.rotation.set(0.35, it.rot, 0);
       d.scale.set(it.w, 1, 1);
     });
-    items.awn.forEach((it, i) => a.setColorAt(i, it.color));
-    if (a.instanceColor) a.instanceColor.needsUpdate = true;
+    fillColors(a, items.awn.length, (i) => items.awn[i].color);
   }, [items]);
   return (
     <group name="street-level">
@@ -872,8 +870,7 @@ function fillCrowns(mesh: InstancedMesh | null, lots: Lot[]) {
     d.position.set(l.x, PAD + topOf(l), l.z);
     d.scale.set(l.w * CROWN_INSET, crownHeight(l), l.d * CROWN_INSET);
   });
-  lots.forEach((l, i) => mesh.setColorAt(i, crownColor(l)));
-  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  fillColors(mesh, lots.length, (i) => crownColor(lots[i]));
 }
 
 function Crowns({ lots }: { lots: Lot[] }) {
