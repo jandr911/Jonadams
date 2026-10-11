@@ -1,4 +1,5 @@
-import type { VideoSlot } from "@/content/site";
+import { ROOMS, type VideoSlot } from "@/content/site";
+import { indexLabel } from "./city/layout";
 
 export default function YouTubeEmbed({ slot, index }: { slot: VideoSlot; index: number }) {
   return (
@@ -15,12 +16,12 @@ export default function YouTubeEmbed({ slot, index }: { slot: VideoSlot; index: 
         ) : (
           <div className="media-card__empty">
             <span className="media-card__play" aria-hidden />
-            <span className="eyebrow">Arriving soon</span>
+            <span className="eyebrow">{ROOMS.listen.pending}</span>
           </div>
         )}
       </div>
       <figcaption className="media-card__caption">
-        <span className="media-card__index">{String(index + 1).padStart(2, "0")}</span>
+        <span className="media-card__index">{indexLabel(index)}</span>
         <span className="media-card__title">{slot.title}</span>
         <span className="media-card__kind">{slot.kind}</span>
       </figcaption>

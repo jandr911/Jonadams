@@ -3,16 +3,26 @@
 import { Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AdditiveBlending, CanvasTexture, Color, DoubleSide, ExtrudeGeometry, Group, InstancedMesh, Mesh, MeshStandardMaterial, Object3D, Shape, ShapeGeometry } from "three";
+import { AdditiveBlending, CanvasTexture, Color, DoubleSide, ExtrudeGeometry, Group, InstancedMesh, Mesh, MeshStandardMaterial, Shape, ShapeGeometry } from "three";
+import { SITE } from "@/content/site";
 import { useDayNight } from "./DayNightContext";
 import { labelTexture } from "./labels";
+import { fillInstances } from "./instancing";
 import { enableReflection } from "./layers";
 import { RIVER_FAR, RIVER_NEAR } from "./layout";
 import NeonSign, { DISPLAY_FONT } from "./NeonSign";
+import { loopLength, loopPose, newLoopPose } from "./loopPath";
 import { mulberry32, pick, range } from "./rng";
+import { makeWakeTexture } from "./textures";
 
 const WATER_Y = -0.6;
 const LOOP = 1000;
+const LINE_NAME_COLOR = new Color("#f3dfae").multiplyScalar(1.3);
+const ARTIST_CAPS = SITE.artist.toUpperCase();
+
+export function LitWindow({ intensity, color = "#1d2a3a", toneMapped = false }: { intensity: number; color?: string; toneMapped?: boolean }) {
+  return <meshStandardMaterial color={color} emissive="#ffd27a" emissiveIntensity={intensity} roughness={0.1} metalness={0.5} toneMapped={toneMapped} />;
+}
 
 function hullGeometry(length: number, beam: number, height: number, bow = 0.22, stern = 0.06) {
   const s = new Shape();
@@ -30,28 +40,10 @@ function hullGeometry(length: number, beam: number, height: number, bow = 0.22, 
   return g;
 }
 
-function wakeTexture() {
-  const c = document.createElement("canvas");
-  c.width = 64;
-  c.height = 128;
-  const ctx = c.getContext("2d")!;
-  const g = ctx.createLinearGradient(0, 0, 0, 128);
-  g.addColorStop(0, "rgba(255,255,255,0.9)");
-  g.addColorStop(0.5, "rgba(255,255,255,0.35)");
-  g.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.moveTo(32, 0);
-  ctx.lineTo(64, 128);
-  ctx.lineTo(0, 128);
-  ctx.closePath();
-  ctx.fill();
-  return new CanvasTexture(c);
-}
 let wakeTex: CanvasTexture | null = null;
 
 function Wake({ length, width, opacity }: { length: number; width: number; opacity: number }) {
-  const tex = useMemo(() => (wakeTex ??= wakeTexture()), []);
+  const tex = useMemo(() => (wakeTex ??= makeWakeTexture()), []);
   return (
     <mesh position={[-length / 2 - 1, WATER_Y + 0.06, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} renderOrder={1}>
       <planeGeometry args={[width, length]} />
@@ -84,7 +76,7 @@ function Smoke({ at, size = 0.5, drift = -1 }: { at: [number, number, number]; s
       m.position.set(at[0] + drift * u * 6 + Math.sin(t + i) * 0.3, at[1] + u * 6, at[2] + Math.cos(t * 0.7 + i) * 0.4);
       const s = size * (0.6 + u * 2.2);
       m.scale.setScalar(s);
-      (m.material as MeshStandardMaterial).opacity = (1 - u) * 0.35;
+      (m.material as MeshStandardMaterial).opacity = Math.min(1, u / 0.15) * (1 - u) * 0.35;
     }
   });
   return (
@@ -326,14 +318,14 @@ function Trawler({ night }: { night: number }) {
         {[-0.9, 0, 0.9].map((z) => (
           <mesh key={z} position={[1.52, 1.5, z]}>
             <boxGeometry args={[0.04, 0.6, 0.6]} />
-            <meshStandardMaterial color="#1d2a3a" emissive="#ffd27a" emissiveIntensity={night * 1.4} roughness={0.1} metalness={0.5} toneMapped={false} />
+            <LitWindow intensity={night * 1.4} />
           </mesh>
         ))}
         {[-1, 1].map((s) =>
           [-0.7, 0.7].map((x) => (
             <mesh key={`${s}${x}`} position={[x, 1.5, s * 1.42]}>
               <boxGeometry args={[0.7, 0.6, 0.04]} />
-              <meshStandardMaterial color="#1d2a3a" emissive="#ffd27a" emissiveIntensity={night * 1.4} roughness={0.1} metalness={0.5} toneMapped={false} />
+              <LitWindow intensity={night * 1.4} />
             </mesh>
           )),
         )}
@@ -466,7 +458,7 @@ function Sailboat({ color, night }: { color: string; night: number }) {
           [-1, 1].map((s) => (
             <mesh key={`${x}${s}`} position={[x, 0.1, s * 0.76]}>
               <boxGeometry args={[0.6, 0.25, 0.03]} />
-              <meshStandardMaterial color="#1d2a3a" emissive="#ffd27a" emissiveIntensity={night * 1.2} roughness={0.1} metalness={0.5} />
+              <LitWindow intensity={night * 1.2} toneMapped />
             </mesh>
           )),
         )}
@@ -551,19 +543,10 @@ function Sailboat({ color, night }: { color: string; night: number }) {
 function RailPosts({ length, beam, y, count }: { length: number; beam: number; y: number; count: number }) {
   const ref = useRef<InstancedMesh>(null);
   useEffect(() => {
-    const m = ref.current;
-    if (!m) return;
-    const d = new Object3D();
-    let i = 0;
-    for (let k = 0; k < count / 2; k++) {
-      const x = -length / 2 + (k / (count / 2 - 1)) * length;
-      for (const side of [-1, 1]) {
-        d.position.set(x, y, side * beam * 0.5);
-        d.updateMatrix();
-        m.setMatrixAt(i++, d.matrix);
-      }
-    }
-    m.instanceMatrix.needsUpdate = true;
+    fillInstances(ref.current, count, (i, d) => {
+      const k = Math.floor(i / 2);
+      d.position.set(-length / 2 + (k / (count / 2 - 1)) * length, y, (i % 2 ? 1 : -1) * beam * 0.5);
+    });
   }, [length, beam, y, count]);
   return (
     <group>
@@ -586,19 +569,10 @@ function RailPosts({ length, beam, y, count }: { length: number; beam: number; y
 function StringLights({ length, beam, y, count, night }: { length: number; beam: number; y: number; count: number; night: number }) {
   const ref = useRef<InstancedMesh>(null);
   useEffect(() => {
-    const m = ref.current;
-    if (!m) return;
-    const d = new Object3D();
-    let i = 0;
-    for (let k = 0; k < count / 2; k++) {
-      const x = -length / 2 + (k / (count / 2 - 1)) * length;
-      for (const side of [-1, 1]) {
-        d.position.set(x, y - Math.sin((k / (count / 2 - 1)) * Math.PI * 6) * 0.12, side * (beam * 0.5 + 0.08));
-        d.updateMatrix();
-        m.setMatrixAt(i++, d.matrix);
-      }
-    }
-    m.instanceMatrix.needsUpdate = true;
+    fillInstances(ref.current, count, (i, d) => {
+      const k = Math.floor(i / 2);
+      d.position.set(-length / 2 + (k / (count / 2 - 1)) * length, y - Math.sin((k / (count / 2 - 1)) * Math.PI * 6) * 0.12, (i % 2 ? 1 : -1) * (beam * 0.5 + 0.08));
+    });
   }, [length, beam, y, count]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, count]}>
@@ -611,24 +585,15 @@ function StringLights({ length, beam, y, count, night }: { length: number; beam:
 function Windows({ length, beam, y, count, night, h = 0.7 }: { length: number; beam: number; y: number; count: number; night: number; h?: number }) {
   const ref = useRef<InstancedMesh>(null);
   useEffect(() => {
-    const m = ref.current;
-    if (!m) return;
-    const d = new Object3D();
-    let i = 0;
-    for (let k = 0; k < count / 2; k++) {
-      const x = -length / 2 + ((k + 0.5) / (count / 2)) * length;
-      for (const side of [-1, 1]) {
-        d.position.set(x, y, side * beam * 0.5);
-        d.updateMatrix();
-        m.setMatrixAt(i++, d.matrix);
-      }
-    }
-    m.instanceMatrix.needsUpdate = true;
+    fillInstances(ref.current, count, (i, d) => {
+      const k = Math.floor(i / 2);
+      d.position.set(-length / 2 + ((k + 0.5) / (count / 2)) * length, y, (i % 2 ? 1 : -1) * beam * 0.5);
+    });
   }, [length, beam, y, count]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, count]}>
       <boxGeometry args={[0.9, h, 0.06]} />
-      <meshStandardMaterial color="#2a3a5a" emissive="#ffd27a" emissiveIntensity={0.4 + night * 2.2} roughness={0.1} metalness={0.5} toneMapped={false} />
+      <LitWindow color="#2a3a5a" intensity={0.4 + night * 2.2} />
     </instancedMesh>
   );
 }
@@ -812,7 +777,7 @@ function Princess({ night }: { night: number }) {
         <Windows length={4.6} beam={4.26} y={1.3} count={8} night={night} h={0.9} />
         <mesh position={[2.52, 1.3, 0]} rotation={[0, Math.PI / 2, 0]}>
           <boxGeometry args={[3.6, 0.9, 0.06]} />
-          <meshStandardMaterial color="#2a3a5a" emissive="#ffd27a" emissiveIntensity={0.4 + night * 2.2} roughness={0.1} metalness={0.5} toneMapped={false} />
+          <LitWindow color="#2a3a5a" intensity={0.4 + night * 2.2} />
         </mesh>
         <Radar position={[0, 2.5, 0]} />
         <mesh position={[-1.4, 2.5, 1.2]}>
@@ -910,31 +875,13 @@ function Laker({ night }: { night: number }) {
   const posts = useRef<InstancedMesh>(null);
   const lamps = useRef<InstancedMesh>(null);
   useEffect(() => {
-    const p = posts.current;
-    const l = lamps.current;
-    if (!p || !l) return;
-    const d = new Object3D();
-    let i = 0;
-    for (let k = 0; k < 30; k++) {
-      const x = -44 + (k / 29) * 88;
-      for (const side of [-1, 1]) {
-        d.position.set(x, 0.55, side * 5.8);
-        d.updateMatrix();
-        p.setMatrixAt(i++, d.matrix);
-      }
-    }
-    p.instanceMatrix.needsUpdate = true;
-    for (let k = 0; k < 10; k++) {
-      d.position.set(-38 + k * 8.2, 1.6, (k % 2 ? 1 : -1) * 5.6);
-      d.updateMatrix();
-      l.setMatrixAt(k, d.matrix);
-    }
-    l.instanceMatrix.needsUpdate = true;
+    fillInstances(posts.current, 60, (i, o) => o.position.set(-44 + (Math.floor(i / 2) / 29) * 88, 0.55, (i % 2 ? 1 : -1) * 5.8));
+    fillInstances(lamps.current, 10, (k, o) => o.position.set(-38 + k * 8.2, 1.6, (k % 2 ? 1 : -1) * 5.6));
   }, []);
   const windows = (k: number) => (
     <mesh position={[0, 1.6, 0]}>
       <boxGeometry args={[9.04 - k * 1.2, 0.9, 10.44 - k * 1.4]} />
-      <meshStandardMaterial color="#1d2a3a" emissive="#ffd27a" emissiveIntensity={0.3 + night * 1.8} roughness={0.1} metalness={0.5} toneMapped={false} />
+      <LitWindow intensity={0.3 + night * 1.8} />
     </mesh>
   );
   return (
@@ -1032,7 +979,7 @@ function Laker({ night }: { night: number }) {
         <Portholes count={6} length={9} y={1.6} z={-5.32} />
         <mesh position={[0, 3.4, 0]}>
           <boxGeometry args={[11.04, 0.8, 10.64]} />
-          <meshStandardMaterial color="#1d2a3a" emissive="#ffd27a" emissiveIntensity={0.3 + night * 1.8} roughness={0.1} metalness={0.5} toneMapped={false} />
+          <LitWindow intensity={0.3 + night * 1.8} />
         </mesh>
         <mesh position={[-1.5, 8.2, 0]}>
           <cylinderGeometry args={[1.3, 1.6, 6.4, 14]} />
@@ -1094,13 +1041,13 @@ function Laker({ night }: { night: number }) {
         <sphereGeometry args={[0.2, 6, 6]} />
         <meshStandardMaterial color="#fff6d8" emissive="#ffd27a" emissiveIntensity={0.4 + night * 3} toneMapped={false} />
       </instancedMesh>
-      <NamePlate text="JONATHAN ADAMS" position={[38, -1.1, 6.1]} width={14} height={1.6} bg="#1a1a22" />
-      <NamePlate text="JONATHAN ADAMS" position={[38, -1.1, -6.1]} rotation={[0, Math.PI, 0]} width={14} height={1.6} bg="#1a1a22" />
-      <NamePlate text="JONATHAN ADAMS · DETROIT" position={[-48.1, -1.0, 0]} rotation={[0, -Math.PI / 2, 0]} width={9} height={1.2} bg="#1a1a22" />
-      <Text font={DISPLAY_FONT} fontSize={2.0} color={new Color("#f3dfae").multiplyScalar(1.3)} anchorX="center" anchorY="middle" position={[-4, 2.4, 5.7]} letterSpacing={0.12} material-toneMapped={false}>
+      <NamePlate text={ARTIST_CAPS} position={[38, -1.1, 6.1]} width={14} height={1.6} bg="#1a1a22" />
+      <NamePlate text={ARTIST_CAPS} position={[38, -1.1, -6.1]} rotation={[0, Math.PI, 0]} width={14} height={1.6} bg="#1a1a22" />
+      <NamePlate text={`${ARTIST_CAPS} · DETROIT`} position={[-48.1, -1.0, 0]} rotation={[0, -Math.PI / 2, 0]} width={9} height={1.2} bg="#1a1a22" />
+      <Text font={DISPLAY_FONT} fontSize={2.0} color={LINE_NAME_COLOR} anchorX="center" anchorY="middle" position={[-4, 2.4, 5.7]} letterSpacing={0.12} material-toneMapped={false}>
         ADAMS LINE
       </Text>
-      <Text font={DISPLAY_FONT} fontSize={2.0} color={new Color("#f3dfae").multiplyScalar(1.3)} anchorX="center" anchorY="middle" position={[-4, 2.4, 4.3]} rotation={[0, Math.PI, 0]} letterSpacing={0.12} material-toneMapped={false}>
+      <Text font={DISPLAY_FONT} fontSize={2.0} color={LINE_NAME_COLOR} anchorX="center" anchorY="middle" position={[-4, 2.4, 4.3]} rotation={[0, Math.PI, 0]} letterSpacing={0.12} material-toneMapped={false}>
         ADAMS LINE
       </Text>
       <Figure position={[43, 10.6, 2.8]} top="#f4f1ea" scale={1.1} rotation={Math.PI / 2} />
@@ -1168,67 +1115,53 @@ interface CraftPose {
   z: number;
   yaw: number;
   calm: number;
+  lean: number;
 }
 
-const WEAVE_EASE = 20;
+const TURN_LEAN = 0.22;
+const TURN_LEAN_EASE = 8;
 
-function easeFromEnds(s: number, straight: number) {
-  return Math.min(1, Math.min(s, straight - s) / WEAVE_EASE);
+const WEAVE_EASE = 20;
+const PLANING_TRIM = 0.06;
+
+function easeFromEnds(s: number, length: number, ease: number) {
+  return Math.min(1, Math.min(s, length - s) / ease);
 }
 
 function laneLength(b: Craft) {
   const straight = b.max - b.min;
   if (b.returnZ === undefined) return straight;
-  return 2 * straight + Math.PI * Math.abs(b.returnZ - b.z);
+  return loopLength(straight, (b.returnZ - b.z) / 2);
 }
+
+const craftLoop = newLoopPose();
 
 function poseCraft(b: Craft, travelled: number, out: CraftPose) {
   const straight = b.max - b.min;
-  const length = laneLength(b);
-  let s = ((travelled % length) + length) % length;
   out.calm = 1;
+  out.lean = 0;
   if (b.returnZ === undefined) {
+    const s = ((travelled % straight) + straight) % straight;
     out.x = b.speed > 0 ? b.min + s : b.max - s;
     out.z = b.z;
     out.yaw = b.speed > 0 ? 0 : -Math.PI;
     return;
   }
   const r = (b.returnZ - b.z) / 2;
-  const turn = Math.PI * r;
-  if (s < straight) {
-    out.x = b.min + s;
-    out.z = b.z;
-    out.yaw = 0;
-    out.calm = easeFromEnds(s, straight);
-    return;
+  const loop = loopPose(travelled, straight, r, craftLoop);
+  out.x = (b.min + b.max) / 2 + loop.a;
+  out.z = b.z + r + loop.b;
+  out.yaw = -Math.atan2(loop.hb, loop.ha);
+  if (loop.leg % 2 === 0) out.calm = easeFromEnds(loop.into, straight, WEAVE_EASE);
+  else {
+    out.calm = 0;
+    out.lean = TURN_LEAN * easeFromEnds(loop.into, Math.PI * r, TURN_LEAN_EASE);
   }
-  s -= straight;
-  out.calm = 0;
-  if (s < turn) {
-    const a = s / r;
-    out.x = b.max + Math.sin(a) * r;
-    out.z = b.z + r - Math.cos(a) * r;
-    out.yaw = -a;
-    return;
-  }
-  s -= turn;
-  if (s < straight) {
-    out.x = b.max - s;
-    out.z = b.returnZ;
-    out.yaw = -Math.PI;
-    out.calm = easeFromEnds(s, straight);
-    return;
-  }
-  s -= straight;
-  const a = s / r;
-  out.x = b.min - Math.sin(a) * r;
-  out.z = b.returnZ - r + Math.cos(a) * r;
-  out.yaw = -Math.PI - a;
 }
 
 const CHANNEL = { min: -LOOP / 2, max: LOOP / 2 };
 const LANES = {
-  north: { z: RIVER_NEAR + 2.5, returnZ: RIVER_NEAR + 6, speed: 10, min: -480, max: 200 },
+  north: { z: RIVER_NEAR + 2.5, returnZ: RIVER_NEAR + 20.5, speed: 10, min: -480, max: 200 },
   princess: { z: RIVER_FAR - 25, speed: 2.4, ...CHANNEL },
   sail: { z: RIVER_FAR - 18.7, speed: -2, ...CHANNEL },
   laker: { z: RIVER_FAR - 11, speed: 1.7, ...CHANNEL },
@@ -1266,7 +1199,7 @@ export default function Watercraft() {
   const [fleet] = useState(() => buildFleet());
   const refs = useRef<(Group | null)[]>([]);
   const root = useRef<Group>(null);
-  const [pose] = useState<CraftPose>(() => ({ x: 0, z: 0, yaw: 0, calm: 1 }));
+  const [pose] = useState<CraftPose>(() => ({ x: 0, z: 0, yaw: 0, calm: 1, lean: 0 }));
   useEffect(() => enableReflection(root.current), []);
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
@@ -1281,7 +1214,8 @@ export default function Watercraft() {
       g.position.set(pose.x, WATER_Y + 0.55 + Math.sin(t * 1.1 + i) * b.bob, pose.z + weave);
       const heading = weaving ? Math.atan2(Math.cos(t * 0.9 + i) * sway * 0.9, Math.abs(b.speed)) : 0;
       const along = Math.cos(pose.yaw) >= 0 ? 1 : -1;
-      g.rotation.set(Math.sin(t * 0.9 + i) * b.bob * 0.12, pose.yaw - along * heading, Math.sin(t * 0.7 + i) * b.bob * 0.15 + (weaving ? -Math.cos(t * 0.9 + i) * 0.2 * pose.calm : 0));
+      const trim = b.kind === "speed" || b.kind === "jetski" ? PLANING_TRIM : 0;
+      g.rotation.set(Math.sin(t * 0.9 + i) * b.bob * 0.12 + pose.lean + (weaving ? -along * Math.sin(t * 0.9 + i) * 0.2 * pose.calm : 0), pose.yaw - along * heading, Math.sin(t * 0.7 + i) * b.bob * 0.15 + trim, "YXZ");
     }
   });
   return (

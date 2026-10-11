@@ -2,8 +2,9 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BoxGeometry, CapsuleGeometry, Color, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
+import { BoxGeometry, CapsuleGeometry, Color, DoubleSide, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
 import { useDayNight } from "./DayNightContext";
+import { fillColors, fillInstances } from "./instancing";
 import MacArthurBridge from "./MacArthurBridge";
 import {
   BLOCK,
@@ -18,6 +19,7 @@ import {
   isMedianLine,
   lightIsAmber,
   lightIsGreen,
+  TRAFFIC_CLOCK,
   blockCenter,
   outerRoadLinesX,
   outerRoadLinesZ,
@@ -29,6 +31,7 @@ import People from "./People";
 import StreetFurniture from "./StreetFurniture";
 import VehicleFleet, { type FleetItem, type PoseFn } from "./VehicleFleet";
 import type { VehicleKind } from "./vehicles";
+import { loopPose, newLoopPose } from "./loopPath";
 import { mulberry32, pick, range } from "./rng";
 
 function TrafficLights() {
@@ -49,30 +52,20 @@ function TrafficLights() {
     return out;
   }, []);
   useEffect(() => {
-    const p = poles.current;
-    const h = housings.current;
-    if (!p || !h) return;
-    items.forEach((it, i) => {
-      dummy.position.set(it.x, 2.6, it.z);
-      dummy.rotation.set(0, 0, 0);
-      dummy.updateMatrix();
-      p.setMatrixAt(i, dummy.matrix);
-      dummy.position.set(it.x, 4.8, it.z);
-      dummy.rotation.set(0, it.rot, 0);
-      dummy.updateMatrix();
-      h.setMatrixAt(i, dummy.matrix);
+    fillInstances(poles.current, items.length, (i, d) => d.position.set(items[i].x, 2.6, items[i].z));
+    fillInstances(housings.current, items.length, (i, d) => {
+      d.position.set(items[i].x, 4.8, items[i].z);
+      d.rotation.set(0, items[i].rot, 0);
     });
-    p.instanceMatrix.needsUpdate = true;
-    h.instanceMatrix.needsUpdate = true;
-  }, [items, dummy]);
+  }, [items]);
   const red = useMemo(() => new Color("#ff2a3c").multiplyScalar(1.6), []);
   const green = useMemo(() => new Color("#2aff7a").multiplyScalar(1.6), []);
   const amber = useMemo(() => new Color("#ffb02e").multiplyScalar(1.6), []);
   const lastTick = useRef(-1);
-  useFrame(({ clock }) => {
+  useFrame(() => {
     const l = lamps.current;
     if (!l) return;
-    const time = clock.elapsedTime;
+    const time = TRAFFIC_CLOCK.time;
     const tick = Math.floor(time * 4);
     if (tick === lastTick.current) return;
     lastTick.current = tick;
@@ -109,31 +102,23 @@ function TrafficLights() {
 
 function StreetBanners() {
   const ref = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const x = roadLinesX()[WOODWARD_INDEX];
-    const out: { z: number; side: number; color: Color }[] = [];
+    const out: { x: number; z: number; side: number; color: Color }[] = [];
     const palette = [new Color("#c8102e"), new Color("#d6b56e"), new Color("#1d2a6a")];
     for (let z = -CITY_HALF_Z + 8; z < CITY_HALF_Z; z += 9) {
       if (Math.abs(((z + CITY_HALF_Z) % PITCH) - PITCH / 2) > BLOCK / 2 + 1) continue;
-      out.push({ z, side: 1, color: palette[Math.floor((z + 500) / 9) % 3] });
-      out.push({ z, side: -1, color: palette[Math.floor((z + 500) / 9 + 1) % 3] });
+      out.push({ x, z, side: 1, color: palette[Math.floor((z + 500) / 9) % 3] });
+      out.push({ x, z, side: -1, color: palette[Math.floor((z + 500) / 9 + 1) % 3] });
     }
-    return out.map((o) => ({ ...o, x }));
+    return out;
   }, []);
   useEffect(() => {
     const m = ref.current;
     if (!m) return;
-    items.forEach((it, i) => {
-      dummy.position.set(it.x + it.side * 0.9, 4.6, it.z);
-      dummy.rotation.set(0, 0, 0);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
-      m.setColorAt(i, it.color);
-    });
-    m.instanceMatrix.needsUpdate = true;
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
-  }, [items, dummy]);
+    fillInstances(m, items.length, (i, d) => d.position.set(items[i].x + items[i].side * 0.9, 4.6, items[i].z));
+    fillColors(m, items.length, (i) => items[i].color);
+  }, [items]);
   return (
     <group>
       <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
@@ -148,6 +133,29 @@ const GULL_BODY = new CapsuleGeometry(0.14, 0.7, 3, 6).rotateX(Math.PI / 2);
 const GULL_WING_LEFT = new BoxGeometry(1.2, 0.04, 0.42).translate(-0.65, 0, 0);
 const GULL_WING_RIGHT = new BoxGeometry(1.2, 0.04, 0.42).translate(0.65, 0, 0);
 
+const GULL_STRAIGHT = 150;
+const GULL_TURN_R = 22;
+const GULL_LOOP_Z = (RIVER_NEAR + RIVER_FAR) / 2;
+const GULL_SPEED = 11;
+const GULL_BANK = 0.45;
+const GULL_TURN_LEN = Math.PI * GULL_TURN_R;
+const gullLoop = newLoopPose();
+const gullPose = { x: 0, z: 0, yaw: 0, bank: 0 };
+
+function gullBank(into: number) {
+  return GULL_BANK * Math.min(1, into / 12, (GULL_TURN_LEN - into) / 12);
+}
+
+function gullPath(distance: number, lateral: number) {
+  const loop = loopPose(distance, 2 * GULL_STRAIGHT, GULL_TURN_R, gullLoop, lateral);
+  const p = gullPose;
+  p.x = loop.a;
+  p.z = GULL_LOOP_Z + loop.b;
+  p.yaw = Math.atan2(loop.ha, loop.hb);
+  p.bank = loop.leg % 2 === 1 ? gullBank(loop.into) : 0;
+  return p;
+}
+
 function Gulls() {
   const body = useRef<InstancedMesh>(null);
   const wingL = useRef<InstancedMesh>(null);
@@ -158,10 +166,10 @@ function Gulls() {
     return Array.from({ length: 28 }, () => ({
       ox: range(rand, -40, 40),
       oy: range(rand, -6, 6),
-      oz: range(rand, -20, 20),
-      flap: rand() * 10,
-      speed: range(rand, 0.8, 1.2),
-      s: range(rand, 0.8, 1.2),
+      oz: range(rand, -12, 12),
+      phase: rand() * 10,
+      bobRate: range(rand, 0.8, 1.2),
+      scale: range(rand, 0.8, 1.2),
     }));
   }, []);
   useFrame(({ clock }) => {
@@ -170,22 +178,20 @@ function Gulls() {
     const r = wingR.current;
     if (!b || !l || !r) return;
     const t = clock.elapsedTime;
-    const cx = Math.sin(t * 0.05) * 260;
-    const cz = RIVER_NEAR + 20 + Math.cos(t * 0.05) * 30;
-    const heading = Math.cos(t * 0.05) > 0 ? 0 : Math.PI;
     for (let i = 0; i < flock.length; i++) {
       const g = flock[i];
-      const flap = Math.sin(t * 9 + g.flap) * 0.7;
-      const y = 26 + g.oy + Math.sin(t * g.speed + g.flap) * 1.2;
-      dummy.position.set(cx + g.ox, y, cz + g.oz);
-      dummy.rotation.set(0, heading + Math.PI / 2, 0);
-      dummy.scale.setScalar(g.s);
+      const pose = gullPath(t * GULL_SPEED + g.ox + Math.sin(t * 0.3 + g.phase) * 3, g.oz + Math.sin(t * 0.23 + g.phase * 2) * 2);
+      const flap = Math.sin(t * 9 + g.phase) * 0.7;
+      const y = 26 + g.oy + Math.sin(t * g.bobRate + g.phase) * 1.2;
+      dummy.position.set(pose.x, y, pose.z);
+      dummy.rotation.set(0, pose.yaw, pose.bank);
+      dummy.scale.setScalar(g.scale);
       dummy.updateMatrix();
       b.setMatrixAt(i, dummy.matrix);
-      dummy.rotation.set(0, heading + Math.PI / 2, flap);
+      dummy.rotation.set(0, pose.yaw, pose.bank + flap);
       dummy.updateMatrix();
       l.setMatrixAt(i, dummy.matrix);
-      dummy.rotation.set(0, heading + Math.PI / 2, -flap);
+      dummy.rotation.set(0, pose.yaw, pose.bank - flap);
       dummy.updateMatrix();
       r.setMatrixAt(i, dummy.matrix);
     }
@@ -199,10 +205,10 @@ function Gulls() {
         <meshStandardMaterial color="#f4f1ea" />
       </instancedMesh>
       <instancedMesh ref={wingL} args={[GULL_WING_LEFT, undefined, flock.length]} frustumCulled={false}>
-        <meshStandardMaterial color="#e8e2d2" side={2} />
+        <meshStandardMaterial color="#e8e2d2" side={DoubleSide} />
       </instancedMesh>
       <instancedMesh ref={wingR} args={[GULL_WING_RIGHT, undefined, flock.length]} frustumCulled={false}>
-        <meshStandardMaterial color="#e8e2d2" side={2} />
+        <meshStandardMaterial color="#e8e2d2" side={DoubleSide} />
       </instancedMesh>
     </group>
   );
@@ -277,7 +283,6 @@ const SLABS: { x: number; z: number; w: number; d: number; h: number; rot: numbe
 
 function ResidentialSlabs() {
   const balconies = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const out: { x: number; y: number; z: number; rot: number }[] = [];
     SLABS.forEach((s) => {
@@ -298,16 +303,11 @@ function ResidentialSlabs() {
     return out;
   }, []);
   useEffect(() => {
-    const m = balconies.current;
-    if (!m) return;
-    items.forEach((it, i) => {
-      dummy.position.set(it.x, it.y, it.z);
-      dummy.rotation.set(0, it.rot, 0);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
+    fillInstances(balconies.current, items.length, (i, d) => {
+      d.position.set(items[i].x, items[i].y, items[i].z);
+      d.rotation.set(0, items[i].rot, 0);
     });
-    m.instanceMatrix.needsUpdate = true;
-  }, [items, dummy]);
+  }, [items]);
   return (
     <group>
       {SLABS.map((s, i) => (
@@ -326,7 +326,6 @@ function ResidentialSlabs() {
 
 function Clotheslines() {
   const ref = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const rand = mulberry32(2222);
     const colors = ["#f4f1ea", "#c8102e", "#2a3a7a", "#d6b56e", "#3f8a6a", "#9a95a8", "#ff8a3a"];
@@ -345,15 +344,9 @@ function Clotheslines() {
   useEffect(() => {
     const m = ref.current;
     if (!m) return;
-    items.forEach((it, i) => {
-      dummy.position.set(it.x, it.y, it.z);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
-      m.setColorAt(i, it.color);
-    });
-    m.instanceMatrix.needsUpdate = true;
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
-  }, [items, dummy]);
+    fillInstances(m, items.length, (i, d) => d.position.set(items[i].x, items[i].y, items[i].z));
+    fillColors(m, items.length, (i) => items[i].color);
+  }, [items]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <boxGeometry args={[0.7, 0.9, 0.06]} />
@@ -364,7 +357,6 @@ function Clotheslines() {
 
 function SatelliteDishes() {
   const ref = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const rand = mulberry32(31);
     const out: { x: number; y: number; z: number; rot: number }[] = [];
@@ -381,20 +373,15 @@ function SatelliteDishes() {
     return out;
   }, []);
   useEffect(() => {
-    const m = ref.current;
-    if (!m) return;
-    items.forEach((it, i) => {
-      dummy.position.set(it.x, it.y, it.z);
-      dummy.rotation.set(-0.5, it.rot, 0);
-      dummy.updateMatrix();
-      m.setMatrixAt(i, dummy.matrix);
+    fillInstances(ref.current, items.length, (i, d) => {
+      d.position.set(items[i].x, items[i].y, items[i].z);
+      d.rotation.set(-0.5, items[i].rot, 0);
     });
-    m.instanceMatrix.needsUpdate = true;
-  }, [items, dummy]);
+  }, [items]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]}>
       <sphereGeometry args={[0.55, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2.4]} />
-      <meshStandardMaterial color="#d8d8e0" roughness={0.5} metalness={0.3} side={2} />
+      <meshStandardMaterial color="#d8d8e0" roughness={0.5} metalness={0.3} side={DoubleSide} />
     </instancedMesh>
   );
 }
@@ -451,7 +438,6 @@ const POLE_EDGE = 10.7;
 function UtilityPoles() {
   const poles = useRef<InstancedMesh>(null);
   const wires = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const out: { x: number; z: number }[] = [];
     const northKerb = -CITY_HALF_Z - PITCH / 2 + POLE_EDGE;
@@ -465,29 +451,20 @@ function UtilityPoles() {
     return out;
   }, []);
   useEffect(() => {
-    const p = poles.current;
-    const w = wires.current;
-    if (!p || !w) return;
-    items.forEach((it, i) => {
-      dummy.position.set(it.x, 4.5, it.z);
-      dummy.rotation.set(0, 0, 0);
-      dummy.scale.set(1, 1, 1);
-      dummy.updateMatrix();
-      p.setMatrixAt(i, dummy.matrix);
+    fillInstances(poles.current, items.length, (i, d) => d.position.set(items[i].x, 4.5, items[i].z));
+    fillInstances(wires.current, items.length, (i, d) => {
+      const it = items[i];
       const next = items[i + 1];
       if (next && Math.hypot(next.x - it.x, next.z - it.z) < 20) {
-        dummy.position.set((it.x + next.x) / 2, 8.4, (it.z + next.z) / 2);
-        dummy.rotation.set(0, Math.atan2(next.x - it.x, next.z - it.z), 0);
-        dummy.scale.set(1, 1, Math.hypot(next.x - it.x, next.z - it.z));
+        d.position.set((it.x + next.x) / 2, 8.4, (it.z + next.z) / 2);
+        d.rotation.set(0, Math.atan2(next.x - it.x, next.z - it.z), 0);
+        d.scale.set(1, 1, Math.hypot(next.x - it.x, next.z - it.z));
       } else {
-        dummy.scale.set(0, 0, 0);
+        d.position.set(it.x, 4.5, it.z);
+        d.scale.set(0, 0, 0);
       }
-      dummy.updateMatrix();
-      w.setMatrixAt(i, dummy.matrix);
     });
-    p.instanceMatrix.needsUpdate = true;
-    w.instanceMatrix.needsUpdate = true;
-  }, [items, dummy]);
+  }, [items]);
   return (
     <group>
       <instancedMesh ref={poles} args={[undefined, undefined, items.length]}>

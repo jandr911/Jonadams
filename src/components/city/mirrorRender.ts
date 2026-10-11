@@ -12,7 +12,7 @@ import {
 } from "three";
 import { REFLECT_LAYER } from "./layers";
 
-export interface MirrorScratch {
+interface MirrorScratch {
   virtualCamera: PerspectiveCamera;
   reflectorPos: Vector3;
   cameraPos: Vector3;
@@ -24,7 +24,6 @@ export interface MirrorScratch {
   plane: Plane;
   clip: Vector4;
   q: Vector4;
-  textureMatrix: Matrix4;
 }
 
 export function makeMirrorScratch(): MirrorScratch {
@@ -40,7 +39,6 @@ export function makeMirrorScratch(): MirrorScratch {
     plane: new Plane(),
     clip: new Vector4(),
     q: new Vector4(),
-    textureMatrix: new Matrix4(),
   };
 }
 
@@ -72,8 +70,10 @@ export function renderMirror(
   vc.projectionMatrix.copy(camera.projectionMatrix);
   vc.layers.set(REFLECT_LAYER);
 
-  s.textureMatrix.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
-  s.textureMatrix.multiply(vc.projectionMatrix).multiply(vc.matrixWorldInverse).multiply(mesh.matrixWorld);
+  const mat = mesh.material as ShaderMaterial;
+  const textureMatrix: Matrix4 = mat.uniforms.uTextureMatrix.value;
+  textureMatrix.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
+  textureMatrix.multiply(vc.projectionMatrix).multiply(vc.matrixWorldInverse).multiply(mesh.matrixWorld);
 
   s.plane.setFromNormalAndCoplanarPoint(s.normal, s.reflectorPos).applyMatrix4(vc.matrixWorldInverse);
   s.clip.set(s.plane.normal.x, s.plane.normal.y, s.plane.normal.z, s.plane.constant);
@@ -88,8 +88,6 @@ export function renderMirror(
   pm.elements[10] = s.clip.z + 1 - 0.0001;
   pm.elements[14] = s.clip.w;
 
-  const mat = mesh.material as ShaderMaterial;
-  mat.uniforms.uTextureMatrix.value.copy(s.textureMatrix);
   mat.uniforms.uMirror.value = rt.texture;
 
   const prevTarget = gl.getRenderTarget();
@@ -109,13 +107,4 @@ export function renderMirror(
   gl.shadowMap.autoUpdate = prevShadow;
   gl.shadowMap.needsUpdate = prevShadowNeeded;
   mesh.visible = true;
-}
-
-export function setShadowManual(gl: WebGLRenderer) {
-  gl.shadowMap.autoUpdate = false;
-  gl.shadowMap.needsUpdate = true;
-}
-
-export function requestShadowUpdate(gl: WebGLRenderer) {
-  gl.shadowMap.needsUpdate = true;
 }

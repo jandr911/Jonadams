@@ -1,13 +1,14 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BoxGeometry, BufferGeometry, Color, InstancedMesh, Matrix4, MeshStandardMaterial, Quaternion, SphereGeometry, TorusGeometry, Vector3 } from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BoxGeometry, BufferGeometry, Color, DoubleSide, InstancedMesh, Matrix4, MeshStandardMaterial, Quaternion, SphereGeometry, TorusGeometry, Vector3 } from "three";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
+import { HIDDEN_MATRIX, cachedByKey, mergeParts } from "./instancing";
 import { labelTexture } from "./labels";
 import { BLOCK, CITY_HALF_X, CITY_HALF_Z, DESTINATIONS, allBlocks, blockCenter, destinationPosition } from "./layout";
+import { loopLength, loopPose, newLoopPose } from "./loopPath";
 import { mulberry32, pick, range } from "./rng";
 
 const SKIN = ["#f1c9a5", "#e0ac7e", "#c68642", "#8d5524", "#5c3a1e", "#f5d6c6", "#a66a3a", "#3b2314"];
@@ -28,6 +29,7 @@ interface Person {
   speed: number;
   len: number;
   start: number;
+  side: number;
   phase: number;
   yaw: number;
   scale: number;
@@ -60,6 +62,7 @@ function person(rand: () => number, p: Partial<Person>): Person {
     speed: range(rand, 0.9, 1.6),
     len: BLOCK - 2,
     start: rand(),
+    side: 0,
     phase: rand() * 10,
     yaw: 0,
     scale: range(rand, 0.84, 1.12),
@@ -84,6 +87,13 @@ function person(rand: () => number, p: Partial<Person>): Person {
 
 const WALK_EDGE = 0.1;
 const WALK_KEEP_RIGHT = 0.3;
+const HIP_SWING = 0.42;
+const LEG_LENGTH = 0.8;
+const STRIDE = 4 * LEG_LENGTH * Math.sin(HIP_SWING);
+
+function keepRight(axis: "x" | "z", dir: 1 | -1) {
+  return axis === "x" ? dir * WALK_KEEP_RIGHT : -dir * WALK_KEEP_RIGHT;
+}
 
 function crowd(rand: () => number, out: Person[], cx: number, cz: number, halfW: number, depth: number, n: number, phoneShare: number, cheerShare: number) {
   for (let i = 0; i < n; i++) {
@@ -115,15 +125,15 @@ function buildPeople(): { people: Person[]; extras: Extras } {
     for (let k = 0; k < n; k++) {
       const side = Math.floor(rand() * 4);
       const dir: 1 | -1 = rand() < 0.5 ? 1 : -1;
-      const outward = side === 0 || side === 2 ? 1 : -1;
-      const e = BLOCK / 2 + WALK_EDGE + dir * outward * WALK_KEEP_RIGHT;
+      const e = BLOCK / 2 + WALK_EDGE;
       const axis: "x" | "z" = side < 2 ? "x" : "z";
       const fixed = side === 0 ? bz + e : side === 1 ? bz - e : side === 2 ? bx + e : bx - e;
-      out.push(person(rand, { x: axis === "x" ? bx : fixed, z: axis === "x" ? fixed : bz, axis, dir }));
+      out.push(person(rand, { x: axis === "x" ? bx : fixed, z: axis === "x" ? fixed : bz, axis, dir, side: keepRight(axis, dir) }));
     }
   }
   for (let i = 0; i < 70; i++) {
-    out.push(person(rand, { x: range(rand, -CITY_HALF_X - 30, CITY_HALF_X + 30), z: CITY_HALF_Z + 5 + rand() * 5, axis: "x", dir: rand() < 0.5 ? 1 : -1, speed: range(rand, 0.8, 1.4), len: 60 }));
+    const dir: 1 | -1 = rand() < 0.5 ? 1 : -1;
+    out.push(person(rand, { x: range(rand, -CITY_HALF_X - 30, CITY_HALF_X + 30), z: CITY_HALF_Z + 5 + rand() * 5, axis: "x", dir, side: keepRight("x", dir), speed: range(rand, 0.8, 1.4), len: 60 }));
   }
   for (let i = 0; i < 18; i++) {
     out.push(person(rand, { mode: "stand", x: range(rand, -CITY_HALF_X, CITY_HALF_X), z: CITY_HALF_Z + 9.5, yaw: range(rand, -0.4, 0.4), phone: rand() < 0.3 }));
@@ -177,23 +187,31 @@ const PART = {
   phone: mat(0, -0.36, 0.06, 0.09, 0.15, 0.02),
   camera: mat(0, -0.34, 0.1, 0.18, 0.12, 0.16),
 };
-const ELBOW = new Matrix4().makeTranslation(0, -0.32, 0);
-const KNEE = new Matrix4().makeTranslation(0, -0.4, 0);
+
+interface LimbSpec {
+  upper: Matrix4;
+  lower: Matrix4;
+  end: Matrix4;
+  joint: Matrix4;
+}
+
+const ARM: LimbSpec = { upper: PART.uArm, lower: PART.lArm, end: PART.hand, joint: new Matrix4().makeTranslation(0, -0.32, 0) };
+const LEG: LimbSpec = { upper: PART.uLeg, lower: PART.lLeg, end: PART.shoe, joint: new Matrix4().makeTranslation(0, -0.4, 0) };
 
 function eyesGeometry() {
-  const l = new BoxGeometry(0.035, 0.035, 0.02).toNonIndexed();
+  const l = new BoxGeometry(0.035, 0.035, 0.02);
   l.translate(-0.055, 0, 0);
-  const r = new BoxGeometry(0.035, 0.035, 0.02).toNonIndexed();
+  const r = new BoxGeometry(0.035, 0.035, 0.02);
   r.translate(0.055, 0, 0);
-  return mergeGeometries([l, r])!;
+  return mergeParts([l, r], "eyes");
 }
 function headphoneGeometry() {
-  const band = new TorusGeometry(0.2, 0.025, 5, 16, Math.PI).toNonIndexed();
-  const cupL = new SphereGeometry(0.055, 6, 6).toNonIndexed();
+  const band = new TorusGeometry(0.2, 0.025, 5, 16, Math.PI);
+  const cupL = new SphereGeometry(0.055, 6, 6);
   cupL.translate(-0.19, -0.02, 0);
-  const cupR = new SphereGeometry(0.055, 6, 6).toNonIndexed();
+  const cupR = new SphereGeometry(0.055, 6, 6);
   cupR.translate(0.19, -0.02, 0);
-  return mergeGeometries([band, cupL, cupR])!;
+  return mergeParts([band, cupL, cupR], "headphones");
 }
 
 const PART_KEYS = ["head", "eyes", "hair", "hairBack", "bun", "brim", "torso", "jacket", "hips", "skirt", "uArmL", "lArmL", "handL", "uArmR", "lArmR", "handR", "uLegL", "lLegL", "shoeL", "uLegR", "lLegR", "shoeR", "bag", "headphones", "phone"] as const;
@@ -208,7 +226,6 @@ interface Scratch {
   R: Matrix4;
   J: Matrix4;
   out: Matrix4;
-  zero: Matrix4;
   frame: number;
   limbs: Limbs | null;
 }
@@ -270,18 +287,45 @@ function limbsOf(m: Map<PartKey, InstancedMesh>): Limbs {
   };
 }
 
-function limb(out: Matrix4, s: Scratch, M: Matrix4, px: number, py: number, upper: number, lower: number, upperPart: Matrix4, lowerPart: Matrix4, endPart: Matrix4, joint: Matrix4, dest: Limb, i: number) {
+function limb(s: Scratch, spec: LimbSpec, dest: Limb, i: number, px: number, py: number, upper: number, lower: number) {
   s.T.makeTranslation(px, py, 0);
   s.R.makeRotationX(upper);
-  s.J.multiplyMatrices(M, s.T).multiply(s.R);
-  out.multiplyMatrices(s.J, upperPart);
-  dest.u.setMatrixAt(i, out);
+  s.J.multiplyMatrices(s.M, s.T).multiply(s.R);
+  s.out.multiplyMatrices(s.J, spec.upper);
+  dest.u.setMatrixAt(i, s.out);
   s.R.makeRotationX(lower);
-  s.J.multiply(joint).multiply(s.R);
-  out.multiplyMatrices(s.J, lowerPart);
-  dest.l.setMatrixAt(i, out);
-  out.multiplyMatrices(s.J, endPart);
-  dest.e.setMatrixAt(i, out);
+  s.J.multiply(spec.joint).multiply(s.R);
+  s.out.multiplyMatrices(s.J, spec.lower);
+  dest.l.setMatrixAt(i, s.out);
+  s.out.multiplyMatrices(s.J, spec.end);
+  dest.e.setMatrixAt(i, s.out);
+}
+
+const walkFrame = { x: 0, z: 0, yaw: 0 };
+const walkLoop = newLoopPose();
+
+function swingKnee(w: number) {
+  const lift = Math.max(0, -Math.cos(w + 0.15));
+  return 0.1 + 0.9 * lift * lift;
+}
+
+function walkPose(p: Person, t: number, out: { x: number; z: number; yaw: number }) {
+  const r = Math.abs(p.side);
+  const walked = p.start * loopLength(p.len, r) + t * p.speed;
+  const loop = loopPose(walked, p.len, r, walkLoop);
+  const across = -Math.sign(p.side);
+  const a = loop.a * p.dir;
+  const b = loop.b * across;
+  const ha = loop.ha * p.dir;
+  const hb = loop.hb * across;
+  out.x = p.axis === "x" ? p.x + a : p.x + b;
+  out.z = p.axis === "x" ? p.z + b : p.z + a;
+  out.yaw = p.axis === "x" ? Math.atan2(ha, hb) : Math.atan2(hb, ha);
+  return walked;
+}
+
+function markMatrixDirty(im: InstancedMesh) {
+  im.instanceMatrix.needsUpdate = true;
 }
 
 function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: number, s: Scratch, camX: number, camZ: number) {
@@ -301,7 +345,7 @@ function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: numbe
   const phone = m.get("phone")!;
   s.limbs ??= limbsOf(m);
   const { armL, armR, legL, legR } = s.limbs;
-  const { pos, q, sc, M, out, zero } = s;
+  const { pos, q, sc, M, out } = s;
   s.frame++;
   for (let i = 0; i < people.length; i++) {
     const p = people[i];
@@ -313,34 +357,30 @@ function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: numbe
     let kneeR = 0;
     let shL = 0;
     let shR = 0;
-    let elL = 0.25;
-    let elR = 0.25;
+    let elL = -0.25;
+    let elR = -0.25;
     let bob = 0;
-    let heading: 1 | -1 = p.dir;
+    let walked = 0;
     if (p.mode === "walk") {
-      const u = (p.start + (t * p.speed) / (2 * p.len)) % 1;
-      const outbound = u < 0.5;
-      const tri = outbound ? u * 2 : 2 - u * 2;
-      const along = (tri - 0.5) * p.len * p.dir;
-      heading = outbound ? p.dir : p.dir === 1 ? -1 : 1;
-      x = p.axis === "x" ? p.x + along : p.x;
-      z = p.axis === "x" ? p.z : p.z + along;
+      walked = walkPose(p, t, walkFrame);
+      x = walkFrame.x;
+      z = walkFrame.z;
+      yaw = walkFrame.yaw;
     }
     const dx = x - camX;
     const dz = z - camZ;
     if (dx * dx + dz * dz > 22500 && (s.frame + i) % 4 !== 0) continue;
     if (p.mode === "walk") {
-      yaw = p.axis === "x" ? (heading > 0 ? Math.PI / 2 : -Math.PI / 2) : heading > 0 ? 0 : Math.PI;
-      const w = t * p.speed * 5.2 + p.phase;
+      const w = (walked / (STRIDE * p.scale)) * Math.PI * 2 + p.phase;
       const sw = Math.sin(w);
-      hipL = sw * 0.5;
-      kneeL = -(1 - Math.cos(w)) * 0.3;
-      kneeR = -(1 + Math.cos(w)) * 0.3;
-      shL = -sw * 0.45;
-      shR = sw * 0.45;
-      elL = 0.35 + sw * 0.15;
-      elR = 0.35 - sw * 0.15;
-      bob = Math.abs(Math.cos(w)) * 0.035;
+      hipL = sw * HIP_SWING;
+      kneeL = swingKnee(w);
+      kneeR = swingKnee(w + Math.PI);
+      shL = -sw * 0.32;
+      shR = sw * 0.32;
+      elL = -0.22 - 0.22 * Math.max(0, sw);
+      elR = -0.22 - 0.22 * Math.max(0, -sw);
+      bob = 0.012 + Math.cos(2 * w) * 0.022;
     } else {
       yaw = p.yaw + Math.sin(t * 0.6 + p.phase) * 0.08;
       bob = Math.sin(t * 2.2 + p.phase) * 0.012;
@@ -369,26 +409,26 @@ function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: numbe
     head.setMatrixAt(i, out.multiplyMatrices(M, PART.head));
     eyes.setMatrixAt(i, out.multiplyMatrices(M, PART.eyes));
     const h = p.hair;
-    hair.setMatrixAt(i, h === 4 ? zero : out.multiplyMatrices(M, h === 1 ? PART.hairLong : h === 3 ? PART.afro : h === 5 ? PART.cap : PART.hairShort));
-    hairBack.setMatrixAt(i, h === 1 ? out.multiplyMatrices(M, PART.hairBack) : zero);
-    bun.setMatrixAt(i, h === 2 ? out.multiplyMatrices(M, PART.bun) : zero);
-    brim.setMatrixAt(i, h === 5 ? out.multiplyMatrices(M, PART.brim) : zero);
+    hair.setMatrixAt(i, h === 4 ? HIDDEN_MATRIX : out.multiplyMatrices(M, h === 1 ? PART.hairLong : h === 3 ? PART.afro : h === 5 ? PART.cap : PART.hairShort));
+    hairBack.setMatrixAt(i, h === 1 ? out.multiplyMatrices(M, PART.hairBack) : HIDDEN_MATRIX);
+    bun.setMatrixAt(i, h === 2 ? out.multiplyMatrices(M, PART.bun) : HIDDEN_MATRIX);
+    brim.setMatrixAt(i, h === 5 ? out.multiplyMatrices(M, PART.brim) : HIDDEN_MATRIX);
     torso.setMatrixAt(i, out.multiplyMatrices(M, PART.torso));
-    jacket.setMatrixAt(i, p.jacket ? out.multiplyMatrices(M, PART.jacket) : zero);
+    jacket.setMatrixAt(i, p.jacket ? out.multiplyMatrices(M, PART.jacket) : HIDDEN_MATRIX);
     hips.setMatrixAt(i, out.multiplyMatrices(M, PART.hips));
-    skirt.setMatrixAt(i, p.skirt ? out.multiplyMatrices(M, PART.skirt) : zero);
-    bag.setMatrixAt(i, p.bag ? out.multiplyMatrices(M, PART.bag) : zero);
-    headphones.setMatrixAt(i, p.headphones ? out.multiplyMatrices(M, PART.headphones) : zero);
-    limb(out, s, M, -0.27, 1.34, shL, elL, PART.uArm, PART.lArm, PART.hand, ELBOW, armL, i);
-    limb(out, s, M, 0.27, 1.34, shR, elR, PART.uArm, PART.lArm, PART.hand, ELBOW, armR, i);
+    skirt.setMatrixAt(i, p.skirt ? out.multiplyMatrices(M, PART.skirt) : HIDDEN_MATRIX);
+    bag.setMatrixAt(i, p.bag ? out.multiplyMatrices(M, PART.bag) : HIDDEN_MATRIX);
+    headphones.setMatrixAt(i, p.headphones ? out.multiplyMatrices(M, PART.headphones) : HIDDEN_MATRIX);
+    limb(s, ARM, armL, i, -0.27, 1.34, shL, elL);
+    limb(s, ARM, armR, i, 0.27, 1.34, shR, elR);
     if (p.phone || p.camera) {
       out.multiplyMatrices(s.J, p.camera ? PART.camera : PART.phone);
       phone.setMatrixAt(i, out);
-    } else phone.setMatrixAt(i, zero);
-    limb(out, s, M, -0.1, 0.78, hipL, kneeL, PART.uLeg, PART.lLeg, PART.shoe, KNEE, legL, i);
-    limb(out, s, M, 0.1, 0.78, -hipL, kneeR, PART.uLeg, PART.lLeg, PART.shoe, KNEE, legR, i);
+    } else phone.setMatrixAt(i, HIDDEN_MATRIX);
+    limb(s, LEG, legL, i, -0.1, 0.78, hipL, kneeL);
+    limb(s, LEG, legR, i, 0.1, 0.78, -hipL, kneeR);
   }
-  for (const im of m.values()) im.instanceMatrix.needsUpdate = true;
+  m.forEach(markMatrixDirty);
 }
 
 const ROPE_POSTS = [-10, -7.5, -5, -2.5, 2.5, 5, 7.5, 10];
@@ -396,10 +436,9 @@ const ROPE_SPANS = ROPE_POSTS.filter((x, i) => i > 0 && x - ROPE_POSTS[i - 1] ==
 
 function VelvetRope({ at }: { at: [number, number] }) {
   const [cx, cz] = at;
-  const posts = ROPE_POSTS;
   return (
     <group position={[cx, 0.4, cz + 10.9]}>
-      {posts.map((x) => (
+      {ROPE_POSTS.map((x) => (
         <group key={x} position={[x, 0, 0]}>
           <mesh position={[0, 0.5, 0]}>
             <cylinderGeometry args={[0.035, 0.035, 1, 6]} />
@@ -494,7 +533,7 @@ function ConeyCart({ at }: { at: [number, number, number] }) {
       </mesh>
       <mesh position={[0, 2.6, 0]}>
         <coneGeometry args={[1.8, 0.6, 10, 1, true]} />
-        <meshStandardMaterial color="#c8102e" side={2} roughness={0.8} />
+        <meshStandardMaterial color="#c8102e" side={DoubleSide} roughness={0.8} />
       </mesh>
       <mesh position={[0, 1.02, 0.68]}>
         <boxGeometry args={[2.2, 0.5, 0.02]} />
@@ -552,16 +591,17 @@ function Busker({ at }: { at: [number, number, number] }) {
 export default function People() {
   const dn = useDayNight();
   const [{ people, extras }] = useState(() => buildPeople());
-  const refs = useRef(new Map<PartKey, InstancedMesh>());
+  const [refs] = useState(() => new Map<PartKey, InstancedMesh>());
   const phoneMat = useRef<MeshStandardMaterial>(null);
-  const scratch = useRef<Scratch>({ pos: new Vector3(), q: new Quaternion(), sc: new Vector3(), M: new Matrix4(), T: new Matrix4(), R: new Matrix4(), J: new Matrix4(), out: new Matrix4(), zero: new Matrix4().makeScale(0, 0, 0), frame: 0, limbs: null });
-  const bind = useCallback(
-    (key: PartKey) => (m: InstancedMesh | null) => {
-      if (refs.current.get(key) !== (m ?? undefined)) scratch.current.limbs = null;
-      if (m) refs.current.set(key, m);
-      else refs.current.delete(key);
-    },
-    [],
+  const [scratch] = useState<Scratch>(() => ({ pos: new Vector3(), q: new Quaternion(), sc: new Vector3(), M: new Matrix4(), T: new Matrix4(), R: new Matrix4(), J: new Matrix4(), out: new Matrix4(), frame: 0, limbs: null }));
+  const bind = useMemo(
+    () =>
+      cachedByKey((key: PartKey) => (m: InstancedMesh | null) => {
+        if (refs.get(key) !== (m ?? undefined)) scratch.limbs = null;
+        if (m) refs.set(key, m);
+        else refs.delete(key);
+      }),
+    [refs, scratch],
   );
   const geo = useMemo(
     () => ({ box: new BoxGeometry(1, 1, 1), sphere: new SphereGeometry(1, 7, 5), eyes: eyesGeometry(), headphones: headphoneGeometry() }) as Record<string, BufferGeometry>,
@@ -570,15 +610,15 @@ export default function People() {
   useEffect(() => () => Object.values(geo).forEach((g) => g.dispose()), [geo]);
 
   useEffect(() => {
-    applyColors(refs.current, people);
-  }, [people]);
+    applyColors(refs, people);
+  }, [refs, people]);
 
   useEffect(() => {
     if (phoneMat.current) phoneMat.current.emissiveIntensity = 0.8 + dn.night * 3;
   }, [dn]);
 
   useFrame(({ clock, camera }) => {
-    updatePeople(refs.current, people, clock.elapsedTime, scratch.current, camera.position.x, camera.position.z);
+    updatePeople(refs, people, clock.elapsedTime, scratch, camera.position.x, camera.position.z);
   });
 
   const n = people.length;

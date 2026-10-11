@@ -1,7 +1,7 @@
 "use client";
 
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Color,
   HalfFloatType,
@@ -18,7 +18,9 @@ import {
   WebGLRenderTarget,
 } from "three";
 import { useDayNight } from "./DayNightContext";
-import { makeMirrorScratch, renderMirror, type MirrorScratch } from "./mirrorRender";
+import { cadenceDue, type CadenceRate } from "./renderCadence";
+import { makeMirrorScratch, renderMirror } from "./mirrorRender";
+import { NOISE_GLSL } from "./noise";
 
 const vert = /* glsl */ `
   uniform mat4 uTextureMatrix;
@@ -48,17 +50,7 @@ const frag = /* glsl */ `
   varying vec3 vWorld;
   #include <fog_pars_fragment>
 
-  float hash(vec2 p) {
-    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
-  }
-  float vnoise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
-  }
+  ${NOISE_GLSL}
 
   void main() {
     vec2 p = vWorld.xz * 0.12;
@@ -101,7 +93,8 @@ const frag = /* glsl */ `
 `;
 
 const MIRROR_SCALE = 0.4;
-const MIRROR_EVERY = 3;
+const MIRROR_NORMAL: CadenceRate = { frames: 3, hz: 20 };
+const MIRROR_SMOOTH: CadenceRate = { frames: 1, hz: 60 };
 
 function resizeTarget(rt: WebGLRenderTarget, width: number, height: number) {
   rt.setSize(width, height);
@@ -122,7 +115,7 @@ export default function RiverMirror({
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
   const mesh = useRef<Mesh>(null);
-  const frame = useRef(0);
+  const cadence = useRef({ last: -Infinity, frames: 0 });
 
   const mirrorWidth = Math.max(256, Math.floor(size.width * MIRROR_SCALE));
   const mirrorHeight = Math.max(144, Math.floor(size.height * MIRROR_SCALE));
@@ -139,7 +132,7 @@ export default function RiverMirror({
   useEffect(() => resizeTarget(rt, mirrorWidth, mirrorHeight), [rt, mirrorWidth, mirrorHeight]);
   useEffect(() => () => rt.dispose(), [rt]);
 
-  const material = useMemo(
+  const [material] = useState(
     () =>
       new ShaderMaterial({
         vertexShader: vert,
@@ -160,8 +153,8 @@ export default function RiverMirror({
           },
         ]),
       }),
-    [],
   );
+  useEffect(() => () => material.dispose(), [material]);
 
   const shoreNear = position[2] - depth / 2;
   const shoreFar = position[2] + depth / 2;
@@ -179,16 +172,14 @@ export default function RiverMirror({
     m.uniforms.uSunColor.value.copy(dn.sunColor).multiplyScalar(0.25 + (1 - dn.night) * 0.75);
   }, [dn]);
 
-  const scratch = useRef<MirrorScratch | null>(null);
+  const [scratch] = useState(makeMirrorScratch);
 
   useFrame(({ clock }) => {
     const m = mesh.current;
     if (!m) return;
     (m.material as ShaderMaterial).uniforms.uTime.value = clock.elapsedTime;
-    frame.current += 1;
-    if (frame.current % MIRROR_EVERY !== 0) return;
-    if (!scratch.current) scratch.current = makeMirrorScratch();
-    renderMirror(gl, scene, camera as PerspectiveCamera, m, rt, scratch.current);
+    if (!cadenceDue(cadence.current, clock.elapsedTime, MIRROR_NORMAL, MIRROR_SMOOTH)) return;
+    renderMirror(gl, scene, camera as PerspectiveCamera, m, rt, scratch);
   }, -1);
 
   return (

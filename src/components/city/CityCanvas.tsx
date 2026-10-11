@@ -3,27 +3,26 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { CameraControls } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { CityContext, type CityApi } from "./CityContext";
+import { CityContext, HoverContext, type CityApi, type Move, type Quality } from "./CityContext";
 import { DayNightContext } from "./DayNightContext";
 import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
-import { useDetroitWeather } from "./DetroitWeather";
+import { useDetroitCloudCover } from "./DetroitWeather";
 import EntranceMusic from "./EntranceMusic";
 import StageBoundary from "./StageBoundary";
-import { CITY_FALLBACK, MUSIC, SITE } from "@/content/site";
-import { DESTINATIONS, homeCamera, type Destination } from "./layout";
+import { CITY_FALLBACK, CITY_HUD, MUSIC, SITE } from "@/content/site";
+import { DESTINATIONS, LABEL_FADE_MS, indexLabel, type Destination } from "./layout";
 import Loader, { markVisited, useReturningVisitor } from "./Loader";
 
 const CityStage = dynamic(() => import("./CityStage"), { ssr: false });
 
 const PRESETS: TimePreset[] = ["auto", "day", "dusk", "night"];
-const OVERCAST_DEFAULT = 0.6;
-const DISTRICTS_HINT = `${DESTINATIONS.length} districts · Hover to preview · Click to fly in`;
-const LOCKED_HINT = `${DESTINATIONS.length} districts · Opening soon`;
-const READOUT = "All districts online · Sky lanes active";
+const DISTRICTS_HINT = CITY_HUD.districtsHint(DESTINATIONS.length);
+const LOCKED_HINT = CITY_HUD.lockedHint(DESTINATIONS.length);
 
 const LIGHT_STEPS_PER_HOUR = 4;
+const FADE_AFTER_MS = 1700;
+const FADE_MS = 420;
 
 function subscribeMinute(cb: () => void) {
   const id = setInterval(cb, 60_000);
@@ -47,44 +46,22 @@ function motionSnapshot() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-type Move = "left" | "right" | "forward" | "back" | "up" | "down" | "in" | "out";
-
-function NavPad({ camRef, reducedMotion }: { camRef: React.MutableRefObject<CameraControls | null>; reducedMotion: boolean }) {
-  const held = useRef<Move | null>(null);
-  const raf = useRef(0);
-  const last = useRef(0);
-  const stop = useCallback(() => {
-    held.current = null;
-    cancelAnimationFrame(raf.current);
-  }, []);
-  const start = useCallback((m: Move) => {
-    held.current = m;
-    last.current = performance.now();
-    const tick = (now: number) => {
-      const c = camRef.current;
-      const move = held.current;
-      if (!c || !move) return;
-      const dt = Math.min(0.05, (now - last.current) / 1000);
-      last.current = now;
-      const step = Math.max(2, c.distance) * 0.32 * dt;
-      if (move === "left") c.truck(-step, 0, false);
-      if (move === "right") c.truck(step, 0, false);
-      if (move === "forward") c.forward(step, false);
-      if (move === "back") c.forward(-step, false);
-      if (move === "up") c.elevate(step, false);
-      if (move === "down") c.elevate(-step, false);
-      if (move === "in") c.dolly(step, false);
-      if (move === "out") c.dolly(-step, false);
-      raf.current = requestAnimationFrame(tick);
-    };
-    raf.current = requestAnimationFrame(tick);
-  }, [camRef]);
-  useEffect(() => () => cancelAnimationFrame(raf.current), []);
+function NavPad({ held, homeRef }: { held: React.RefObject<Set<Move>>; homeRef: React.RefObject<(() => void) | null> }) {
+  const pressed = useRef<Move | null>(null);
+  const stop = () => {
+    if (pressed.current) held.current.delete(pressed.current);
+    pressed.current = null;
+  };
+  const start = (m: Move) => {
+    stop();
+    pressed.current = m;
+    held.current.add(m);
+  };
   const btn = (m: Move, label: string, title: string, cls = "") => (
     <button
       type="button"
       className={`city-pad__btn ${cls}`}
-      aria-label={`${title}, press and hold`}
+      aria-label={CITY_HUD.padHold(title)}
       title={title}
       onPointerDown={(e) => {
         e.preventDefault();
@@ -109,36 +86,25 @@ function NavPad({ camRef, reducedMotion }: { camRef: React.MutableRefObject<Came
     </button>
   );
   return (
-    <div className="city-pad" role="group" aria-label="Camera controls">
+    <div className="city-pad" role="group" aria-label={CITY_HUD.padLabel}>
       <div className="city-pad__grid">
         <span />
-        {btn("forward", "↑", "Move forward (W / ↑)")}
+        {btn("forward", "↑", CITY_HUD.pad.forward)}
         <span />
-        {btn("left", "←", "Move left (A / ←)")}
-        <button
-          type="button"
-          className="city-pad__btn city-pad__btn--home"
-          aria-label="Reset view (R)"
-          title="Reset view (R)"
-          onClick={() => {
-            const c = camRef.current;
-            if (!c) return;
-            const home = homeCamera("aspect" in c.camera ? c.camera.aspect : 1);
-            c.setLookAt(...home.position, ...home.target, !reducedMotion);
-          }}
-        >
+        {btn("left", "←", CITY_HUD.pad.left)}
+        <button type="button" className="city-pad__btn city-pad__btn--home" aria-label={CITY_HUD.pad.home} title={CITY_HUD.pad.home} onClick={() => homeRef.current?.()}>
           ⌂
         </button>
-        {btn("right", "→", "Move right (D / →)")}
+        {btn("right", "→", CITY_HUD.pad.right)}
         <span />
-        {btn("back", "↓", "Move back (S / ↓)")}
+        {btn("back", "↓", CITY_HUD.pad.back)}
         <span />
       </div>
       <div className="city-pad__col">
-        {btn("up", "⇡", "Move up (E / PageUp)")}
-        {btn("down", "⇣", "Move down (Q / PageDown)")}
-        {btn("in", "+", "Zoom in (+)")}
-        {btn("out", "−", "Zoom out (−)")}
+        {btn("up", "⇡", CITY_HUD.pad.up)}
+        {btn("down", "⇣", CITY_HUD.pad.down)}
+        {btn("in", "+", CITY_HUD.pad.in)}
+        {btn("out", "−", CITY_HUD.pad.out)}
       </div>
     </div>
   );
@@ -154,17 +120,45 @@ export default function CityCanvas() {
   const preset = override ?? urlPreset;
   const hour = preset === "auto" ? Number(autoHour) : presetHour(preset);
 
-  const [hovered, setHovered] = useState<Destination | null>(null);
+  const [hovered, setHoveredState] = useState<Destination | null>(null);
+  const [leaving, setLeaving] = useState<readonly string[]>([]);
+  const hoveredRef = useRef<Destination | null>(null);
+  const [leaveTimers] = useState(() => new Map<string, ReturnType<typeof setTimeout>>());
+  const setHovered = useCallback((d: Destination | null) => {
+    const previous = hoveredRef.current;
+    hoveredRef.current = d;
+    setHoveredState(d);
+    if (d && leaveTimers.has(d.id)) {
+      clearTimeout(leaveTimers.get(d.id));
+      leaveTimers.delete(d.id);
+      setLeaving((ids) => ids.filter((id) => id !== d.id));
+    }
+    if (!previous || previous === d) return;
+    const id = previous.id;
+    clearTimeout(leaveTimers.get(id));
+    setLeaving((ids) => (ids.includes(id) ? ids : [...ids, id]));
+    leaveTimers.set(
+      id,
+      setTimeout(() => {
+        leaveTimers.delete(id);
+        setLeaving((ids) => ids.filter((other) => other !== id));
+      }, LABEL_FADE_MS),
+    );
+  }, [leaveTimers]);
+  useEffect(() => () => leaveTimers.forEach(clearTimeout), [leaveTimers]);
+  const hover = useMemo(() => ({ hovered, leaving }), [hovered, leaving]);
   const [navigating, setNavigating] = useState(false);
   const [fade, setFade] = useState(false);
-  const [quality, setQuality] = useState<"high" | "low">("high");
+  const [quality, setQuality] = useState<Quality>("high");
   const [stageUp, setStageUp] = useState(false);
   const [minWait, setMinWait] = useState(false);
   const ready = stageUp && minWait;
+  const stageReady = useCallback(() => setStageUp(true), []);
   const flyRef = useRef<((d: Destination) => Promise<void>) | null>(null);
-  const camRef = useRef<CameraControls | null>(null);
+  const homeRef = useRef<(() => void) | null>(null);
+  const held = useRef(new Set<Move>());
   const trackRef = useRef<HTMLDivElement>(null);
-  const prefetched = useRef(new Set<string>());
+  const [prefetched] = useState(() => new Set<string>());
 
   useEffect(() => {
     const el = trackRef.current;
@@ -195,15 +189,13 @@ export default function CityCanvas() {
   }, [ready]);
 
   useEffect(() => {
-    if (!hovered || prefetched.current.has(hovered.href)) return;
-    prefetched.current.add(hovered.href);
+    if (!hovered || prefetched.has(hovered.href)) return;
+    prefetched.add(hovered.href);
     router.prefetch(hovered.href);
-  }, [hovered, router]);
+  }, [hovered, prefetched, router]);
 
-  const weather = useDetroitWeather();
-  const cloud = weather.kind === "ok" ? weather.cloud : OVERCAST_DEFAULT;
+  const cloud = useDetroitCloudCover();
   const dn = useMemo(() => computeDayNight(hour, cloud), [hour, cloud]);
-
 
   const flyTo = useCallback(
     async (d: Destination) => {
@@ -212,116 +204,118 @@ export default function CityCanvas() {
       setHovered(null);
       router.prefetch(d.href);
       const flight = flyRef.current?.(d) ?? Promise.resolve();
-      const settle = new Promise<void>((r) => setTimeout(r, reducedMotion ? 0 : 1500));
+      const settle = new Promise<void>((r) => setTimeout(r, reducedMotion ? 0 : FADE_AFTER_MS));
       await Promise.race([flight, settle]);
       setFade(true);
-      await new Promise((r) => setTimeout(r, reducedMotion ? 0 : 420));
+      await new Promise((r) => setTimeout(r, reducedMotion ? 0 : FADE_MS));
       router.push(d.href);
     },
-    [navigating, router, reducedMotion],
+    [navigating, router, reducedMotion, setHovered],
   );
 
   const api = useMemo<CityApi>(
-    () => ({ hovered, setHovered, navigating, flyTo, flyRef, camRef, quality, reducedMotion }),
-    [hovered, navigating, flyTo, quality, reducedMotion],
+    () => ({ setHovered, hoveredRef, navigating, flyTo, flyRef, homeRef, held, quality, reducedMotion }),
+    [setHovered, navigating, flyTo, quality, reducedMotion],
   );
 
-  const pillLabel = preset === "auto" ? "Local time" : "Preview";
+  const pillLabel = preset === "auto" ? CITY_HUD.localTime : CITY_HUD.preview;
   const cyclePreset = () => setOverride(PRESETS[(PRESETS.indexOf(preset) + 1) % PRESETS.length]);
 
   return (
     <DayNightContext.Provider value={dn}>
       <CityContext.Provider value={api}>
-        <div className={`city-root ${ready ? "is-live" : ""}`}>
-          <StageBoundary
-            name="The 3D city"
-            onFail={() => setStageUp(true)}
-            fallback={
-              <div className="city-fallback">
-                <p>{CITY_FALLBACK}</p>
-              </div>
-            }
-          >
-            <CityStage live={ready} onQuality={setQuality} onReady={() => setStageUp(true)} />
-          </StageBoundary>
-          <div className="city-frame" aria-hidden>
-            <i />
-            <i />
-            <i />
-            <i />
-          </div>
-
-          <nav aria-label="City districts" className="city-hud city-hud--districts">
-            <span className="districts__hint">{hovered ? hovered.blurb : SITE.navLocked ? LOCKED_HINT : DISTRICTS_HINT}</span>
-            <div className="districts">
-              <div ref={trackRef} className="districts__track" role={SITE.navLocked ? "list" : undefined}>
-              {DESTINATIONS.map((d, i) => {
-                const style = { ["--c" as string]: d.accent, ["--i" as string]: i };
-                const className = `district ${hovered?.id === d.id ? "is-hot" : ""}`;
-                const preview = {
-                  onMouseEnter: () => !navigating && setHovered(d),
-                  onMouseLeave: () => setHovered(null),
-                };
-                const label = (
-                  <>
-                    <span className="district__index">{String(i + 1).padStart(2, "0")}</span>
-                    <span className="district__name">{d.label}</span>
-                    <span className="district__sub">{d.sub}</span>
-                  </>
-                );
-                if (SITE.navLocked) {
-                  return (
-                    <div key={d.id} role="listitem" className={className} style={style} {...preview}>
-                      {label}
-                    </div>
-                  );
-                }
-                return (
-                  <Link
-                    key={d.id}
-                    href={d.href}
-                    className={className}
-                    style={style}
-                    {...preview}
-                    onFocus={preview.onMouseEnter}
-                    onBlur={preview.onMouseLeave}
-                    onClick={(e) => {
-                      if (reducedMotion) return;
-                      e.preventDefault();
-                      void flyTo(d);
-                    }}
-                  >
-                    {label}
-                  </Link>
-                );
-              })}
-              </div>
+        <HoverContext.Provider value={hover}>
+          <div className={`city-root ${ready ? "is-live" : ""}`}>
+            <StageBoundary
+              name="The 3D city"
+              onFail={() => setStageUp(true)}
+              fallback={
+                <div className="city-fallback">
+                  <p>{CITY_FALLBACK}</p>
+                </div>
+              }
+            >
+              <CityStage live={ready} onQuality={setQuality} onReady={stageReady} />
+            </StageBoundary>
+            <div className="city-frame" aria-hidden>
+              <i />
+              <i />
+              <i />
+              <i />
             </div>
-          </nav>
 
-          <div className="city-hud city-hud--status">
-            <button type="button" className="city-pill" onClick={cyclePreset} aria-label={`${pillLabel} ${labelFor(hour)}, change time of day`}>
-              <span className="city-pill__dot" data-night={dn.night > 0.5} />
-              <span>{pillLabel}</span>
-              <small>{labelFor(hour)}</small>
-            </button>
-            {MUSIC.src && <EntranceMusic />}
-            <span className="city-geo">Downtown Detroit · 42.33° N, 83.05° W</span>
-            <span className="city-readout">{READOUT}</span>
+            <nav aria-label={CITY_HUD.districtsNav} className="city-hud city-hud--districts">
+              <span className="districts__hint">{hovered ? hovered.blurb : SITE.navLocked ? LOCKED_HINT : DISTRICTS_HINT}</span>
+              <div className="districts">
+                <div ref={trackRef} className="districts__track" role={SITE.navLocked ? "list" : undefined}>
+                {DESTINATIONS.map((d, i) => {
+                  const style = { ["--c" as string]: d.accent, ["--i" as string]: i };
+                  const className = `district ${hovered?.id === d.id ? "is-hot" : ""}`;
+                  const preview = {
+                    onMouseEnter: () => !navigating && setHovered(d),
+                    onMouseLeave: () => setHovered(null),
+                  };
+                  const label = (
+                    <>
+                      <span className="district__index">{indexLabel(i)}</span>
+                      <span className="district__name">{d.label}</span>
+                      <span className="district__sub">{d.sub}</span>
+                    </>
+                  );
+                  if (SITE.navLocked) {
+                    return (
+                      <div key={d.id} role="listitem" className={className} style={style} {...preview}>
+                        {label}
+                      </div>
+                    );
+                  }
+                  return (
+                    <Link
+                      key={d.id}
+                      href={d.href}
+                      className={className}
+                      style={style}
+                      {...preview}
+                      onFocus={preview.onMouseEnter}
+                      onBlur={preview.onMouseLeave}
+                      onClick={(e) => {
+                        if (reducedMotion) return;
+                        e.preventDefault();
+                        void flyTo(d);
+                      }}
+                    >
+                      {label}
+                    </Link>
+                  );
+                })}
+                </div>
+              </div>
+            </nav>
+
+            <div className="city-hud city-hud--status">
+              <button type="button" className="city-pill" onClick={cyclePreset} aria-label={CITY_HUD.changeTime(pillLabel, labelFor(hour))}>
+                <span className="city-pill__dot" data-night={dn.night > 0.5} />
+                <span>{pillLabel}</span>
+                <small>{labelFor(hour)}</small>
+              </button>
+              {MUSIC.src && <EntranceMusic />}
+              <span className="city-geo">{CITY_HUD.geo}</span>
+              <span className="city-readout">{CITY_HUD.readout}</span>
+            </div>
+
+            <div className="city-hud city-hud--pad">
+              <span className="city-hint city-hint--mouse">{CITY_HUD.mouseHint}</span>
+              <span className="city-hint city-hint--touch">{CITY_HUD.touchHint}</span>
+              <span className="city-pad__cue" aria-hidden>
+                {CITY_HUD.padCue}
+              </span>
+              <NavPad held={held} homeRef={homeRef} />
+            </div>
+
+            <div className={`city-fade ${fade ? "is-on" : ""}`} aria-hidden />
+            <Loader ready={ready} returning={returning} />
           </div>
-
-          <div className="city-hud city-hud--pad">
-            <span className="city-hint city-hint--mouse">Drag to orbit · Scroll to zoom · Shift‑drag or arrows to move · Q/E up and down</span>
-            <span className="city-hint city-hint--touch">One finger to look · Two fingers to move · Pinch to zoom</span>
-            <span className="city-pad__cue" aria-hidden>
-              Press &amp; hold to move
-            </span>
-            <NavPad camRef={camRef} reducedMotion={reducedMotion} />
-          </div>
-
-          <div className={`city-fade ${fade ? "is-on" : ""}`} aria-hidden />
-          <Loader ready={ready} returning={returning} />
-        </div>
+        </HoverContext.Provider>
       </CityContext.Provider>
     </DayNightContext.Provider>
   );

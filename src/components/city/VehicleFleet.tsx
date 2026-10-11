@@ -1,11 +1,13 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, CanvasTexture, Color, Euler, InstancedMesh, Matrix4, MeshBasicMaterial, MeshStandardMaterial, Quaternion, Vector3 } from "three";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
+import { HIDDEN_MATRIX, cachedByKey } from "./instancing";
 import { labelTexture } from "./labels";
+import { makeHeadlightPoolTexture } from "./textures";
 import {
   VEHICLE_SPECS,
   buildDriverGeometry,
@@ -33,6 +35,12 @@ export interface VehiclePose {
 }
 export type PoseFn = (i: number, out: VehiclePose, time: number) => void;
 
+export function fleetStep(fleet: { last: number }, time: number) {
+  const dt = fleet.last < 0 ? 0 : Math.min(time - fleet.last, 0.05);
+  fleet.last = time;
+  return dt;
+}
+
 const KIND_GEO = new Map<VehicleKind, VehicleKindGeometry>();
 function kindGeometry(kind: VehicleKind) {
   let g = KIND_GEO.get(kind);
@@ -55,27 +63,9 @@ let shared: Shared | null = null;
 function sharedGeometry() {
   if (!shared) {
     const w = buildWheelGeometry();
-    shared = { tire: w.tire, rim: w.rim, lamp: buildLampGeometry(), mirror: buildMirrorGeometry(), driver: buildDriverGeometry(), pool: buildPoolGeometry(), poolTex: poolTexture() };
+    shared = { tire: w.tire, rim: w.rim, lamp: buildLampGeometry(), mirror: buildMirrorGeometry(), driver: buildDriverGeometry(), pool: buildPoolGeometry(), poolTex: makeHeadlightPoolTexture() };
   }
   return shared;
-}
-
-function poolTexture() {
-  const c = document.createElement("canvas");
-  c.width = 64;
-  c.height = 128;
-  const ctx = c.getContext("2d")!;
-  ctx.fillStyle = "#000000";
-  ctx.fillRect(0, 0, c.width, c.height);
-  ctx.translate(32, 12);
-  ctx.scale(0.3, 1);
-  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 100);
-  g.addColorStop(0, "#e6e6e6");
-  g.addColorStop(0.3, "#666666");
-  g.addColorStop(1, "#000000");
-  ctx.fillStyle = g;
-  ctx.fillRect(-120, -20, 240, 140);
-  return new CanvasTexture(c);
 }
 
 interface Locals {
@@ -137,10 +127,14 @@ interface Scratch {
   M: Matrix4;
   spin: Matrix4;
   out: Matrix4;
-  zero: Matrix4;
   night: number;
   brakes: Uint8Array;
+  spinRaw: Float64Array;
+  spinShown: Float32Array;
 }
+
+const SPIN_STEP_MAX = 0.4;
+const TURN = Math.PI * 2;
 
 function markMatrixDirty(im: InstancedMesh) {
   im.instanceMatrix.needsUpdate = true;
@@ -162,8 +156,12 @@ function runUpdate(
   const mirror = meshes.get("mirror");
   const driver = meshes.get("driver");
   const pool = meshes.get("pool");
-  const { p, pos, q, e, M, spin, out, zero } = s;
+  const { p, pos, q, e, M, spin, out } = s;
   const lightsOn = s.night > 0.18;
+  if (s.spinRaw.length !== items.length) {
+    s.spinRaw = new Float64Array(items.length);
+    s.spinShown = new Float32Array(items.length);
+  }
   let tailColorDirty = false;
   for (let i = 0; i < items.length; i++) {
     p.brake = false;
@@ -177,7 +175,10 @@ function runUpdate(
     const parts = bodies.get(kind);
     if (parts) for (let k = 0; k < parts.length; k++) parts[k].setMatrixAt(gi, M);
     const loc = locals(kind);
-    spin.makeRotationX(p.spin);
+    const turned = p.spin - s.spinRaw[i];
+    s.spinRaw[i] = p.spin;
+    s.spinShown[i] = (s.spinShown[i] + Math.max(-SPIN_STEP_MAX, Math.min(SPIN_STEP_MAX, turned))) % TURN;
+    spin.makeRotationX(s.spinShown[i]);
     for (let w = 0; w < 4; w++) {
       out.multiplyMatrices(M, loc.wheels[w]).multiply(spin);
       tire?.setMatrixAt(i * 4 + w, out);
@@ -187,10 +188,10 @@ function runUpdate(
       head?.setMatrixAt(i * 2 + k, out.multiplyMatrices(M, loc.head[k]));
       tail?.setMatrixAt(i * 2 + k, out.multiplyMatrices(M, loc.tail[k]));
       if (loc.mirrors.length) mirror?.setMatrixAt(i * 2 + k, out.multiplyMatrices(M, loc.mirrors[k]));
-      else mirror?.setMatrixAt(i * 2 + k, zero);
+      else mirror?.setMatrixAt(i * 2 + k, HIDDEN_MATRIX);
     }
     driver?.setMatrixAt(i, out.multiplyMatrices(M, loc.driver));
-    if (pool) pool.setMatrixAt(i, lightsOn ? out.multiplyMatrices(M, loc.pool) : zero);
+    if (pool) pool.setMatrixAt(i, lightsOn ? out.multiplyMatrices(M, loc.pool) : HIDDEN_MATRIX);
     const b = p.brake ? 1 : 0;
     if (tail && s.brakes[i] !== b) {
       s.brakes[i] = b;
@@ -264,9 +265,9 @@ export default function VehicleFleet({
   }, [items]);
 
   const geo = useMemo(() => sharedGeometry(), []);
-  const meshes = useRef(new Map<string, InstancedMesh>());
-  const bodies = useRef(new Map<VehicleKind, InstancedMesh[]>());
-  const mats = useRef(new Map<string, MeshStandardMaterial | MeshBasicMaterial>());
+  const [meshes] = useState(() => new Map<string, InstancedMesh>());
+  const [bodies] = useState(() => new Map<VehicleKind, InstancedMesh[]>());
+  const [mats] = useState(() => new Map<string, MeshStandardMaterial | MeshBasicMaterial>());
   const strobes = useRef<MeshStandardMaterial[]>([]);
   const scratch = useRef<Scratch>({
     p: { x: 0, y: 0, z: 0, yaw: 0, spin: 0, brake: false, pitch: 0 },
@@ -276,52 +277,55 @@ export default function VehicleFleet({
     M: new Matrix4(),
     spin: new Matrix4(),
     out: new Matrix4(),
-    zero: new Matrix4().makeScale(0, 0, 0),
     night: 0,
     brakes: new Uint8Array(0),
+    spinRaw: new Float64Array(0),
+    spinShown: new Float32Array(0),
   });
 
-  const bind = useCallback(
-    (key: string) => (m: InstancedMesh | null) => {
-      if (m) meshes.current.set(key, m);
-      else meshes.current.delete(key);
-      indexBodyParts(meshes.current, bodies.current, key);
-    },
-    [],
+  const bind = useMemo(
+    () =>
+      cachedByKey((key: string) => (m: InstancedMesh | null) => {
+        if (m) meshes.set(key, m);
+        else meshes.delete(key);
+        indexBodyParts(meshes, bodies, key);
+      }),
+    [meshes, bodies],
   );
-  const bindMat = useCallback(
-    (key: string) => (m: MeshStandardMaterial | MeshBasicMaterial | null) => {
-      if (m) mats.current.set(key, m);
-      else mats.current.delete(key);
-      if (key.endsWith(":strobe")) indexStrobes(mats.current, strobes.current);
-    },
-    [],
+  const bindMat = useMemo(
+    () =>
+      cachedByKey((key: string) => (m: MeshStandardMaterial | MeshBasicMaterial | null) => {
+        if (m) mats.set(key, m);
+        else mats.delete(key);
+        if (key.endsWith(":strobe")) indexStrobes(mats, strobes.current);
+      }),
+    [mats],
   );
 
   useEffect(() => {
     for (const kind of groups.kinds) {
-      const body = meshes.current.get(`${kind}:body`);
+      const body = meshes.get(`${kind}:body`);
       if (!body) continue;
       for (const i of groups.map.get(kind)!) body.setColorAt(groups.slot[i], items[i].color);
       if (body.instanceColor) body.instanceColor.needsUpdate = true;
     }
-    const tail = meshes.current.get("tail");
+    const tail = meshes.get("tail");
     if (tail) {
       for (let i = 0; i < items.length * 2; i++) tail.setColorAt(i, TAIL_IDLE);
       if (tail.instanceColor) tail.instanceColor.needsUpdate = true;
     }
     scratch.current.brakes = new Uint8Array(items.length).fill(255);
-  }, [groups, items]);
+  }, [meshes, groups, items]);
 
   useEffect(() => {
     scratch.current.night = dn.night;
-    applyNight(mats.current, dn.night);
-    if (!dynamic) runUpdate(meshes.current, bodies.current, items, groups, pose, 0, scratch.current);
-  }, [dn.night, dynamic, items, groups, pose]);
+    applyNight(mats, dn.night);
+    if (!dynamic) runUpdate(meshes, bodies, items, groups, pose, 0, scratch.current);
+  }, [dn.night, dynamic, items, groups, pose, meshes, bodies, mats]);
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    if (dynamic) runUpdate(meshes.current, bodies.current, items, groups, pose, t, scratch.current);
+    if (dynamic) runUpdate(meshes, bodies, items, groups, pose, t, scratch.current);
     const c = reducedMotion || Math.floor(t * 5) % 2 === 0 ? RED : BLUE;
     const list = strobes.current;
     for (let k = 0; k < list.length; k++) {
@@ -337,7 +341,8 @@ export default function VehicleFleet({
       {groups.kinds.map((kind) => {
         const g = kindGeometry(kind);
         const count = groups.map.get(kind)!.length;
-        const spec = VEHICLE_SPECS[kind];
+        const decal = VEHICLE_SPECS[kind].decal;
+        const decalTex = g.parts.decal && decal ? labelTexture(decal.text, decal.opts) : null;
         return (
           <group key={kind}>
             <instancedMesh ref={bind(`${kind}:body`)} args={[g.body, undefined, count]} castShadow={castShadow} frustumCulled={false}>
@@ -376,9 +381,9 @@ export default function VehicleFleet({
                 <meshStandardMaterial ref={bindMat(`${kind}:strobe`)} color="#ff2a3c" emissive="#ff2a3c" emissiveIntensity={3} toneMapped={false} />
               </instancedMesh>
             )}
-            {g.parts.decal && spec.decal && (
+            {g.parts.decal && decalTex && (
               <instancedMesh ref={bind(`${kind}:decal`)} args={[g.parts.decal, undefined, count]} frustumCulled={false}>
-                <meshStandardMaterial ref={bindMat(`${kind}:decal`)} map={labelTexture(spec.decal.text, spec.decal.opts)} emissiveMap={labelTexture(spec.decal.text, spec.decal.opts)} emissive="#ffffff" emissiveIntensity={0} roughness={0.5} metalness={0.2} />
+                <meshStandardMaterial ref={bindMat(`${kind}:decal`)} map={decalTex} emissiveMap={decalTex} emissive="#ffffff" emissiveIntensity={0} roughness={0.5} metalness={0.2} />
               </instancedMesh>
             )}
           </group>

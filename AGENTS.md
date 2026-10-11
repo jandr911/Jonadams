@@ -163,17 +163,23 @@ The budget is held by deliberate choices. Do not undo them without a measured re
 - Anti-aliasing is SMAA in the post chain. **Never enable multisampling on the canvas**;
   4× MSAA took the scene from 55 to 9 fps.
 - The river is a custom planar mirror (`RiverMirror.tsx`, `mirrorRender.ts`) that
-  renders only objects on `REFLECT_LAYER`, at half resolution, every other frame. It
-  replaced a drei reflector that re-rendered the whole scene per frame. Opt an object
-  into the reflection with `enableReflection`; never bring the drei reflector back.
-- The shadow map is 2048 and refreshes every sixth frame through `ShadowThrottle`.
+  renders only objects on `REFLECT_LAYER`, at 0.4 scale, every third frame and at most
+  20 Hz. It replaced a drei reflector that re-rendered the whole scene per frame. Opt an
+  object into the reflection with `enableReflection`; never bring the drei reflector back.
+- The shadow map is 2048 and refreshes every sixth frame and at most 10 Hz through
+  `ShadowThrottle`.
+- A smooth tier (mirror every frame, shadows every second frame) unlocks only after 10 s
+  at 75 fps or more, once per visit.
 - The world is clipped at `EXTENT` because fog hides everything further. Clouds sit above
   the camera ceiling and the camera floor keeps the eye above the streets. Do not move
   one without the others.
 - Repeated geometry is instanced. A loop that mounts one mesh per building, car, window,
   or house is wrong here.
-- Procedural canvas textures live in `textures.ts`. Do not add image textures without
-  asking; there is no asset pipeline and the memory ceiling is real.
+- Procedural canvas textures live in `textures.ts`, and text and sign textures in
+  `labels.ts`. Do not add image textures without asking; there is no asset pipeline and
+  the memory ceiling is real.
+- `labels.ts` textures are cached globally and shared. Never dispose one from a
+  consumer; the next sign to ask for it gets a dead texture.
 
 **Measure, do not guess.** `window.__cityGL` (the renderer) and `window.__cityControls`
 (camera-controls) are exposed in development for exactly this. Check the home view, a
@@ -204,8 +210,10 @@ Add a token to `globals.css` if one is missing.
 
 - Reuse the existing utilities before writing new CSS: `eyebrow`, `btn-outline`,
   `btn-solid`, `panel`, `shell`, `room`, and the card classes already in the sheet.
-- Fonts come from `next/font` in the root layout: Cormorant Garamond for display
-  (`font-serif`), Space Grotesk for body (`font-body`). Do not load a font any other way.
+- DOM fonts come from `next/font` in the root layout: Cormorant Garamond for display
+  (`font-serif`), Space Grotesk for body (`font-body`). Do not load a DOM font any other
+  way. 3D text meshes and the share image load fonts only from `public/fonts`; canvas
+  sign textures may fall back to system fonts.
 - The site is a single dark theme by design. Do not add a light theme.
 - Inside the 3D scene, colours are Three.js values and belong in the component that
   owns the material or in `dayNight.ts`, where the day and night palettes live.

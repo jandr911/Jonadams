@@ -5,7 +5,7 @@ import { Color, ConeGeometry, CylinderGeometry, Float32BufferAttribute, Icosahed
 import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { mulberry32, pick, range } from "./rng";
 
-export const TRUNK_COLOR = "#4a3f38";
+const TRUNK_COLOR = "#4a3f38";
 
 export type TreeSpecies = "shade" | "elm" | "spruce" | "bare";
 export type CrownQuality = "near" | "mid" | "far";
@@ -152,12 +152,12 @@ function crownFor(species: TreeSpecies, quality: CrownQuality, rand: () => numbe
   return null;
 }
 
-export interface TreeGeometry {
+interface TreeGeometry {
   trunk: BufferGeometry;
   crown: BufferGeometry | null;
 }
 
-export function makeTreeGeometry(species: TreeSpecies, quality: CrownQuality, seed: number): TreeGeometry {
+function makeTreeGeometry(species: TreeSpecies, quality: CrownQuality, seed: number): TreeGeometry {
   const rand = mulberry32(seed);
   const trunk = trunkFor(species, quality, rand);
   trunk.computeBoundingBox();
@@ -185,16 +185,20 @@ function useShared<T>(key: string, create: () => T, dispose: (value: T) => void)
     return made;
   }, [key, create]);
   useEffect(() => {
-    const entry = shared.get(key) as SharedEntry<T> | undefined;
-    if (!entry) return;
-    entry.refs += 1;
+    let entry = shared.get(key) as SharedEntry<T> | undefined;
+    if (!entry) {
+      entry = { value, refs: 0 };
+      shared.set(key, entry);
+    }
+    const held = entry;
+    held.refs += 1;
     return () => {
-      entry.refs -= 1;
-      if (entry.refs > 0) return;
-      shared.delete(key);
-      dispose(entry.value);
+      held.refs -= 1;
+      if (held.refs > 0) return;
+      if (shared.get(key) === held) shared.delete(key);
+      dispose(held.value);
     };
-  }, [key, dispose]);
+  }, [key, value, dispose]);
   return value;
 }
 
@@ -216,7 +220,7 @@ export function setWindTime(seconds: number) {
   WIND.value = seconds;
 }
 
-export function createCrownMaterial() {
+function createCrownMaterial() {
   const mat = new MeshStandardMaterial({ color: "#ffffff", vertexColors: true, roughness: 1 });
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uWindTime = WIND;

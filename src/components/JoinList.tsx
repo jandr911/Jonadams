@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { JOIN } from "@/content/site";
 
 export default function JoinList({ email }: { email: string }) {
   const [value, setValue] = useState("");
@@ -8,14 +9,14 @@ export default function JoinList({ email }: { email: string }) {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (closed || !value) return;
-    const subject = encodeURIComponent("Join the list");
-    const body = encodeURIComponent(`Please add ${value} to the Adams UniverseCity list.`);
+    const subject = encodeURIComponent(JOIN.title);
+    const body = encodeURIComponent(JOIN.body(value));
     window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
   };
   return (
-    <form className="join" onSubmit={onSubmit} aria-label="Join the list">
+    <form className="join" onSubmit={onSubmit} aria-label={JOIN.title}>
       <label className="eyebrow" htmlFor="join-email">
-        Join the list
+        {JOIN.title}
       </label>
       <div className="join__row">
         <input
@@ -24,13 +25,13 @@ export default function JoinList({ email }: { email: string }) {
           name="email"
           required
           autoComplete="email"
-          placeholder={closed ? "List opens soon" : "you@email.com"}
+          placeholder={closed ? JOIN.placeholderClosed : JOIN.placeholder}
           disabled={closed}
           value={value}
           onChange={(e) => setValue(e.target.value)}
         />
         <button type="submit" className="btn-solid" disabled={closed}>
-          Join
+          {JOIN.submit}
         </button>
       </div>
     </form>

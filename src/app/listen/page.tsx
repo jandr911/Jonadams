@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { destinationById } from "@/components/city/layout";
 import Room, { districtIndex, roomMetadata } from "@/components/Room";
 import YouTubeEmbed from "@/components/YouTubeEmbed";
-import { ROOMS, VIDEOS, VISUALS } from "@/content/site";
+import { ROOMS, VIDEOS, VISUALS, districtEyebrow } from "@/content/site";
 
 export const metadata: Metadata = roomMetadata("listen", ROOMS.listen.description);
 
@@ -17,7 +17,7 @@ export default function ListenPage() {
       </div>
 
       <section id="watch" className="room__section">
-        <span className="eyebrow">District {districtIndex("watch")}</span>
+        <span className="eyebrow">{districtEyebrow(districtIndex("watch"))}</span>
         <h2 className="room__subtitle">{destinationById("watch").label}</h2>
         <p className="room__lead">{ROOMS.watch.lead}</p>
         <div className="grid-2">

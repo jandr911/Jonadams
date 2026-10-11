@@ -18,13 +18,14 @@ import {
   UniformsUtils,
 } from "three";
 import { SITE } from "@/content/site";
-import { useCity } from "./CityContext";
+import { useCity, useHovered } from "./CityContext";
 import { HOLOGRAM_TIME } from "./HologramClock";
 import { gradientColors } from "./instancing";
 import { seedOf } from "./rng";
-import type { Destination } from "./layout";
+import { HOVER_SCALE, LABEL_FADE_STYLE, type Destination } from "./layout";
 
 const BEACON_HEIGHT = 10;
+const CRYSTAL_LIFT = 1.6;
 
 const BEACON_COLUMN = gradientColors(new CylinderGeometry(0.12, 0.12, BEACON_HEIGHT, 8, 1, true), "y", -BEACON_HEIGHT / 2, BEACON_HEIGHT, 1.4);
 const CRYSTAL = new OctahedronGeometry(1, 0).scale(1.1, 2.1, 1.1);
@@ -113,8 +114,9 @@ interface HotspotProps {
 }
 
 export default function Hotspot({ dest, position, children }: HotspotProps) {
-  const { hovered, setHovered, flyTo, navigating } = useCity();
-  const group = useRef<Group>(null);
+  const { setHovered, flyTo, navigating } = useCity();
+  const { hovered, leaving } = useHovered();
+  const lift = useRef(0);
   const inner = useRef<Group>(null);
   const crystal = useRef<Mesh>(null);
   const [hologram] = useState(() => makeHologramMaterial(dest.color, seedOf(dest.id) % 997));
@@ -133,20 +135,22 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
 
   useFrame((_, dt) => {
     const k = 1 - Math.exp(-dt * 10);
-    if (inner.current) easeScale(inner.current, isHovered ? 1.035 : 1, k);
+    if (inner.current) easeScale(inner.current, isHovered ? HOVER_SCALE : 1, k);
+    lift.current = MathUtils.lerp(lift.current, isHovered ? CRYSTAL_LIFT : 0, k);
     if (crystal.current) {
       crystal.current.rotation.y = HOLOGRAM_TIME.value * 0.5;
-      crystal.current.position.y = BEACON_HEIGHT + 2.65 + Math.sin(HOLOGRAM_TIME.value * 2.2) * 0.25;
+      crystal.current.position.y = BEACON_HEIGHT + 2.65 + lift.current + Math.sin(HOLOGRAM_TIME.value * 2.2) * 0.25;
     }
     tickHologram(hologram, isHovered, k);
     if (columnMat.current) {
-      columnMat.current.opacity = MathUtils.lerp(columnMat.current.opacity, isHovered ? 0.9 : 0.55, k);
+      columnMat.current.opacity = MathUtils.lerp(columnMat.current.opacity, isHovered ? 1 : 0.55, k);
     }
     if (ring.current) {
       const target = isHovered ? 1 : 0;
       const s = MathUtils.lerp(ring.current.scale.x, target, k);
       ring.current.scale.set(s, s, s);
       ring.current.visible = s > 0.001;
+      ring.current.position.y = dest.markerHeight + BEACON_HEIGHT + 2.4 + lift.current;
       ring.current.rotation.z = HOLOGRAM_TIME.value * 0.6;
     }
   });
@@ -168,7 +172,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
   };
 
   return (
-    <group ref={group} position={position}>
+    <group position={position}>
       <group ref={inner} matrixAutoUpdate={false} onPointerOver={over} onPointerOut={out} onClick={click}>
         {children}
       </group>
@@ -192,20 +196,14 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
         <torusGeometry args={[3.4, 0.22, 8, 32]} />
         <meshStandardMaterial
           color={dest.color}
-          emissive={new Color(dest.color)}
+          emissive={dest.color}
           emissiveIntensity={3}
           toneMapped={false}
         />
       </mesh>
-      {isHovered && !navigating && (
-        <Html
-          position={[0, dest.markerHeight + BEACON_HEIGHT + 7, 0]}
-          center
-          distanceFactor={90}
-          style={{ pointerEvents: "none" }}
-          zIndexRange={[50, 0]}
-        >
-          <div className="hotspot-label" style={{ ["--c" as string]: dest.color }}>
+      {(isHovered || leaving.includes(dest.id)) && !navigating && (
+        <Html position={[0, dest.markerHeight + BEACON_HEIGHT + 7, 0]} center distanceFactor={90} style={{ pointerEvents: "none" }} zIndexRange={[50, 0]}>
+          <div className={`hotspot-label ${isHovered ? "is-on" : ""}`} style={{ ["--c" as string]: dest.accent, ...LABEL_FADE_STYLE }}>
             <strong>{dest.label}</strong>
             <span>{dest.sub}</span>
             <em>{dest.blurb}</em>

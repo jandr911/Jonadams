@@ -3,7 +3,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import { Color, InstancedMesh, Object3D } from "three";
-import { fillInstances } from "./instancing";
+import { fillColors, fillInstances } from "./instancing";
 import { mulberry32 } from "./rng";
 import { crownTint, setWindTime, useCrownMaterial, useTreeGeometry, useTrunkMaterial, type CrownQuality, type TreeSpecies } from "./trees";
 
@@ -47,22 +47,16 @@ function FallenLeaves({ trees, groundY }: { trees: TreeSpec[]; groundY: number }
     const m = ref.current;
     if (!m) return;
     const rand = mulberry32(autumn.length * 13 + 5);
-    const dummy = new Object3D();
-    autumn.forEach((t, i) => {
-      for (let k = 0; k < LEAVES_PER_TREE; k++) {
-        const a = rand() * Math.PI * 2;
-        const r = 0.6 + rand() * 2.6 * t.s;
-        dummy.position.set(t.x + Math.cos(a) * r, groundY + 0.03, t.z + Math.sin(a) * r);
-        dummy.rotation.set(-Math.PI / 2, 0, rand() * Math.PI);
-        dummy.scale.setScalar(0.5 + rand() * 0.6);
-        dummy.updateMatrix();
-        m.setMatrixAt(i * LEAVES_PER_TREE + k, dummy.matrix);
-        m.setColorAt(i * LEAVES_PER_TREE + k, t.tint);
-      }
+    const count = autumn.length * LEAVES_PER_TREE;
+    fillInstances(m, count, (j, d) => {
+      const t = autumn[Math.floor(j / LEAVES_PER_TREE)];
+      const a = rand() * Math.PI * 2;
+      const r = 0.6 + rand() * 2.6 * t.s;
+      d.position.set(t.x + Math.cos(a) * r, groundY + 0.03, t.z + Math.sin(a) * r);
+      d.rotation.set(-Math.PI / 2, 0, rand() * Math.PI);
+      d.scale.setScalar(0.5 + rand() * 0.6);
     });
-    m.instanceMatrix.needsUpdate = true;
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
-    m.computeBoundingSphere();
+    fillColors(m, count, (j) => autumn[Math.floor(j / LEAVES_PER_TREE)].tint);
   }, [autumn, groundY]);
   if (autumn.length === 0) return null;
   return (
@@ -94,19 +88,15 @@ function Stand({
   const trunks = useRef<InstancedMesh>(null);
   const crowns = useRef<InstancedMesh>(null);
   useEffect(() => {
-    const dummy = new Object3D();
     const place = (i: number, d: Object3D) => {
       const t = trees[i];
       d.position.set(t.x, groundY, t.z);
       d.rotation.y = t.yaw;
       d.scale.setScalar(t.s);
     };
-    fillInstances(trunks.current, dummy, trees.length, place);
-    fillInstances(crowns.current, dummy, trees.length, place);
-    const c = crowns.current;
-    if (!c) return;
-    trees.forEach((t, i) => c.setColorAt(i, t.tint));
-    if (c.instanceColor) c.instanceColor.needsUpdate = true;
+    fillInstances(trunks.current, trees.length, place);
+    fillInstances(crowns.current, trees.length, place);
+    fillColors(crowns.current, trees.length, (i) => trees[i].tint);
   }, [trees, groundY, geo]);
   return (
     <group>

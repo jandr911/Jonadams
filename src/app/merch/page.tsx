@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { indexLabel } from "@/components/city/layout";
 import Room, { roomMetadata } from "@/components/Room";
 import { MERCH, ROOMS } from "@/content/site";
 
@@ -9,9 +10,9 @@ export default function MerchPage() {
     <Room district="merch" lead={ROOMS.merch.lead}>
       <div className="grid-4">
         {MERCH.map((m, i) => (
-          <article key={m.name} className="product-card">
+          <article key={m.name} className="panel product-card">
             <div className="product-card__art" aria-hidden>
-              <span>{String(i + 1).padStart(2, "0")}</span>
+              <span>{indexLabel(i)}</span>
             </div>
             <span className="product-card__name">{m.name}</span>
             <span className="product-card__note">{m.note}</span>

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { SHARE_IMAGE, SITE } from "@/content/site";
-import { DESTINATIONS, destinationById } from "./city/layout";
+import { SHARE_IMAGE, SITE, districtEyebrow } from "@/content/site";
+import { DESTINATIONS, destinationById, indexLabel } from "./city/layout";
 import SiteFooter from "./SiteFooter";
 import SiteHeader from "./SiteHeader";
 
 export function districtIndex(id: string) {
-  return String(DESTINATIONS.indexOf(destinationById(id)) + 1).padStart(2, "0");
+  return indexLabel(DESTINATIONS.indexOf(destinationById(id)));
 }
 
 export function roomMetadata(district: string, description: string): Metadata {
@@ -27,7 +27,7 @@ export default function Room({ district, lead, children }: { district: string; l
       <SiteHeader back current={index} />
       <main className="room__main">
         <section className="room__hero">
-          <span className="eyebrow">District {index}</span>
+          <span className="eyebrow">{districtEyebrow(index)}</span>
           <h1 className="room__title">{d.label}</h1>
           <p className="room__lead">{lead}</p>
         </section>

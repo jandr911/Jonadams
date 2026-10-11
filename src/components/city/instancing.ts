@@ -1,20 +1,56 @@
 import { useEffect, useMemo } from "react";
-import { BoxGeometry, BufferAttribute } from "three";
-import type { BufferGeometry, InstancedMesh, Object3D } from "three";
+import { BoxGeometry, BufferAttribute, Matrix4, Object3D } from "three";
+import type { BufferGeometry, Color, InstancedMesh, MeshStandardMaterial } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
-export function fillInstances(mesh: InstancedMesh | null, dummy: Object3D, count: number, place: (i: number, d: Object3D) => void) {
+type PlaceInstance = (i: number, d: Object3D) => void;
+
+const scratch = new Object3D();
+
+export function fillInstances(mesh: InstancedMesh | null, count: number, place: PlaceInstance) {
   if (!mesh) return;
   for (let i = 0; i < count; i++) {
-    dummy.position.set(0, 0, 0);
-    dummy.rotation.set(0, 0, 0);
-    dummy.scale.set(1, 1, 1);
-    place(i, dummy);
-    dummy.updateMatrix();
-    mesh.setMatrixAt(i, dummy.matrix);
+    scratch.position.set(0, 0, 0);
+    scratch.rotation.set(0, 0, 0);
+    scratch.scale.set(1, 1, 1);
+    place(i, scratch);
+    scratch.updateMatrix();
+    mesh.setMatrixAt(i, scratch.matrix);
   }
   mesh.instanceMatrix.needsUpdate = true;
   mesh.computeBoundingSphere();
+}
+
+export interface Placement {
+  x: number;
+  y: number;
+  z: number;
+  sx: number;
+  sy: number;
+  sz: number;
+  ry: number;
+  rx?: number;
+  color?: Color;
+}
+
+export function fillPlacements(mesh: InstancedMesh | null, items: Placement[]) {
+  if (!mesh) return;
+  fillInstances(mesh, items.length, (i, d) => {
+    const it = items[i];
+    d.position.set(it.x, it.y, it.z);
+    d.rotation.set(it.rx ?? 0, it.ry, 0);
+    d.scale.set(it.sx, it.sy, it.sz);
+  });
+  fillColors(mesh, items.length, (i) => items[i].color);
+}
+
+export function fillColors(mesh: InstancedMesh | null, count: number, colorAt: (i: number) => Color | undefined) {
+  if (!mesh) return;
+  for (let i = 0; i < count; i++) {
+    const color = colorAt(i);
+    if (color) mesh.setColorAt(i, color);
+  }
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 }
 
 export function baseBoxGeometry() {
@@ -33,6 +69,24 @@ export function mergeParts(parts: BufferGeometry[], label: string) {
   for (const g of new Set([...parts, ...flat])) g.dispose();
   if (!merged) throw new Error(`${label} parts could not be merged`);
   return merged;
+}
+
+export function cachedByKey<K, V>(make: (key: K) => V) {
+  const cache = new Map<K, V>();
+  return (key: K) => {
+    let value = cache.get(key);
+    if (value === undefined) {
+      value = make(key);
+      cache.set(key, value);
+    }
+    return value;
+  };
+}
+
+export const HIDDEN_MATRIX = new Matrix4().makeScale(0, 0, 0);
+
+export function setEmissiveIntensity(mat: MeshStandardMaterial, value: number) {
+  mat.emissiveIntensity = value;
 }
 
 export function gradientColors<T extends BufferGeometry>(geo: T, axis: "y" | "z", from: number, length: number, exponent = 1) {

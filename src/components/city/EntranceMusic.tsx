@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MUSIC } from "@/content/site";
+import { CITY_HUD, MUSIC } from "@/content/site";
 
 const STOPPED_KEY = "adams:music-stopped";
 const VOLUME = 0.6;
@@ -149,7 +149,7 @@ export default function EntranceMusic() {
           <i />
           <i />
         </span>
-        <span>{playing ? "Stop music" : "Play music"}</span>
+        <span>{playing ? CITY_HUD.stopMusic : CITY_HUD.playMusic}</span>
         {MUSIC.title && <small>{MUSIC.title}</small>}
       </button>
     </>

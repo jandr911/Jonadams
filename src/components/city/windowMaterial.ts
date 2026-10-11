@@ -69,7 +69,6 @@ const vertexShader = /* glsl */ `
 const fragmentShader = /* glsl */ `
   uniform float uNight;
   uniform float uTime;
-  #define NEON_MIN_HEIGHT 24.0
   uniform vec3 uSunDir;
   uniform vec3 uSunColor;
   uniform float uSunIntensity;
@@ -113,6 +112,7 @@ const fragmentShader = /* glsl */ `
   const float PEW_UNDER_CROWN = 1.5;
   const float PEW_H = 0.7;
   const float FLOOD_REACH = 9.0;
+  const float NEON_MIN_HEIGHT = 24.0;
 
   float hash(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -264,8 +264,8 @@ const fragmentShader = /* glsl */ `
     float fy = (f.y - margin.y) / max(1.0 - 2.0 * margin.y, 0.001);
     float shade = step(hash(cell * 4.7 + vSeed * 1.9), 0.3) * smoothstep(0.6, 0.7, fy);
     float blinds = step(dress, 0.28) * (0.7 + 0.3 * step(0.5, fract(fy * 7.0)));
-    float curtain = step(0.28, dress) * step(dress, 0.5) * step(fy, 0.35 + 0.4 * hash(cell + 9.0));
-    float dressing = mix(1.0, blinds, step(dress, 0.28)) * mix(1.0, mix(1.0, 0.25, 1.0 - step(fy, 0.35 + 0.4 * hash(cell + 9.0))), step(0.28, dress) * step(dress, 0.5));
+    float curtain = step(0.28, dress) * step(dress, 0.5) * (1.0 - step(fy, 0.35 + 0.4 * hash(cell + 9.0)));
+    float dressing = mix(1.0, blinds, step(dress, 0.28)) * mix(1.0, 0.25, curtain);
     dressing = mix(dressing, 1.0, shop);
 
     // recessed look: lintel shadow at top, side reveal, sill highlight at bottom
@@ -346,7 +346,6 @@ const fragmentShader = /* glsl */ `
     float flood = vArch.z * uNight * smoothstep(vSize.y - FLOOD_REACH, vSize.y, vLocalY) * (1.0 - vTop);
     col += vColor * vec3(1.0, 0.8, 0.52) * flood * 2.2;
 
-
     // roof: gravel, parapet rim, slight AO
     vec2 rim = vSize.xz * 0.5 - abs(vTopXZ);
     float parapet = step(min(rim.x, rim.y), 0.7);
@@ -389,6 +388,8 @@ export interface WindowMaterialOptions {
   architecture?: boolean;
 }
 
+export const WINDOW_TIME = { value: 0 };
+
 export function createWindowMaterial(opts: WindowMaterialOptions = {}) {
   const mat = new ShaderMaterial({
     vertexShader,
@@ -404,7 +405,6 @@ export function createWindowMaterial(opts: WindowMaterialOptions = {}) {
         uGlow: { value: opts.glow ?? 0 },
         uColor: { value: new Color(opts.color ?? "#5e5a56") },
         uNight: { value: 1 },
-        uTime: { value: 0 },
         uSunDir: { value: new Vector3(0.5, 0.8, -0.3) },
         uSunColor: { value: new Color("#ffffff") },
         uSunIntensity: { value: 1 },
@@ -420,11 +420,8 @@ export function createWindowMaterial(opts: WindowMaterialOptions = {}) {
       },
     ]),
   });
+  mat.uniforms.uTime = WINDOW_TIME;
   return mat;
-}
-
-export function tickWindowMaterial(mat: ShaderMaterial, time: number) {
-  mat.uniforms.uTime.value = time;
 }
 
 export function applyDayNight(mat: ShaderMaterial, dn: DayNight) {

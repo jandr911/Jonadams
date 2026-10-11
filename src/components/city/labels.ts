@@ -78,50 +78,10 @@ export interface LabelOptions {
   weathered?: boolean;
 }
 
-const cache = new Map<string, CanvasTexture>();
+const DISPLAY_STACK = 'CityDisplay, "Bebas Neue", Impact, sans-serif';
+const SCRIPT_STACK = "CityScript, Georgia, serif";
 
-export function labelTexture(text: string, o: LabelOptions = {}): CanvasTexture {
-  const key = JSON.stringify([text, o]);
-  const hit = cache.get(key);
-  if (hit) return hit;
-  const w = o.width ?? 512;
-  const h = o.height ?? 128;
-  const { c, tex } = newCanvasTexture(w, h);
-  if (o.repeatX) {
-    tex.wrapS = RepeatWrapping;
-    tex.repeat.x = o.repeatX;
-  }
-  const draw = () => {
-    const ctx = c.getContext("2d")!;
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = o.bg ?? "#0c0a1e";
-    ctx.fillRect(0, 0, w, h);
-    if (o.stripe) {
-      const s = h / 3;
-      ctx.fillStyle = o.stripe;
-      for (let y = 0; y < 3; y++) for (let x = 0; x < w / s; x++) if ((x + y) % 2 === 0) ctx.fillRect(x * s, y * s, s, s);
-    }
-    if (o.border) {
-      ctx.strokeStyle = o.border;
-      ctx.lineWidth = Math.max(2, h * 0.05);
-      ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, w - ctx.lineWidth, h - ctx.lineWidth);
-    }
-    if (text) {
-      const size = o.size ?? h * 0.62;
-      ctx.font = `${size}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
-      ctx.fillStyle = o.fg ?? "#f3dfae";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(text, w / 2, h / 2 + size * 0.04, w * 0.94);
-    }
-    if (o.weathered) weather(ctx, w, h, mulberry32(seedOf(text)));
-    tex.needsUpdate = true;
-  };
-  draw();
-  void loadFont().then(draw);
-  cache.set(key, tex);
-  return tex;
-}
+const cache = new Map<string, CanvasTexture>();
 
 function cached(key: string, w: number, h: number, paint: (ctx: CanvasRenderingContext2D) => void) {
   const hit = cache.get(key);
@@ -136,6 +96,39 @@ function cached(key: string, w: number, h: number, paint: (ctx: CanvasRenderingC
   draw();
   void loadFont().then(draw);
   cache.set(key, tex);
+  return tex;
+}
+
+export function labelTexture(text: string, o: LabelOptions = {}): CanvasTexture {
+  const w = o.width ?? 512;
+  const h = o.height ?? 128;
+  const tex = cached(`label|${JSON.stringify([text, o])}`, w, h, (ctx) => {
+    ctx.fillStyle = o.bg ?? "#0c0a1e";
+    ctx.fillRect(0, 0, w, h);
+    if (o.stripe) {
+      const s = h / 3;
+      ctx.fillStyle = o.stripe;
+      for (let y = 0; y < 3; y++) for (let x = 0; x < w / s; x++) if ((x + y) % 2 === 0) ctx.fillRect(x * s, y * s, s, s);
+    }
+    if (o.border) {
+      ctx.strokeStyle = o.border;
+      ctx.lineWidth = Math.max(2, h * 0.05);
+      ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, w - ctx.lineWidth, h - ctx.lineWidth);
+    }
+    if (text) {
+      const size = o.size ?? h * 0.62;
+      ctx.font = `${size}px ${DISPLAY_STACK}`;
+      ctx.fillStyle = o.fg ?? "#f3dfae";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, w / 2, h / 2 + size * 0.04, w * 0.94);
+    }
+    if (o.weathered) weather(ctx, w, h, mulberry32(seedOf(text)));
+  });
+  if (o.repeatX) {
+    tex.wrapS = RepeatWrapping;
+    tex.repeat.x = o.repeatX;
+  }
   return tex;
 }
 
@@ -186,18 +179,18 @@ export function handPaintedBillboardTexture(script: string, headline: string, fo
     ctx.strokeRect(44, 44, w - 88, h - 88);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = `italic ${h * 0.2}px CityScript, Georgia, serif`;
+    ctx.font = `italic ${h * 0.2}px ${SCRIPT_STACK}`;
     ctx.fillStyle = "#9a6a1e";
     ctx.fillText(script, w / 2, h * 0.24, w * 0.8);
     const big = h * 0.36;
-    ctx.font = `${big}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+    ctx.font = `${big}px ${DISPLAY_STACK}`;
     ctx.fillStyle = "#8f2a22";
     ctx.fillText(headline, w / 2 + 7, h * 0.55 + 7, w * 0.86);
     ctx.fillStyle = "#1f1d1b";
     ctx.fillText(headline, w / 2, h * 0.55, w * 0.86);
     ctx.fillStyle = "#8f2a22";
     ctx.fillRect(w * 0.2, h * 0.73, w * 0.6, 4);
-    ctx.font = `${h * 0.075}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+    ctx.font = `${h * 0.075}px ${DISPLAY_STACK}`;
     ctx.fillStyle = "#1f1d1b";
     ctx.fillText(footer, w / 2, h * 0.82, w * 0.8);
     for (let i = 0; i < 9; i++) {
@@ -239,14 +232,14 @@ export function wheatpastePosterTexture(headline: string, script: string, footer
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle = i === 1 ? "#15130f" : "#d6b56e";
-      ctx.font = `italic ${ph * 0.1}px CityScript, Georgia, serif`;
+      ctx.font = `italic ${ph * 0.1}px ${SCRIPT_STACK}`;
       ctx.fillText(script, 0, -ph * 0.33, pw * 0.84);
-      ctx.font = `${ph * 0.24}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+      ctx.font = `${ph * 0.24}px ${DISPLAY_STACK}`;
       const [first, ...rest] = headline.split(" ");
       ctx.fillText(first, 0, -ph * 0.12, pw * 0.9);
       ctx.fillText(rest.join(" "), 0, ph * 0.12, pw * 0.9);
       ctx.fillRect(-pw * 0.3, ph * 0.27, pw * 0.6, 3);
-      ctx.font = `${ph * 0.06}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+      ctx.font = `${ph * 0.06}px ${DISPLAY_STACK}`;
       ctx.fillText(footer, 0, ph * 0.36, pw * 0.84);
       ctx.restore();
     }
@@ -288,12 +281,12 @@ export function hologramTexture(kicker: string, headline: string, footer: string
     ctx.globalAlpha = 1;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = `${h * 0.09}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+    ctx.font = `${h * 0.09}px ${DISPLAY_STACK}`;
     ctx.fillText(kicker.split("").join(" "), w / 2, h * 0.22, w * 0.8);
-    ctx.font = `${h * 0.32}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+    ctx.font = `${h * 0.32}px ${DISPLAY_STACK}`;
     ctx.fillText(headline, w / 2, h * 0.52, w * 0.86);
     ctx.fillRect(w * 0.3, h * 0.72, w * 0.4, 3);
-    ctx.font = `italic ${h * 0.085}px CityScript, Georgia, serif`;
+    ctx.font = `italic ${h * 0.085}px ${SCRIPT_STACK}`;
     ctx.fillText(footer, w / 2, h * 0.82, w * 0.8);
     const bars = [0.4, 0.75, 0.55, 1, 0.65, 0.85, 0.5];
     bars.forEach((b, i) => ctx.fillRect(70 + i * 16, h * 0.86 - b * 50, 9, b * 50));
@@ -314,11 +307,11 @@ export function ghostAdTexture(lines: string[], ground: string, ink: string) {
     ctx.fillStyle = ink;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = `${h * 0.2}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+    ctx.font = `${h * 0.2}px ${DISPLAY_STACK}`;
     ctx.fillText(lines[0], w / 2, h * 0.3, w * 0.8);
-    ctx.font = `${h * 0.25}px CityDisplay, "Bebas Neue", Impact, sans-serif`;
+    ctx.font = `${h * 0.25}px ${DISPLAY_STACK}`;
     ctx.fillText(lines[1], w / 2, h * 0.56, w * 0.84);
-    ctx.font = `italic ${h * 0.11}px CityScript, Georgia, serif`;
+    ctx.font = `italic ${h * 0.11}px ${SCRIPT_STACK}`;
     ctx.fillText(lines[2], w / 2, h * 0.8, w * 0.72);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "destination-out";
