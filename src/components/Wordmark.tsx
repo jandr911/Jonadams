@@ -17,7 +17,7 @@ export default function Wordmark() {
           <i key={`${h}-${t}`} style={{ ["--h" as string]: h, ["--t" as string]: `${t}s`, ["--d" as string]: `${-d}s` }} />
         ))}
       </span>
-      <span className="wordmark__serif">Adams</span>
+      <span className="wordmark__serif">{SITE.surname}</span>
       <span className="wordmark__caps">{SITE.cityName}</span>
     </Link>
   );

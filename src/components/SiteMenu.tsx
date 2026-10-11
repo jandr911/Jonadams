@@ -12,7 +12,7 @@ export interface MenuLink {
   index: string;
 }
 
-export interface MenuCta {
+interface MenuCta {
   href: string;
   label: string;
 }

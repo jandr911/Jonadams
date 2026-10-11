@@ -4,23 +4,22 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { CityContext, HoverContext, type CityApi, type Move } from "./CityContext";
+import { CityContext, HoverContext, type CityApi, type Move, type Quality } from "./CityContext";
 import { DayNightContext } from "./DayNightContext";
 import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
 import { useDetroitWeather } from "./DetroitWeather";
 import EntranceMusic from "./EntranceMusic";
 import StageBoundary from "./StageBoundary";
-import { CITY_FALLBACK, MUSIC, SITE } from "@/content/site";
-import { DESTINATIONS, LABEL_FADE_MS, type Destination } from "./layout";
+import { CITY_FALLBACK, CITY_HUD, MUSIC, SITE } from "@/content/site";
+import { DESTINATIONS, LABEL_FADE_MS, indexLabel, type Destination } from "./layout";
 import Loader, { markVisited, useReturningVisitor } from "./Loader";
 
 const CityStage = dynamic(() => import("./CityStage"), { ssr: false });
 
 const PRESETS: TimePreset[] = ["auto", "day", "dusk", "night"];
 const OVERCAST_DEFAULT = 0.6;
-const DISTRICTS_HINT = `${DESTINATIONS.length} districts · Hover to preview · Click to fly in`;
-const LOCKED_HINT = `${DESTINATIONS.length} districts · Opening soon`;
-const READOUT = "All districts online · Sky lanes active";
+const DISTRICTS_HINT = CITY_HUD.districtsHint(DESTINATIONS.length);
+const LOCKED_HINT = CITY_HUD.lockedHint(DESTINATIONS.length);
 
 const LIGHT_STEPS_PER_HOUR = 4;
 const FADE_AFTER_MS = 1700;
@@ -48,7 +47,7 @@ function motionSnapshot() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function NavPad({ held, homeRef }: { held: React.MutableRefObject<Set<Move>>; homeRef: React.MutableRefObject<(() => void) | null> }) {
+function NavPad({ held, homeRef }: { held: React.RefObject<Set<Move>>; homeRef: React.RefObject<(() => void) | null> }) {
   const pressed = useRef<Move | null>(null);
   const stop = () => {
     if (pressed.current) held.current.delete(pressed.current);
@@ -155,7 +154,7 @@ export default function CityCanvas() {
   const hover = useMemo(() => ({ hovered, leaving }), [hovered, leaving]);
   const [navigating, setNavigating] = useState(false);
   const [fade, setFade] = useState(false);
-  const [quality, setQuality] = useState<"high" | "low">("high");
+  const [quality, setQuality] = useState<Quality>("high");
   const [stageUp, setStageUp] = useState(false);
   const [minWait, setMinWait] = useState(false);
   const ready = stageUp && minWait;
@@ -265,7 +264,7 @@ export default function CityCanvas() {
                   };
                   const label = (
                     <>
-                      <span className="district__index">{String(i + 1).padStart(2, "0")}</span>
+                      <span className="district__index">{indexLabel(i)}</span>
                       <span className="district__name">{d.label}</span>
                       <span className="district__sub">{d.sub}</span>
                     </>
@@ -307,15 +306,15 @@ export default function CityCanvas() {
                 <small>{labelFor(hour)}</small>
               </button>
               {MUSIC.src && <EntranceMusic />}
-              <span className="city-geo">Downtown Detroit · 42.33° N, 83.05° W</span>
-              <span className="city-readout">{READOUT}</span>
+              <span className="city-geo">{CITY_HUD.geo}</span>
+              <span className="city-readout">{CITY_HUD.readout}</span>
             </div>
 
             <div className="city-hud city-hud--pad">
-              <span className="city-hint city-hint--mouse">Drag to orbit · Scroll to zoom · Shift‑drag or arrows to move · Q/E up and down</span>
-              <span className="city-hint city-hint--touch">One finger to look · Two fingers to move · Pinch to zoom</span>
+              <span className="city-hint city-hint--mouse">{CITY_HUD.mouseHint}</span>
+              <span className="city-hint city-hint--touch">{CITY_HUD.touchHint}</span>
               <span className="city-pad__cue" aria-hidden>
-                Press &amp; hold to move
+                {CITY_HUD.padCue}
               </span>
               <NavPad held={held} homeRef={homeRef} />
             </div>

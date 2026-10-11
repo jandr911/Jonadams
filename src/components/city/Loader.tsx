@@ -2,7 +2,7 @@
 
 import { useProgress } from "@react-three/drei";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { SITE } from "@/content/site";
+import { COORDINATES, LOADER, SITE, TAGLINE } from "@/content/site";
 
 const VISITED_KEY = "city-visited";
 
@@ -39,9 +39,9 @@ export function markVisited() {
 const RAMP_MS = 2800;
 const QUICK_RAMP_MS = 700;
 const STAGES: [number, string][] = [
-  [30, "Lighting the skyline"],
-  [62, "Warming up the neon"],
-  [100, "Opening the doors"],
+  [30, LOADER.stages.skyline],
+  [62, LOADER.stages.neon],
+  [100, LOADER.stages.doors],
 ];
 const BARS = [0.55, 0.9, 0.7, 1, 0.6, 0.85, 0.5];
 
@@ -148,8 +148,8 @@ export default function Loader({ ready, returning }: { ready: boolean; returning
 
   if (gone) return null;
   const pct = Math.round(shown);
-  const welcome = returning ? "Welcome back" : "Welcome to the city";
-  const stage = ready ? welcome : STAGES.find(([max]) => pct < max)?.[1] ?? "Opening the doors";
+  const welcome = returning ? LOADER.welcomeBack : LOADER.welcome;
+  const stage = ready ? welcome : STAGES.find(([max]) => pct < max)?.[1] ?? LOADER.stages.doors;
 
   return (
     <div className={`loader ${returning ? "loader--quick" : ""} ${done ? "is-done" : ""}`} aria-busy={!ready}>
@@ -171,17 +171,17 @@ export default function Loader({ ready, returning }: { ready: boolean; returning
 
       <span className="loader__corner loader__corner--tl" aria-hidden>
         <i className="loader__dot" />
-        Est. {SITE.year} · {SITE.city}
+        {LOADER.established}
       </span>
-      <span className="loader__corner loader__corner--tr" aria-hidden>Now entering</span>
+      <span className="loader__corner loader__corner--tr" aria-hidden>{LOADER.nowEntering}</span>
 
       <div className="loader__center" aria-hidden>
-        <span className="loader__eyebrow">{SITE.artist} presents</span>
+        <span className="loader__eyebrow">{LOADER.presents}</span>
         <div className="loader__title">
-          <span style={{ animationDelay: "0.1s" }}>Adams</span>
-          <span style={{ animationDelay: "0.3s" }}>UniverseCity</span>
+          <span style={{ animationDelay: "0.1s" }}>{SITE.surname}</span>
+          <span style={{ animationDelay: "0.3s" }}>{SITE.cityName}</span>
         </div>
-        <span className="loader__caps">A city built on music · Downtown Detroit</span>
+        <span className="loader__caps">{LOADER.caps}</span>
 
         <div className="loader__eq" aria-hidden>
           {BARS.map((h, i) => (
@@ -198,8 +198,8 @@ export default function Loader({ ready, returning }: { ready: boolean; returning
         </div>
       </div>
 
-      <span className="loader__corner loader__corner--bl" aria-hidden>Music · Art · The Creatives</span>
-      <span className="loader__corner loader__corner--br" aria-hidden>42.33° N, 83.05° W</span>
+      <span className="loader__corner loader__corner--bl" aria-hidden>{TAGLINE}</span>
+      <span className="loader__corner loader__corner--br" aria-hidden>{COORDINATES}</span>
     </div>
   );
 }

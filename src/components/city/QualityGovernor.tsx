@@ -2,9 +2,8 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
+import type { Quality } from "./CityContext";
 import { RENDER_CADENCE } from "./renderCadence";
-
-type Quality = "high" | "low";
 
 const WINDOW_MS = 1000;
 const SLOW_FPS = 30;

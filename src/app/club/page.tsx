@@ -13,7 +13,7 @@ export default function ClubPage() {
         {CLUB_WALLS.map((w) => {
           const d = destinationById(w.district);
           return (
-            <Link key={w.label} href={d.href} className="wall-card" style={{ ["--accent" as string]: d.accent }}>
+            <Link key={w.label} href={d.href} className="panel wall-card" style={{ ["--accent" as string]: d.accent }}>
               <div className="wall-card__art" aria-hidden>
                 <span className="wall-card__index">{districtIndex(w.district)}</span>
               </div>

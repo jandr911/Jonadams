@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { SHARE_IMAGE, SITE } from "@/content/site";
+import { SHARE_IMAGE, SITE, TAGLINE } from "@/content/site";
 
 export const alt = SHARE_IMAGE.alt;
 export const size = { width: SHARE_IMAGE.width, height: SHARE_IMAGE.height };
@@ -40,12 +40,12 @@ export default async function Image() {
           <div style={{ marginLeft: 20, fontFamily: "Bebas", fontSize: 30, letterSpacing: 8, color: GOLD }}>{SITE.city}</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontFamily: "Bebas", fontSize: 168, letterSpacing: 10, lineHeight: 0.95, color: GOLD_2 }}>Adams</div>
+          <div style={{ fontFamily: "Bebas", fontSize: 168, letterSpacing: 10, lineHeight: 0.95, color: GOLD_2 }}>{SITE.surname}</div>
           <div style={{ fontFamily: "Bebas", fontSize: 96, letterSpacing: 18, lineHeight: 1.05, color: PAPER }}>{SITE.cityName}</div>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "Bebas", fontSize: 30, letterSpacing: 6, color: MUTED }}>
           <span>{SITE.artist}</span>
-          <span>Music · Art · The Creatives</span>
+          <span>{TAGLINE}</span>
         </div>
       </div>
     ),

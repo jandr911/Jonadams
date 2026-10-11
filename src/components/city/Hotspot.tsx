@@ -117,7 +117,6 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
   const { setHovered, flyTo, navigating } = useCity();
   const { hovered, leaving } = useHovered();
   const lift = useRef(0);
-  const group = useRef<Group>(null);
   const inner = useRef<Group>(null);
   const crystal = useRef<Mesh>(null);
   const [hologram] = useState(() => makeHologramMaterial(dest.color, seedOf(dest.id) % 997));
@@ -173,7 +172,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
   };
 
   return (
-    <group ref={group} position={position}>
+    <group position={position}>
       <group ref={inner} matrixAutoUpdate={false} onPointerOver={over} onPointerOut={out} onClick={click}>
         {children}
       </group>
@@ -197,14 +196,14 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
         <torusGeometry args={[3.4, 0.22, 8, 32]} />
         <meshStandardMaterial
           color={dest.color}
-          emissive={new Color(dest.color)}
+          emissive={dest.color}
           emissiveIntensity={3}
           toneMapped={false}
         />
       </mesh>
       {(isHovered || leaving.includes(dest.id)) && !navigating && (
         <Html position={[0, dest.markerHeight + BEACON_HEIGHT + 7, 0]} center distanceFactor={90} style={{ pointerEvents: "none" }} zIndexRange={[50, 0]}>
-          <div className={`hotspot-label ${isHovered ? "is-on" : ""}`} style={{ ["--c" as string]: dest.color, ...LABEL_FADE_STYLE }}>
+          <div className={`hotspot-label ${isHovered ? "is-on" : ""}`} style={{ ["--c" as string]: dest.accent, ...LABEL_FADE_STYLE }}>
             <strong>{dest.label}</strong>
             <span>{dest.sub}</span>
             <em>{dest.blurb}</em>
