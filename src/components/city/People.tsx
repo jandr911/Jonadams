@@ -8,6 +8,7 @@ import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import { labelTexture } from "./labels";
 import { BLOCK, CITY_HALF_X, CITY_HALF_Z, DESTINATIONS, allBlocks, blockCenter, destinationPosition } from "./layout";
+import { loopLength, loopPose, type LoopPose } from "./loopPath";
 import { mulberry32, pick, range } from "./rng";
 
 const SKIN = ["#f1c9a5", "#e0ac7e", "#c68642", "#8d5524", "#5c3a1e", "#f5d6c6", "#a66a3a", "#3b2314"];
@@ -28,6 +29,7 @@ interface Person {
   speed: number;
   len: number;
   start: number;
+  side: number;
   phase: number;
   yaw: number;
   scale: number;
@@ -60,6 +62,7 @@ function person(rand: () => number, p: Partial<Person>): Person {
     speed: range(rand, 0.9, 1.6),
     len: BLOCK - 2,
     start: rand(),
+    side: 0,
     phase: rand() * 10,
     yaw: 0,
     scale: range(rand, 0.84, 1.12),
@@ -84,6 +87,13 @@ function person(rand: () => number, p: Partial<Person>): Person {
 
 const WALK_EDGE = 0.1;
 const WALK_KEEP_RIGHT = 0.3;
+const HIP_SWING = 0.42;
+const LEG_LENGTH = 0.8;
+const STRIDE = 4 * LEG_LENGTH * Math.sin(HIP_SWING);
+
+function keepRight(axis: "x" | "z", dir: 1 | -1) {
+  return axis === "x" ? dir * WALK_KEEP_RIGHT : -dir * WALK_KEEP_RIGHT;
+}
 
 function crowd(rand: () => number, out: Person[], cx: number, cz: number, halfW: number, depth: number, n: number, phoneShare: number, cheerShare: number) {
   for (let i = 0; i < n; i++) {
@@ -115,15 +125,15 @@ function buildPeople(): { people: Person[]; extras: Extras } {
     for (let k = 0; k < n; k++) {
       const side = Math.floor(rand() * 4);
       const dir: 1 | -1 = rand() < 0.5 ? 1 : -1;
-      const outward = side === 0 || side === 2 ? 1 : -1;
-      const e = BLOCK / 2 + WALK_EDGE + dir * outward * WALK_KEEP_RIGHT;
+      const e = BLOCK / 2 + WALK_EDGE;
       const axis: "x" | "z" = side < 2 ? "x" : "z";
       const fixed = side === 0 ? bz + e : side === 1 ? bz - e : side === 2 ? bx + e : bx - e;
-      out.push(person(rand, { x: axis === "x" ? bx : fixed, z: axis === "x" ? fixed : bz, axis, dir }));
+      out.push(person(rand, { x: axis === "x" ? bx : fixed, z: axis === "x" ? fixed : bz, axis, dir, side: keepRight(axis, dir) }));
     }
   }
   for (let i = 0; i < 70; i++) {
-    out.push(person(rand, { x: range(rand, -CITY_HALF_X - 30, CITY_HALF_X + 30), z: CITY_HALF_Z + 5 + rand() * 5, axis: "x", dir: rand() < 0.5 ? 1 : -1, speed: range(rand, 0.8, 1.4), len: 60 }));
+    const dir: 1 | -1 = rand() < 0.5 ? 1 : -1;
+    out.push(person(rand, { x: range(rand, -CITY_HALF_X - 30, CITY_HALF_X + 30), z: CITY_HALF_Z + 5 + rand() * 5, axis: "x", dir, side: keepRight("x", dir), speed: range(rand, 0.8, 1.4), len: 60 }));
   }
   for (let i = 0; i < 18; i++) {
     out.push(person(rand, { mode: "stand", x: range(rand, -CITY_HALF_X, CITY_HALF_X), z: CITY_HALF_Z + 9.5, yaw: range(rand, -0.4, 0.4), phone: rand() < 0.3 }));
@@ -284,6 +294,29 @@ function limb(out: Matrix4, s: Scratch, M: Matrix4, px: number, py: number, uppe
   dest.e.setMatrixAt(i, out);
 }
 
+const walkFrame = { x: 0, z: 0, yaw: 0 };
+const walkLoop: LoopPose = { a: 0, b: 0, ha: 1, hb: 0, leg: 0, into: 0 };
+
+function swingKnee(w: number) {
+  const lift = Math.max(0, -Math.cos(w + 0.15));
+  return 0.1 + 0.9 * lift * lift;
+}
+
+function walkPose(p: Person, t: number, out: { x: number; z: number; yaw: number }) {
+  const r = Math.abs(p.side);
+  const walked = p.start * loopLength(p.len, r) + t * p.speed;
+  const loop = loopPose(walked, p.len, r, walkLoop);
+  const across = -Math.sign(p.side);
+  const a = loop.a * p.dir;
+  const b = loop.b * across;
+  const ha = loop.ha * p.dir;
+  const hb = loop.hb * across;
+  out.x = p.axis === "x" ? p.x + a : p.x + b;
+  out.z = p.axis === "x" ? p.z + b : p.z + a;
+  out.yaw = p.axis === "x" ? Math.atan2(ha, hb) : Math.atan2(hb, ha);
+  return walked;
+}
+
 function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: number, s: Scratch, camX: number, camZ: number) {
   for (let k = 0; k < PART_KEYS.length; k++) if (!m.get(PART_KEYS[k])) return;
   const head = m.get("head")!;
@@ -313,34 +346,30 @@ function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: numbe
     let kneeR = 0;
     let shL = 0;
     let shR = 0;
-    let elL = 0.25;
-    let elR = 0.25;
+    let elL = -0.25;
+    let elR = -0.25;
     let bob = 0;
-    let heading: 1 | -1 = p.dir;
+    let walked = 0;
     if (p.mode === "walk") {
-      const u = (p.start + (t * p.speed) / (2 * p.len)) % 1;
-      const outbound = u < 0.5;
-      const tri = outbound ? u * 2 : 2 - u * 2;
-      const along = (tri - 0.5) * p.len * p.dir;
-      heading = outbound ? p.dir : p.dir === 1 ? -1 : 1;
-      x = p.axis === "x" ? p.x + along : p.x;
-      z = p.axis === "x" ? p.z : p.z + along;
+      walked = walkPose(p, t, walkFrame);
+      x = walkFrame.x;
+      z = walkFrame.z;
+      yaw = walkFrame.yaw;
     }
     const dx = x - camX;
     const dz = z - camZ;
     if (dx * dx + dz * dz > 22500 && (s.frame + i) % 4 !== 0) continue;
     if (p.mode === "walk") {
-      yaw = p.axis === "x" ? (heading > 0 ? Math.PI / 2 : -Math.PI / 2) : heading > 0 ? 0 : Math.PI;
-      const w = t * p.speed * 5.2 + p.phase;
+      const w = (walked / (STRIDE * p.scale)) * Math.PI * 2 + p.phase;
       const sw = Math.sin(w);
-      hipL = sw * 0.5;
-      kneeL = -(1 - Math.cos(w)) * 0.3;
-      kneeR = -(1 + Math.cos(w)) * 0.3;
-      shL = -sw * 0.45;
-      shR = sw * 0.45;
-      elL = 0.35 + sw * 0.15;
-      elR = 0.35 - sw * 0.15;
-      bob = Math.abs(Math.cos(w)) * 0.035;
+      hipL = sw * HIP_SWING;
+      kneeL = swingKnee(w);
+      kneeR = swingKnee(w + Math.PI);
+      shL = -sw * 0.32;
+      shR = sw * 0.32;
+      elL = -0.22 - 0.22 * Math.max(0, sw);
+      elR = -0.22 - 0.22 * Math.max(0, -sw);
+      bob = 0.012 + Math.cos(2 * w) * 0.022;
     } else {
       yaw = p.yaw + Math.sin(t * 0.6 + p.phase) * 0.08;
       bob = Math.sin(t * 2.2 + p.phase) * 0.012;
