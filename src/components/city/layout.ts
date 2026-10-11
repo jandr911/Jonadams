@@ -79,6 +79,7 @@ export function outerRoadLinesZ(): number[] {
 }
 
 export const LIGHT_CYCLE = 16;
+export const TRAFFIC_CLOCK = { time: 0 };
 const GREEN_UNTIL = 0.35;
 const AMBER_UNTIL = 0.42;
 

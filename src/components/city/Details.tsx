@@ -18,6 +18,7 @@ import {
   isMedianLine,
   lightIsAmber,
   lightIsGreen,
+  TRAFFIC_CLOCK,
   blockCenter,
   outerRoadLinesX,
   outerRoadLinesZ,
@@ -69,10 +70,10 @@ function TrafficLights() {
   const green = useMemo(() => new Color("#2aff7a").multiplyScalar(1.6), []);
   const amber = useMemo(() => new Color("#ffb02e").multiplyScalar(1.6), []);
   const lastTick = useRef(-1);
-  useFrame(({ clock }) => {
+  useFrame(() => {
     const l = lamps.current;
     if (!l) return;
-    const time = clock.elapsedTime;
+    const time = TRAFFIC_CLOCK.time;
     const tick = Math.floor(time * 4);
     if (tick === lastTick.current) return;
     lastTick.current = tick;

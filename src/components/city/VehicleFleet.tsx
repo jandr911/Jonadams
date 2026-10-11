@@ -140,7 +140,12 @@ interface Scratch {
   zero: Matrix4;
   night: number;
   brakes: Uint8Array;
+  spinRaw: Float64Array;
+  spinShown: Float32Array;
 }
+
+const SPIN_STEP_MAX = 0.4;
+const TURN = Math.PI * 2;
 
 function markMatrixDirty(im: InstancedMesh) {
   im.instanceMatrix.needsUpdate = true;
@@ -164,6 +169,10 @@ function runUpdate(
   const pool = meshes.get("pool");
   const { p, pos, q, e, M, spin, out, zero } = s;
   const lightsOn = s.night > 0.18;
+  if (s.spinRaw.length !== items.length) {
+    s.spinRaw = new Float64Array(items.length);
+    s.spinShown = new Float32Array(items.length);
+  }
   let tailColorDirty = false;
   for (let i = 0; i < items.length; i++) {
     p.brake = false;
@@ -177,7 +186,10 @@ function runUpdate(
     const parts = bodies.get(kind);
     if (parts) for (let k = 0; k < parts.length; k++) parts[k].setMatrixAt(gi, M);
     const loc = locals(kind);
-    spin.makeRotationX(p.spin);
+    const turned = p.spin - s.spinRaw[i];
+    s.spinRaw[i] = p.spin;
+    s.spinShown[i] = (s.spinShown[i] + Math.max(-SPIN_STEP_MAX, Math.min(SPIN_STEP_MAX, turned))) % TURN;
+    spin.makeRotationX(s.spinShown[i]);
     for (let w = 0; w < 4; w++) {
       out.multiplyMatrices(M, loc.wheels[w]).multiply(spin);
       tire?.setMatrixAt(i * 4 + w, out);
@@ -279,6 +291,8 @@ export default function VehicleFleet({
     zero: new Matrix4().makeScale(0, 0, 0),
     night: 0,
     brakes: new Uint8Array(0),
+    spinRaw: new Float64Array(0),
+    spinShown: new Float32Array(0),
   });
 
   const bind = useCallback(
