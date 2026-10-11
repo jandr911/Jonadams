@@ -1,18 +1,13 @@
 import { ROOMS, type VideoSlot } from "@/content/site";
 import { indexLabel } from "./city/layout";
+import YouTubeFrame from "./YouTubeFrame";
 
 export default function YouTubeEmbed({ slot, index }: { slot: VideoSlot; index: number }) {
   return (
     <figure className="media-card">
       <div className="media-card__frame">
         {slot.id ? (
-          <iframe
-            src={`https://www.youtube-nocookie.com/embed/${slot.id}?rel=0&modestbranding=1`}
-            title={slot.title}
-            loading="lazy"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
+          <YouTubeFrame slot={slot} />
         ) : (
           <div className="media-card__empty">
             <span className="media-card__play" aria-hidden />

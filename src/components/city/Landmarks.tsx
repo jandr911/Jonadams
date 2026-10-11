@@ -11,7 +11,6 @@ import { useDayNight } from "./DayNightContext";
 import Hotspot from "./Hotspot";
 import {
   CITY_HALF_Z,
-  DESTINATIONS,
   blockCenter,
   destinationById,
   destinationPosition,
@@ -286,7 +285,7 @@ function ClubEntrance() {
 }
 
 function ClubAdams() {
-  const d = DESTINATIONS[0];
+  const d = destinationById("club");
   const [x, z] = destinationPosition(d);
   const dn = useDayNight();
   const rimMat = useRef<MeshStandardMaterial>(null);
@@ -467,7 +466,7 @@ const LISTEN_ROOF_SLAB = 0.8;
 export const LISTEN_ROOF_Y = PAD + LISTEN_TOWER_H + LISTEN_ROOF_SLAB;
 
 function ListenTower() {
-  const d = DESTINATIONS[1];
+  const d = destinationById("listen");
   const [x, z] = destinationPosition(d);
   return (
     <Hotspot dest={d} position={[x, PAD, z]}>
@@ -542,11 +541,10 @@ const WATER_TANK = (() => {
   );
 })();
 
-function MerchWarehouse() {
-  const d = DESTINATIONS[3];
-  const [x, z] = destinationPosition(d);
+function RivertownWarehouse() {
+  const [x, z] = blockCenter(6, 5);
   return (
-    <Hotspot dest={d} position={[x, PAD, z]}>
+    <group position={[x, PAD, z]}>
       <WindowedBox w={19} h={14} d={17} color="#8a4a3a" winSize={[2.6, 3]} seed={31} cool="#d6fbff" />
       {[3.5, 7, 10.5].map((y) => (
         <mesh key={y} position={[0, y, 0]}>
@@ -559,12 +557,11 @@ function MerchWarehouse() {
         <meshStandardMaterial color="#5c2f24" />
       </mesh>
       <Fan position={[-5.5, 7.5, 8.8]} r={2} />
-      <NeonSign text="MERCH" color="#ffb02e" width={11} height={3.6} fontSize={2.8} position={[2.5, 9.6, 8.9]} rotation={[0, 0, -0.06]} blink="fast" />
       <PaintedSign text="RIVERTOWN" bg="#2f4a3a" fg="#e6dbc2" width={12} height={2.2} position={[0, 17.4, 0]} doubleSided depth={0.8} />
       <mesh geometry={WATER_TANK} position={[6.5, 15.2, -3.6]}>
         <meshStandardMaterial color="#5a4632" roughness={0.95} />
       </mesh>
-    </Hotspot>
+    </group>
   );
 }
 
@@ -590,7 +587,7 @@ const MC_BALUSTER_COUNT = 25;
 const MC_PILASTER_X = [-11.4, -6.8, -2.3, 2.3, 6.8, 11.4];
 
 function MichiganCentral() {
-  const d = DESTINATIONS[2];
+  const d = destinationById("watch");
   const [x, z] = destinationPosition(d);
   const dn = useDayNight();
   const carved = useMemo(() => carvedStoneTexture("MICHIGAN CENTRAL STATION", "#d8c9a8"), []);
@@ -693,7 +690,7 @@ function MichiganCentral() {
 }
 
 function CreativesBillboard() {
-  const d = DESTINATIONS[4];
+  const d = destinationById("creatives");
   const [x, z] = destinationPosition(d);
   const billboard = useMemo(() => handPaintedBillboardTexture("The", "CREATIVES", "CORKTOWN · DETROIT MAKERS"), []);
   return (
@@ -1240,7 +1237,7 @@ export default function Landmarks() {
     <group ref={root}>
       <ClubAdams />
       <ListenTower />
-      <MerchWarehouse />
+      <RivertownWarehouse />
       <MichiganCentral />
       <CreativesBillboard />
       <HuntingtonPlace />

@@ -33,6 +33,7 @@ import type { BufferGeometry, Group } from "three";
 
 export const RESERVED_BLOCKS = new Set<string>([
   ...DESTINATIONS.map((d) => `${d.block[0]},${d.block[1]}`),
+  "6,5",
   "2,5",
   "3,5",
   "4,5",
