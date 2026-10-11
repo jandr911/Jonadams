@@ -4,7 +4,8 @@ Contract for every AI agent in this repository. Read before your first edit.
 
 Adams UniverseCity is a public site for the Detroit artist Jonathan Adams. The homepage
 is a free-roam 3D downtown Detroit built with React Three Fiber; the inner pages are
-styled rooms. There is no backend and no user data today. The thing that breaks here is
+styled rooms. Content and the admin panel live in Supabase (see [Secrets and Supabase](#secrets-and-supabase));
+there is no visitor data. The thing that breaks here is
 not security, it is the frame rate: the client judges the city on a mid-range laptop,
 and a change that looks fine on a strong GPU can halve the frame rate on his. Bias
 toward the smallest correct change and measure before you call it done.
@@ -220,10 +221,23 @@ Add a token to `globals.css` if one is missing.
 
 ## Content
 
-Everything the client supplies lives in `src/content/site.ts`: site name, submission
-email, the video and visual slots, the creative slots, merch. Pages render from it;
-they do not hard-code copy. An empty `id` on a video slot means the client has not sent
-it yet, and the page must render sensibly with it empty.
+Two layers, and the split matters:
+
+- **Supabase is the source of truth for what the client manages**: videos (Listen),
+  visuals (Watch), creatives, social links, the site song, and every line of wording. The
+  admin at `/admin` edits it; `getContent()` reads it.
+- **`src/content/site.ts` holds the defaults.** Every editable string lives there as the
+  fallback, so the site renders sensibly with an empty database. A string with `{name}`
+  placeholders is a template filled by `fill()` in `src/content/copy.ts`; the admin shows
+  the placeholders and the client keeps them. Add a new line of copy by adding the default
+  to `site.ts` inside one of the `DEFAULT_COPY` sections; it appears in the admin
+  automatically. Numbers, booleans and asset paths in `site.ts` are not editable and stay
+  code.
+- Server components call `await getContent()`; client components call `useCopy()`. Neither
+  imports copy constants from `site.ts` directly any more, except types and the
+  non-editable values (`EQ_BARS`, `GEO`, `ALTER_EGO_ART`).
+- An empty YouTube id on a video means the client has not sent it yet, and the room shows
+  an "arriving soon" screen for it. Lists may be empty; every room must render with none.
 
 ## Comments
 
@@ -260,13 +274,31 @@ The rule agents break most often. Follow it exactly.
 - The install is already at the machine's memory limit. A new package is a cost the
   user must agree to.
 
-## Secrets
+## Secrets and Supabase
 
-There are none today. `.env*` is git-ignored and must stay so. If one arrives:
+Content lives in Supabase (project `zetlwmrzjjxymffetmkm`): Postgres tables for copy, videos,
+creatives and links, a public `media` bucket for uploads, and Supabase Auth for the single
+admin account. The schema is `supabase/migrations/*.sql`, run by hand in the SQL editor.
 
-- Only `NEXT_PUBLIC_*` values may reach the browser, and only when they are genuinely
-  public.
-- Never print a secret, log it, or commit it to a fixture.
+The app holds **no secret**. It uses only the project URL and the publishable key, both
+public by design; every write goes through the signed-in admin's session and is checked by
+row level security (`public.is_admin()`, allow-listed emails in `public.admins`).
+
+```sh
+# .env.local (git-ignored), and the same two values in Vercel for staging and production
+NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
+
+- Public pages read through `getContent()` in `src/lib/content.ts`: one `use cache` call
+  tagged `content`, invalidated by `updateTag` from the admin actions. Never read the
+  database from a component directly, and never call `cookies()` outside `src/app/admin/`.
+- `/admin` is gated by `src/proxy.ts` (session refresh and redirect) and again by
+  `requireAdmin()` in the layout and inside every server action. Keep both.
+- Never add the secret (service role) key to this app. If a job ever needs it, it runs
+  outside the site.
+- `.env*` is git-ignored and must stay so. Only `NEXT_PUBLIC_*` values reach the browser.
+  Never print a key, log it, or commit it to a fixture.
 - `.vercel/` holds the project link and is git-ignored. Leave it alone.
 
 ## Git

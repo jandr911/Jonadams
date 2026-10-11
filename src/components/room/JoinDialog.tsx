@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { JOIN } from "@/content/site";
+import { useCopy } from "@/content/CopyProvider";
 
 const HASH = "#join";
 
 export default function JoinDialog({ children }: { children: React.ReactNode }) {
+  const { JOIN } = useCopy();
   const ref = useRef<HTMLDialogElement>(null);
   const pushed = useRef(false);
 

@@ -1,8 +1,10 @@
 import { indexLabel } from "../city/layout";
-import { CREATIVES, ROOMS, type Creative } from "@/content/site";
+import type { Creative } from "@/content/site";
+import type { SiteCopy } from "@/content/copy";
+import { getContent } from "@/lib/content";
 import GetListed from "./GetListed";
 import Portrait from "./Portrait";
-import CreativesWall, { type WallPage } from "./CreativesWall";
+import PagedConsole, { type WallPage } from "./PagedConsole";
 import RoomLink from "./RoomLink";
 
 const LAMPS = [400, 740];
@@ -22,15 +24,13 @@ const PASTED = [
   { x: 300, y: 680, w: 70, h: 90, r: 4 },
 ];
 
-const PAGE = ROOMS.creatives.frames;
-const PAGES = Math.max(2, Math.ceil(CREATIVES.length / PAGE));
-const FRAMES = Array.from({ length: PAGES * PAGE }, (_, i) => CREATIVES[i] ?? null);
 
 export function profileHref(c: Creative) {
   return `/creatives/${c.slug}`;
 }
 
-function Billboard({ creative, index }: { creative: Creative | null; index: number }) {
+function Billboard({ creative, index, copy }: { creative: Creative | null; index: number; copy: SiteCopy }) {
+  const { ROOMS } = copy;
   if (!creative) {
     return (
       <div className="stage__bill stage__bill--open">
@@ -58,7 +58,12 @@ function Billboard({ creative, index }: { creative: Creative | null; index: numb
   );
 }
 
-export default function CreativesScene() {
+export default async function CreativesScene({ creatives }: { creatives: Creative[] }) {
+  const { copy } = await getContent();
+  const { ROOMS } = copy;
+  const PAGE = ROOMS.creatives.frames;
+  const PAGES = Math.max(2, Math.ceil(creatives.length / PAGE));
+  const FRAMES = Array.from({ length: PAGES * PAGE }, (_, i) => creatives[i] ?? null);
   const pages: WallPage[] = Array.from({ length: PAGES }, (_, p) => {
     const frames = FRAMES.slice(p * PAGE, (p + 1) * PAGE);
     return {
@@ -70,7 +75,7 @@ export default function CreativesScene() {
       }),
       screens: frames.map((c, j) => {
         const i = p * PAGE + j;
-        return <Billboard key={c ? c.slug : i} creative={c} index={i} />;
+        return <Billboard key={c ? c.slug : i} creative={c} index={i} copy={copy} />;
       }),
     };
   });
@@ -253,7 +258,7 @@ export default function CreativesScene() {
       </svg>
 
       <GetListed className="stage__poster" />
-      <CreativesWall pages={pages} label={ROOMS.creatives.console} />
+      <PagedConsole pages={pages} label={ROOMS.creatives.console} more={ROOMS.creatives.more} moreLabel={ROOMS.creatives.moreLabel} />
     </>
   );
 }

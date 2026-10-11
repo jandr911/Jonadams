@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ROOMS, type VideoSlot } from "@/content/site";
+import type { VideoSlot } from "@/content/site";
+import { fill } from "@/content/copy";
 import { pauseMusic } from "./SiteMusic";
+import { useCopy } from "@/content/CopyProvider";
+import { youtubeHref } from "./youtube";
 
 export default function YouTubeFrame({ slot }: { slot: VideoSlot }) {
+  const { ROOMS } = useCopy();
   const [playing, setPlaying] = useState(false);
   const play = () => {
     pauseMusic();
@@ -12,10 +16,15 @@ export default function YouTubeFrame({ slot }: { slot: VideoSlot }) {
   };
   if (!playing) {
     return (
-      <button type="button" className="yt-facade" onClick={play} aria-label={ROOMS.listen.play(slot.title)}>
-        <span className="media-card__play" aria-hidden />
-        <span className="yt-facade__title">{slot.title}</span>
-      </button>
+      <>
+        <button type="button" className="yt-facade" onClick={play} aria-label={fill(ROOMS.listen.play, { title: slot.title })}>
+          <span className="media-card__play" aria-hidden />
+          <span className="yt-facade__title">{slot.title}</span>
+        </button>
+        <a className="yt-facade__out" href={youtubeHref(slot.id)} target="_blank" rel="noreferrer">
+          {ROOMS.listen.openYoutube}
+        </a>
+      </>
     );
   }
   return (

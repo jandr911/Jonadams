@@ -1,5 +1,4 @@
 import { Color } from "three";
-import { CITY_HUD } from "@/content/site";
 
 export type TimePreset = "auto" | "day" | "dusk" | "night";
 
@@ -122,15 +121,11 @@ export function computeDayNight(hour: number, cloud = OVERCAST_BASELINE): DayNig
   };
 }
 
-export type Phase = keyof typeof CITY_HUD.phases;
+export type Phase = "sunrise" | "day" | "dusk" | "night";
 
 export function phaseFor(hour: number): Phase {
   if (hour >= 6 && hour < 8) return "sunrise";
   if (hour >= 8 && hour < 18) return "day";
   if (hour >= 18 && hour < 21) return "dusk";
   return "night";
-}
-
-export function labelFor(hour: number) {
-  return CITY_HUD.phases[phaseFor(hour)];
 }

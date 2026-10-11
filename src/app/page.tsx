@@ -1,13 +1,14 @@
 import CityCanvas from "@/components/city/CityCanvas";
 import SiteHeader from "@/components/SiteHeader";
-import { SITE } from "@/content/site";
+import { getContent } from "@/lib/content";
 
-export default function Home() {
+export default async function Home() {
+  const { copy } = await getContent();
   return (
     <div className="shell">
       <SiteHeader />
       <main className="shell__stage">
-        <h1 className="sr-only">{SITE.name}</h1>
+        <h1 className="sr-only">{copy.SITE.name}</h1>
         <CityCanvas />
       </main>
     </div>

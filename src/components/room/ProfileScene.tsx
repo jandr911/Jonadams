@@ -1,4 +1,6 @@
-import { PROFILE, type Creative } from "@/content/site";
+import type { Creative } from "@/content/site";
+import { fill } from "@/content/copy";
+import { getContent } from "@/lib/content";
 import GetListed from "./GetListed";
 import Portrait from "./Portrait";
 
@@ -9,11 +11,12 @@ const PASTED = [
   { x: 1290, y: 712, w: 62, h: 80, r: -4 },
 ];
 
-function ProfileLinks({ creative }: { creative: Creative }) {
+async function ProfileLinks({ creative }: { creative: Creative }) {
+  const { copy } = await getContent();
   const links = creative.links.filter((l) => l.href);
   if (!links.length) return null;
   return (
-    <nav className="profile__links" aria-label={PROFILE.links}>
+    <nav className="profile__links" aria-label={copy.PROFILE.links}>
       {links.map((l) => (
         <a key={l.href} href={l.href} className="profile__link" target="_blank" rel="noreferrer">
           {l.label}
@@ -23,7 +26,8 @@ function ProfileLinks({ creative }: { creative: Creative }) {
   );
 }
 
-export function ProfileDossier({ creative }: { creative: Creative }) {
+export async function ProfileDossier({ creative }: { creative: Creative }) {
+  const { copy } = await getContent();
   return (
     <>
       {creative.bio && <p className="profile__bio">{creative.bio}</p>}
@@ -33,7 +37,7 @@ export function ProfileDossier({ creative }: { creative: Creative }) {
             <path d="M9.5 8.5v7l6-3.5z" fill="currentColor" />
             <rect x="3" y="5" width="18" height="14" rx="4" fill="none" stroke="currentColor" strokeWidth="1.5" />
           </svg>
-          {PROFILE.watch}
+          {copy.PROFILE.watch}
         </a>
       )}
       <ProfileLinks creative={creative} />
@@ -41,10 +45,11 @@ export function ProfileDossier({ creative }: { creative: Creative }) {
   );
 }
 
-export function ProfilePhone({ creative }: { creative: Creative }) {
+export async function ProfilePhone({ creative }: { creative: Creative }) {
+  const { copy } = await getContent();
   return (
     <div className="profile-phone">
-      <Portrait creative={creative} alt={PROFILE.portrait(creative.name)} sizes="(max-width: 720px) 100vw, 480px" className="profile-phone__portrait" />
+      <Portrait creative={creative} alt={fill(copy.PROFILE.portrait, { name: creative.name })} sizes="(max-width: 720px) 100vw, 480px" className="profile-phone__portrait" />
       <span className="profile-phone__craft">
         {creative.craft} · {creative.city}
       </span>
@@ -54,7 +59,8 @@ export function ProfilePhone({ creative }: { creative: Creative }) {
   );
 }
 
-export default function ProfileScene({ creative }: { creative: Creative }) {
+export default async function ProfileScene({ creative }: { creative: Creative }) {
+  const { copy } = await getContent();
   return (
     <>
       <svg className="stage__art" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden focusable="false">
@@ -170,7 +176,7 @@ export default function ProfileScene({ creative }: { creative: Creative }) {
         <rect width="1600" height="1000" fill="url(#pf-vignette)" />
       </svg>
 
-      <Portrait creative={creative} alt={PROFILE.portrait(creative.name)} sizes="(max-width: 720px) 0px, 24vw" className="profile__portrait" />
+      <Portrait creative={creative} alt={fill(copy.PROFILE.portrait, { name: creative.name })} sizes="(max-width: 720px) 0px, 24vw" className="profile__portrait" />
       <div className="profile__plaque" aria-hidden>
         <span className="profile__plaque-name">{creative.name}</span>
         <span className="profile__plaque-craft">

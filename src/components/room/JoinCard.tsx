@@ -1,4 +1,5 @@
-import { CONTACT, JOIN, LINKS, SITE } from "@/content/site";
+import { fill, type SiteCopy } from "@/content/copy";
+import { getContent } from "@/lib/content";
 import { mailHref, whatsappDigits, whatsappHref } from "./contact";
 import CopyValue from "./CopyValue";
 import JoinDialog from "./JoinDialog";
@@ -23,16 +24,16 @@ function formatPhone(digits: string) {
   return `+${[rest, ...groups].join(" ")}`;
 }
 
-function contactRows(): ContactRow[] {
+function contactRows({ JOIN, SITE }: SiteCopy): ContactRow[] {
   const rows: ContactRow[] = [];
-  const digits = whatsappDigits();
+  const digits = whatsappDigits(SITE.whatsapp);
   if (digits) {
     rows.push({
       label: JOIN.whatsapp.label,
       value: `+${digits}`,
       display: formatPhone(digits),
       action: JOIN.whatsapp.action,
-      href: whatsappHref(digits, JOIN.message),
+      href: whatsappHref(digits, fill(JOIN.message, { name: SITE.name })),
       external: true,
     });
   }
@@ -42,16 +43,18 @@ function contactRows(): ContactRow[] {
       value: SITE.submitEmail,
       display: SITE.submitEmail,
       action: JOIN.email.action,
-      href: mailHref(JOIN.subject),
+      href: mailHref(SITE.submitEmail, fill(JOIN.subject, { name: SITE.name })),
       external: false,
     });
   }
   return rows;
 }
 
-export default function JoinCard() {
-  const rows = contactRows();
-  const links = LINKS.filter((l) => l.href);
+export default async function JoinCard() {
+  const { copy, links: allLinks } = await getContent();
+  const links = allLinks.filter((l) => l.href);
+  const { CONTACT, JOIN, SITE } = copy;
+  const rows = contactRows(copy);
   const contacts = [
     { label: CONTACT.booking, email: SITE.bookingEmail },
     { label: CONTACT.press, email: SITE.pressEmail },

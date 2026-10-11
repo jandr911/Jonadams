@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { EQ_BARS, HEADER, SITE } from "@/content/site";
+import { fill } from "@/content/copy";
+import { EQ_BARS } from "@/content/site";
+import { getContent } from "@/lib/content";
 
 const TIMING: [number, number][] = [
   [1.7, 0],
@@ -11,16 +13,17 @@ const TIMING: [number, number][] = [
 
 const BARS = EQ_BARS.map((h, i): [number, number, number] => [h, ...TIMING[i]]);
 
-export default function Wordmark() {
+export default async function Wordmark() {
+  const { copy } = await getContent();
   return (
-    <Link href="/" className="wordmark" aria-label={HEADER.home}>
+    <Link href="/" className="wordmark" aria-label={fill(copy.HEADER.home, { name: copy.SITE.name })}>
       <span className="wordmark__bars" aria-hidden>
         {BARS.map(([h, t, d]) => (
           <i key={`${h}-${t}`} style={{ ["--h" as string]: h, ["--t" as string]: `${t}s`, ["--d" as string]: `${-d}s` }} />
         ))}
       </span>
-      <span className="wordmark__serif">{SITE.surname}</span>
-      <span className="wordmark__caps">{SITE.cityName}</span>
+      <span className="wordmark__serif">{copy.SITE.surname}</span>
+      <span className="wordmark__caps">{copy.SITE.cityName}</span>
     </Link>
   );
 }

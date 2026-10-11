@@ -4,7 +4,7 @@ import { Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, CanvasTexture, Color, DoubleSide, ExtrudeGeometry, Group, InstancedMesh, Mesh, MeshStandardMaterial, Shape, ShapeGeometry } from "three";
-import { SITE } from "@/content/site";
+import { useCopy } from "@/content/CopyProvider";
 import { useDayNight } from "./DayNightContext";
 import { labelTexture } from "./labels";
 import { fillInstances } from "./instancing";
@@ -18,7 +18,6 @@ import { makeWakeTexture } from "./textures";
 const WATER_Y = -0.6;
 const LOOP = 1000;
 const LINE_NAME_COLOR = new Color("#f3dfae").multiplyScalar(1.3);
-const ARTIST_CAPS = SITE.artist.toUpperCase();
 
 export function LitWindow({ intensity, color = "#1d2a3a", toneMapped = false }: { intensity: number; color?: string; toneMapped?: boolean }) {
   return <meshStandardMaterial color={color} emissive="#ffd27a" emissiveIntensity={intensity} roughness={0.1} metalness={0.5} toneMapped={toneMapped} />;
@@ -870,6 +869,7 @@ function Portholes({ count, length, y, z }: { count: number; length: number; y: 
 }
 
 function Laker({ night }: { night: number }) {
+  const ARTIST_CAPS = useCopy().SITE.artist.toUpperCase();
   const hull = useMemo(() => hullGeometry(96, 12, 5.2, 0.1, 0.05), []);
   useEffect(() => () => hull.dispose(), [hull]);
   const posts = useRef<InstancedMesh>(null);

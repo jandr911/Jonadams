@@ -4,7 +4,7 @@ import { Float, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { AdditiveBlending, Color, CatmullRomCurve3, ConeGeometry, DoubleSide, Group, MathUtils, Mesh, MeshStandardMaterial, PlaneGeometry, Vector3 } from "three";
-import { SITE } from "@/content/site";
+import { useCopy } from "@/content/CopyProvider";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import { gradientColors } from "./instancing";
@@ -90,6 +90,7 @@ const BLIMP_NAME_EDGE = "#4a2a06";
 const BLIMP_METAL = "#4a4c50";
 
 function Blimp() {
+  const { SITE } = useCopy();
   const dn = useDayNight();
   const nameColor = useMemo(() => new Color(BLIMP_NAME).multiplyScalar(0.9 + dn.night * 0.45), [dn.night]);
   const rig = useRef<Group>(null);
@@ -583,6 +584,7 @@ const BANNER_OMEGA = 0.032;
 const BANNER_BANK_PER_ACCEL = 0.4;
 
 function BannerPlane() {
+  const { SITE } = useCopy();
   const dn = useDayNight();
   const rig = useRef<Group>(null);
   const prop = useRef<Group>(null);
@@ -596,7 +598,7 @@ function BannerPlane() {
     },
     [bannerGeo, bannerBackGeo],
   );
-  const tex = useMemo(() => labelTexture(`J. ${SITE.surname.toUpperCase()} · LIVE AT ${destinationById("club").label.toUpperCase()} · DETROIT`, { width: 2048, height: 256, bg: "#07060f", fg: "#f3dfae", border: "#d6b56e", size: 150 }), []);
+  const tex = useMemo(() => labelTexture(`J. ${SITE.surname.toUpperCase()} · LIVE AT ${destinationById("club").label.toUpperCase()} · DETROIT`, { width: 2048, height: 256, bg: "#07060f", fg: "#f3dfae", border: "#d6b56e", size: 150 }), [SITE.surname]);
   useFrame(({ clock }) => {
     const g = rig.current;
     if (!g) return;

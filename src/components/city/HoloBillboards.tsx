@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Color, DoubleSide, PlaneGeometry, ShaderMaterial, type Texture, UniformsLib, UniformsUtils } from "three";
-import { SITE } from "@/content/site";
+import { useCopy } from "@/content/CopyProvider";
 import { HOLOGRAM_TIME } from "./HologramClock";
 import { hologramTexture } from "./labels";
 import { destinationById, destinationPosition } from "./layout";
@@ -86,12 +86,14 @@ const listen = destinationById("listen");
 const club = destinationById("club");
 const watch = destinationById("watch");
 
-const HOLOS: Holo[] = [
-  { kicker: "Now playing", headline: SITE.artist.toUpperCase(), footer: `${listen.label} at the ${listen.sub}`, color: "#49f2d6", position: besideDistrict("listen", 33, 66, -64), width: 30, yaw: 0.12 },
-  { kicker: "Live at", headline: club.label.toUpperCase(), footer: club.sub, color: "#ff7ac0", position: besideDistrict("club", 43, 74, -70), width: 28, yaw: -0.14 },
-  { kicker: "New visuals", headline: watch.label.toUpperCase(), footer: watch.sub, color: "#7ff8e6", position: besideDistrict("watch", 0, 88, -37), width: 20, yaw: 0.3 },
-  { kicker: "Detroit", headline: SITE.cityName.toUpperCase(), footer: "A city built on music", color: "#f3dfae", position: [-6, 104, -64], width: 40, yaw: 0 },
-];
+function holosOf(artist: string, cityName: string): Holo[] {
+  return [
+    { kicker: "Now playing", headline: artist.toUpperCase(), footer: `${listen.label} at the ${listen.sub}`, color: "#49f2d6", position: besideDistrict("listen", 33, 66, -64), width: 30, yaw: 0.12 },
+    { kicker: "Live at", headline: club.label.toUpperCase(), footer: club.sub, color: "#ff7ac0", position: besideDistrict("club", 43, 74, -70), width: 28, yaw: -0.14 },
+    { kicker: "New visuals", headline: watch.label.toUpperCase(), footer: watch.sub, color: "#7ff8e6", position: besideDistrict("watch", 0, 88, -37), width: 20, yaw: 0.3 },
+    { kicker: "Detroit", headline: cityName.toUpperCase(), footer: "A city built on music", color: "#f3dfae", position: [-6, 104, -64], width: 40, yaw: 0 },
+  ];
+}
 
 function HoloPanel({ holo, seed }: { holo: Holo; seed: number }) {
   const [mat] = useState(() => makeHoloMaterial(hologramTexture(holo.kicker, holo.headline, holo.footer), holo.color, seed));
@@ -110,9 +112,11 @@ function HoloPanel({ holo, seed }: { holo: Holo; seed: number }) {
 }
 
 export default function HoloBillboards() {
+  const { SITE } = useCopy();
+  const holos = useMemo(() => holosOf(SITE.artist, SITE.cityName), [SITE.artist, SITE.cityName]);
   return (
     <group name="holo-billboards">
-      {HOLOS.map((h, i) => (
+      {holos.map((h, i) => (
         <HoloPanel key={h.headline} holo={h} seed={i * 1.37 + 0.4} />
       ))}
     </group>

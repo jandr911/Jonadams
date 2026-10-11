@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { JOIN } from "@/content/site";
+import { useCopy } from "@/content/CopyProvider";
 
 type Status = "idle" | "copied" | "blocked";
 
 export default function CopyValue({ value, display }: { value: string; display: string }) {
+  const { JOIN } = useCopy();
   const valueRef = useRef<HTMLSpanElement>(null);
   const [status, setStatus] = useState<Status>("idle");
 

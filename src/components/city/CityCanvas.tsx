@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { CityContext, HoverContext, type CityApi, type Move, type Quality } from "./CityContext";
 import { DayNightContext } from "./DayNightContext";
-import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
+import { computeDayNight, phaseFor, presetHour, type TimePreset } from "./dayNight";
 import { clockSnapshot, readClock, subscribeMinute } from "./clock";
 import { useDetroitCloudCover } from "./DetroitWeather";
 import StageBoundary from "./StageBoundary";
-import { CITY_FALLBACK, CITY_HUD, SITE } from "@/content/site";
+import { fill } from "@/content/copy";
+import { COORDINATES } from "@/content/site";
+import { useCopy } from "@/content/CopyProvider";
 import { MusicToggle } from "../SiteMusic";
 import { DESTINATIONS, LABEL_FADE_MS, indexLabel, type Destination } from "./layout";
 import Loader, { markVisited, useReturningVisitor } from "./Loader";
@@ -18,8 +20,6 @@ import Loader, { markVisited, useReturningVisitor } from "./Loader";
 const CityStage = dynamic(() => import("./CityStage"), { ssr: false });
 
 const PRESETS: TimePreset[] = ["auto", "day", "dusk", "night"];
-const DISTRICTS_HINT = CITY_HUD.districtsHint(DESTINATIONS.length);
-const LOCKED_HINT = CITY_HUD.lockedHint(DESTINATIONS.length);
 
 const FADE_AFTER_MS = 1700;
 const FADE_MS = 420;
@@ -38,6 +38,7 @@ function motionSnapshot() {
 }
 
 function NavPad({ held, homeRef }: { held: React.RefObject<Set<Move>>; homeRef: React.RefObject<(() => void) | null> }) {
+  const { CITY_HUD } = useCopy();
   const pressed = useRef<Move | null>(null);
   const stop = () => {
     if (pressed.current) held.current.delete(pressed.current);
@@ -52,7 +53,7 @@ function NavPad({ held, homeRef }: { held: React.RefObject<Set<Move>>; homeRef: 
     <button
       type="button"
       className={`city-pad__btn ${cls}`}
-      aria-label={CITY_HUD.padHold(title)}
+      aria-label={fill(CITY_HUD.padHold, { title })}
       title={title}
       onPointerDown={(e) => {
         e.preventDefault();
@@ -102,6 +103,7 @@ function NavPad({ held, homeRef }: { held: React.RefObject<Set<Move>>; homeRef: 
 }
 
 export default function CityCanvas() {
+  const { CITY_HUD, CITY_FALLBACK, SITE } = useCopy();
   const router = useRouter();
   const clock = useSyncExternalStore(subscribeMinute, clockSnapshot, serverClockSnapshot);
   const reducedMotion = useSyncExternalStore(subscribeMotion, motionSnapshot, () => false);
@@ -206,7 +208,7 @@ export default function CityCanvas() {
       leftForRoom.current = true;
       router.push(d.href);
     },
-    [navigating, router, reducedMotion, setHovered],
+    [navigating, router, reducedMotion, setHovered, SITE.navLocked],
   );
 
   useEffect(() => {
@@ -251,7 +253,7 @@ export default function CityCanvas() {
             </div>
 
             <nav aria-label={CITY_HUD.districtsNav} className="city-hud city-hud--districts">
-              <span className="districts__hint">{hovered ? hovered.blurb : SITE.navLocked ? LOCKED_HINT : DISTRICTS_HINT}</span>
+              <span className="districts__hint">{hovered ? hovered.blurb : fill(SITE.navLocked ? CITY_HUD.lockedHint : CITY_HUD.districtsHint, { count: DESTINATIONS.length })}</span>
               <div className="districts">
                 <div ref={trackRef} className="districts__track" role={SITE.navLocked ? "list" : undefined}>
                 {DESTINATIONS.map((d, i) => {
@@ -299,13 +301,13 @@ export default function CityCanvas() {
             </nav>
 
             <div className="city-hud city-hud--status">
-              <button type="button" className="city-pill" onClick={cyclePreset} aria-label={CITY_HUD.changeTime(pillLabel, labelFor(hour))}>
+              <button type="button" className="city-pill" onClick={cyclePreset} aria-label={fill(CITY_HUD.changeTime, { mode: pillLabel, phase: CITY_HUD.phases[phaseFor(hour)] })}>
                 <span className="city-pill__dot" data-night={dn.night > 0.5} />
                 <span>{pillLabel}</span>
-                <small>{labelFor(hour)}</small>
+                <small>{CITY_HUD.phases[phaseFor(hour)]}</small>
               </button>
               <MusicToggle />
-              <span className="city-geo">{CITY_HUD.geo}</span>
+              <span className="city-geo">{fill(CITY_HUD.geo, { coordinates: COORDINATES })}</span>
               <span className="city-readout">{CITY_HUD.readout}</span>
             </div>
 
