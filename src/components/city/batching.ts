@@ -1,4 +1,4 @@
-import { BufferAttribute, Color, Euler, Matrix4, Mesh, Texture, Vector2, Vector3, Vector4, type BufferGeometry, type Material, type Object3D } from "three";
+import { BufferAttribute, Color, Euler, Matrix4, Mesh, Texture, Vector2, Vector3, Vector4, type BufferGeometry, type Material, type Object3D, type InstancedMesh } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 type Tintable = Material & { color: Color; vertexColors: boolean; emissive?: Color; emissiveIntensity?: number };
@@ -65,7 +65,7 @@ function shown(o: Object3D) {
 }
 
 function candidate(o: Object3D, b: Batcher): o is Mesh {
-  if (!(o instanceof Mesh) || o.type !== "Mesh" || b.retired.has(o) || o.userData.batched) return false;
+  if (!(o instanceof Mesh) || o.type !== "Mesh" || (o as InstancedMesh).isInstancedMesh || b.retired.has(o) || o.userData.batched) return false;
   const m = o.material;
   const g = o.geometry as BufferGeometry & { isInstancedBufferGeometry?: boolean };
   if (Array.isArray(m) || !BATCHABLE.has(m.type) || m.transparent || g.isInstancedBufferGeometry || !g.attributes.position) return false;
