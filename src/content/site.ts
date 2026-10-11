@@ -6,11 +6,12 @@ export const SITE = {
   nickname: "Jonn",
   city: "Detroit, Michigan",
   year: 2026,
-  submitEmail: "",
+  submitEmail: "jonandrafay@gmail.com",
+  whatsapp: "12489558542",
   bookingEmail: "",
   pressEmail: "",
-  joinHref: "/listen#join-list",
-  navLocked: true,
+  joinHref: "/club#join",
+  navLocked: false,
 };
 
 export const MUSIC = {
@@ -72,10 +73,17 @@ export const LOADER = {
 
 export const JOIN = {
   title: "Join the list",
-  body: (email: string) => `Please add ${email} to the ${SITE.name} list.`,
-  placeholder: "you@email.com",
-  placeholderClosed: "List opens soon",
-  submit: "Join",
+  note: "Send your name and we'll add you, first word on every drop.",
+  soon: "List opens soon",
+  plaque: "First word on every drop",
+  close: "Close",
+  subject: `Add me to the ${SITE.name} list`,
+  message: `Hi Jonathan, add me to the ${SITE.name} list.`,
+  whatsapp: { label: "WhatsApp", action: "Message on WhatsApp" },
+  email: { label: "Email", action: "Write an email" },
+  copy: "Copy",
+  copied: "Copied",
+  copyBlocked: "Copy blocked, text selected",
 };
 
 export const HEADER = {
@@ -89,7 +97,7 @@ export const HEADER = {
   closeMenu: "Close menu",
 };
 
-export const FOOTER = {
+export const CONTACT = {
   booking: "Booking",
   press: "Press",
   elsewhere: "Elsewhere",
@@ -115,43 +123,83 @@ export const SHARE_IMAGE = {
 
 export const ROOMS = {
   club: {
-    description: "Inside Club Adams, the front door to Jonathan Adams' Detroit: music, visuals, merch and the city's creatives.",
-    lead: "You made it inside. Four walls, four ways deeper into the city.",
+    description: "Inside Club Adams, the front door to Jonathan Adams' Detroit: music, visuals and the city's creatives.",
   },
   listen: {
     description: "Listen to Jonathan Adams: singles, the latest release and live sessions, plus official videos and behind the scenes.",
-    lead: "Press play right here. Every play on this page counts on the channel.",
-    leadEmpty: "The first tracks land here soon. Every play on this page will count on the channel.",
     pending: "Arriving soon",
+    play: (title: string) => `Play ${title}`,
+    console: "Tracks on the desk",
   },
   watch: {
-    lead: "Visuals, behind the scenes, and everything in motion.",
-  },
-  merch: {
-    description: "Adams UniverseCity merch: tees, hoodies, caps and numbered prints from Detroit.",
-    lead: "The rack is being stocked. Drop 01 arrives with the next single.",
-    status: "Coming soon",
+    description: "Watch Jonathan Adams: official videos and behind the scenes, screened in Michigan Central Station.",
+    console: "Reels in the hall",
   },
   creatives: {
     description: "The Creatives: a curated wall of Detroit artists, builders and makers, picked by Jonathan Adams.",
-    lead: "A curated wall for up-and-coming artists, builders, and makers from the city and beyond. Jonathan picks the lineup.",
-    pitch: "Send your work by email. No uploads, no forms — a short note and a link is enough.",
-    pitchEmpty: "No uploads, no forms. When submissions open, a short note and a link will be all it takes.",
-    soon: "Submissions open soon",
-    ask: "Want on the wall?",
-    submit: "Email your work",
-    subject: "Feature me on The Creatives",
+    console: "Frames on the wall",
+    open: "Your name here",
+    openCraft: "Open",
+    viewProfile: "View profile",
+    frames: 6,
+    more: (page: number, pages: number) => `More · ${page}/${pages}`,
+    moreLabel: (next: number, pages: number) => `Show more creatives, page ${next} of ${pages}`,
   },
+};
+
+export const GET_LISTED = {
+  ask: "Want on the wall?",
+  pitch: "Message Jonathan on WhatsApp or by email. No uploads, no forms — a short note and a link is enough.",
+  pitchEmpty: "No uploads, no forms. When submissions open, a short note and a link will be all it takes.",
+  soon: "Submissions open soon",
+  whatsapp: "WhatsApp Jonathan",
+  email: "Email Jonathan",
+  subject: "Feature me on The Creatives",
+  intro: "Hi Jonathan, I'd like to be on The Creatives wall.",
+  fields: ["Name", "Craft", "City", "Short bio", "Photo link", "YouTube", "Instagram / website"],
+};
+
+export const PROFILE = {
+  watch: "Watch on YouTube",
+  links: "Elsewhere",
+  portrait: (name: string) => `Portrait of ${name}`,
+  back: { label: "The Creatives", note: "Back to the wall", href: "/creatives" },
+  description: (name: string, craft: string, city: string) => `${name}, ${craft.toLowerCase()} from ${city}, on The Creatives wall at ${SITE.name}.`,
 };
 
 export const CLUB_WALLS = [
   { district: "listen", label: "The Sound", note: "Music, straight from the booth" },
   { district: "watch", label: "The Screen", note: "Videos and visuals" },
-  { district: "merch", label: "The Rack", note: "Wear the universe" },
   { district: "creatives", label: "The Wall", note: "Creatives on display" },
 ];
 
-interface SiteLink {
+export const CLUB_DESK = [
+  { label: "Lead single", note: "Press play in Listen", href: "/listen" },
+  { label: "Get on the wall", note: "Pitch The Creatives", href: "/creatives" },
+];
+
+export const LISTEN_DESK = [
+  { label: "Watch", note: "Videos in Michigan Central", href: "/watch" },
+  { label: "The Creatives", note: "Faces on the wall", href: "/creatives" },
+];
+
+export const WATCH_DESK = [
+  { label: "Listen", note: "Back to the booth", href: "/listen" },
+  { label: "The Creatives", note: "Faces on the wall", href: "/creatives" },
+];
+
+export const CREATIVES_DESK = [
+  { label: "Watch", note: "Videos in Michigan Central", href: "/watch" },
+  { label: "Club Adams", note: "Back to the front door", href: "/club" },
+];
+
+export const ROOM_NAV = {
+  console: "Walls of the club",
+  rooms: "Rooms",
+  desk: "Front desk",
+};
+
+export interface SiteLink {
   label: string;
   href: string;
 }
@@ -182,18 +230,15 @@ export const VISUALS: VideoSlot[] = [
   { id: "", title: "Behind the scenes", kind: "video" },
 ];
 
-export const CREATIVE_SLOTS = [
-  { craft: "Music", name: "Featured artist" },
-  { craft: "Tech", name: "Featured builder" },
-  { craft: "Art", name: "Featured designer" },
-  { craft: "Film", name: "Featured director" },
-  { craft: "Fashion", name: "Featured label" },
-  { craft: "Open", name: "Your name here" },
-];
+export interface Creative {
+  slug: string;
+  name: string;
+  craft: string;
+  city: string;
+  bio: string;
+  photo: string;
+  youtube: string;
+  links: SiteLink[];
+}
 
-export const MERCH = [
-  { name: "UniverseCity Tee", note: "Heavyweight cotton" },
-  { name: "Skyline Hoodie", note: "Embroidered crest" },
-  { name: "District Cap", note: "Six-panel" },
-  { name: "Night Poster", note: "Numbered print" },
-];
+export const CREATIVES: Creative[] = [];

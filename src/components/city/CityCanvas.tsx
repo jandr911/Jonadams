@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { CityContext, HoverContext, type CityApi, type Move, type Quality } from "./CityContext";
 import { DayNightContext } from "./DayNightContext";
 import { computeDayNight, labelFor, presetHour, type TimePreset } from "./dayNight";
+import { clockSnapshot, readClock, subscribeMinute } from "./clock";
 import { useDetroitCloudCover } from "./DetroitWeather";
 import EntranceMusic from "./EntranceMusic";
 import StageBoundary from "./StageBoundary";
@@ -20,19 +21,9 @@ const PRESETS: TimePreset[] = ["auto", "day", "dusk", "night"];
 const DISTRICTS_HINT = CITY_HUD.districtsHint(DESTINATIONS.length);
 const LOCKED_HINT = CITY_HUD.lockedHint(DESTINATIONS.length);
 
-const LIGHT_STEPS_PER_HOUR = 4;
 const FADE_AFTER_MS = 1700;
 const FADE_MS = 420;
 
-function subscribeMinute(cb: () => void) {
-  const id = setInterval(cb, 60_000);
-  return () => clearInterval(id);
-}
-function clockSnapshot() {
-  const q = new URLSearchParams(window.location.search).get("time");
-  const preset: TimePreset = q === "day" || q === "dusk" || q === "night" ? q : "auto";
-  return `${preset}|${(Math.floor(presetHour("auto") * LIGHT_STEPS_PER_HOUR) / LIGHT_STEPS_PER_HOUR).toFixed(2)}`;
-}
 function serverClockSnapshot() {
   return "auto|12.00";
 }
@@ -115,10 +106,10 @@ export default function CityCanvas() {
   const clock = useSyncExternalStore(subscribeMinute, clockSnapshot, serverClockSnapshot);
   const reducedMotion = useSyncExternalStore(subscribeMotion, motionSnapshot, () => false);
   const returning = useReturningVisitor();
-  const [urlPreset, autoHour] = clock.split("|") as [TimePreset, string];
+  const { preset: urlPreset, hour: autoHour } = readClock(clock);
   const [override, setOverride] = useState<TimePreset | null>(null);
   const preset = override ?? urlPreset;
-  const hour = preset === "auto" ? Number(autoHour) : presetHour(preset);
+  const hour = preset === "auto" ? autoHour : presetHour(preset);
 
   const [hovered, setHoveredState] = useState<Destination | null>(null);
   const [leaving, setLeaving] = useState<readonly string[]>([]);
