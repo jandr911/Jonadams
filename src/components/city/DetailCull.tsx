@@ -7,7 +7,7 @@ import { InstancedMesh, Mesh, PerspectiveCamera, type Object3D } from "three";
 const HIDE_BELOW_PX = 1.1;
 const SHOW_ABOVE_PX = 1.8;
 const EVERY_FRAMES = 8;
-const CULLED = "detailCulled";
+export const DETAIL_CULLED = "detailCulled";
 
 function worldRadius(m: Mesh) {
   const g = m.geometry;
@@ -23,7 +23,7 @@ const view = { cx: 0, cy: 0, cz: 0, pxPerUnit: 1 };
 
 function cullVisit(o: Object3D) {
   if (!(o instanceof Mesh) || o instanceof InstancedMesh || o.userData.noCull) return;
-  const culled = o.userData[CULLED] === true;
+  const culled = o.userData[DETAIL_CULLED] === true;
   if (!o.visible && !culled) return;
   const radius = worldRadius(o);
   const e = o.matrixWorld.elements;
@@ -33,10 +33,10 @@ function cullVisit(o: Object3D) {
   const px = radius > 0 ? (radius * view.pxPerUnit) / Math.max(Math.sqrt(dx * dx + dy * dy + dz * dz), 1) : Infinity;
   if (!culled && px < HIDE_BELOW_PX) {
     o.visible = false;
-    o.userData[CULLED] = true;
+    o.userData[DETAIL_CULLED] = true;
   } else if (culled && px > SHOW_ABOVE_PX) {
     o.visible = true;
-    o.userData[CULLED] = false;
+    o.userData[DETAIL_CULLED] = false;
   }
 }
 

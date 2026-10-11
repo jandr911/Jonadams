@@ -163,10 +163,13 @@ The budget is held by deliberate choices. Do not undo them without a measured re
 - Anti-aliasing is SMAA in the post chain. **Never enable multisampling on the canvas**;
   4× MSAA took the scene from 55 to 9 fps.
 - The river is a custom planar mirror (`RiverMirror.tsx`, `mirrorRender.ts`) that
-  renders only objects on `REFLECT_LAYER`, at half resolution, every other frame. It
-  replaced a drei reflector that re-rendered the whole scene per frame. Opt an object
-  into the reflection with `enableReflection`; never bring the drei reflector back.
-- The shadow map is 2048 and refreshes every sixth frame through `ShadowThrottle`.
+  renders only objects on `REFLECT_LAYER`, at 0.4 scale, every third frame and at most
+  20 Hz. It replaced a drei reflector that re-rendered the whole scene per frame. Opt an
+  object into the reflection with `enableReflection`; never bring the drei reflector back.
+- The shadow map is 2048 and refreshes every sixth frame and at most 10 Hz through
+  `ShadowThrottle`.
+- A smooth tier (mirror every frame, shadows every second frame) unlocks only after 10 s
+  at 75 fps or more, once per visit.
 - The world is clipped at `EXTENT` because fog hides everything further. Clouds sit above
   the camera ceiling and the camera floor keeps the eye above the streets. Do not move
   one without the others.

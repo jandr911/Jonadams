@@ -3,7 +3,7 @@
 import { Preload } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef } from "react";
-import { Color, InstancedMesh, PMREMGenerator, Scene as ThreeScene, Texture } from "three";
+import { Color, InstancedMesh, PMREMGenerator, Scene as ThreeScene, Texture, type WebGLRenderer } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import Aircraft from "./Aircraft";
 import AlterEgo from "./AlterEgo";
@@ -20,8 +20,7 @@ import HoloBillboards from "./HoloBillboards";
 import HologramClock from "./HologramClock";
 import Landmarks from "./Landmarks";
 import { LIT_IN_REFLECTION } from "./layers";
-import { requestShadowUpdate, setShadowManual } from "./mirrorRender";
-import { cadenceDue } from "./renderCadence";
+import { cadenceDue, type CadenceRate } from "./renderCadence";
 import PeopleMover from "./PeopleMover";
 import Roads from "./Roads";
 import Sky from "./Sky";
@@ -63,8 +62,17 @@ function Ambience() {
   return null;
 }
 
-const SHADOW_NORMAL = { frames: 6, hz: 10 };
-const SHADOW_SMOOTH = { frames: 2, hz: 30 };
+const SHADOW_NORMAL: CadenceRate = { frames: 6, hz: 10 };
+const SHADOW_SMOOTH: CadenceRate = { frames: 2, hz: 30 };
+
+function setShadowManual(gl: WebGLRenderer) {
+  gl.shadowMap.autoUpdate = false;
+  gl.shadowMap.needsUpdate = true;
+}
+
+function requestShadowUpdate(gl: WebGLRenderer) {
+  gl.shadowMap.needsUpdate = true;
+}
 
 function ShadowThrottle() {
   const gl = useThree((s) => s.gl);

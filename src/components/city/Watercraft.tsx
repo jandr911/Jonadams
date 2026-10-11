@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, CanvasTexture, Color, DoubleSide, ExtrudeGeometry, Group, InstancedMesh, Mesh, MeshStandardMaterial, Object3D, Shape, ShapeGeometry } from "three";
 import { useDayNight } from "./DayNightContext";
 import { labelTexture } from "./labels";
+import { fillInstances } from "./instancing";
 import { enableReflection } from "./layers";
 import { RIVER_FAR, RIVER_NEAR } from "./layout";
 import NeonSign, { DISPLAY_FONT } from "./NeonSign";
@@ -14,6 +15,11 @@ import { mulberry32, pick, range } from "./rng";
 
 const WATER_Y = -0.6;
 const LOOP = 1000;
+const LINE_NAME_COLOR = new Color("#f3dfae").multiplyScalar(1.3);
+
+function LitWindow({ intensity, color = "#1d2a3a", toneMapped = false }: { intensity: number; color?: string; toneMapped?: boolean }) {
+  return <meshStandardMaterial color={color} emissive="#ffd27a" emissiveIntensity={intensity} roughness={0.1} metalness={0.5} toneMapped={toneMapped} />;
+}
 
 function hullGeometry(length: number, beam: number, height: number, bow = 0.22, stern = 0.06) {
   const s = new Shape();
@@ -327,14 +333,14 @@ function Trawler({ night }: { night: number }) {
         {[-0.9, 0, 0.9].map((z) => (
           <mesh key={z} position={[1.52, 1.5, z]}>
             <boxGeometry args={[0.04, 0.6, 0.6]} />
-            <meshStandardMaterial color="#1d2a3a" emissive="#ffd27a" emissiveIntensity={night * 1.4} roughness={0.1} metalness={0.5} toneMapped={false} />
+            <LitWindow intensity={night * 1.4} />
           </mesh>
         ))}
         {[-1, 1].map((s) =>
           [-0.7, 0.7].map((x) => (
             <mesh key={`${s}${x}`} position={[x, 1.5, s * 1.42]}>
               <boxGeometry args={[0.7, 0.6, 0.04]} />
-              <meshStandardMaterial color="#1d2a3a" emissive="#ffd27a" emissiveIntensity={night * 1.4} roughness={0.1} metalness={0.5} toneMapped={false} />
+              <LitWindow intensity={night * 1.4} />
             </mesh>
           )),
         )}
@@ -467,7 +473,7 @@ function Sailboat({ color, night }: { color: string; night: number }) {
           [-1, 1].map((s) => (
             <mesh key={`${x}${s}`} position={[x, 0.1, s * 0.76]}>
               <boxGeometry args={[0.6, 0.25, 0.03]} />
-              <meshStandardMaterial color="#1d2a3a" emissive="#ffd27a" emissiveIntensity={night * 1.2} roughness={0.1} metalness={0.5} />
+              <LitWindow intensity={night * 1.2} toneMapped />
             </mesh>
           )),
         )}
@@ -552,19 +558,10 @@ function Sailboat({ color, night }: { color: string; night: number }) {
 function RailPosts({ length, beam, y, count }: { length: number; beam: number; y: number; count: number }) {
   const ref = useRef<InstancedMesh>(null);
   useEffect(() => {
-    const m = ref.current;
-    if (!m) return;
-    const d = new Object3D();
-    let i = 0;
-    for (let k = 0; k < count / 2; k++) {
-      const x = -length / 2 + (k / (count / 2 - 1)) * length;
-      for (const side of [-1, 1]) {
-        d.position.set(x, y, side * beam * 0.5);
-        d.updateMatrix();
-        m.setMatrixAt(i++, d.matrix);
-      }
-    }
-    m.instanceMatrix.needsUpdate = true;
+    fillInstances(ref.current, new Object3D(), count, (i, d) => {
+      const k = Math.floor(i / 2);
+      d.position.set(-length / 2 + (k / (count / 2 - 1)) * length, y, (i % 2 ? 1 : -1) * beam * 0.5);
+    });
   }, [length, beam, y, count]);
   return (
     <group>
@@ -587,19 +584,10 @@ function RailPosts({ length, beam, y, count }: { length: number; beam: number; y
 function StringLights({ length, beam, y, count, night }: { length: number; beam: number; y: number; count: number; night: number }) {
   const ref = useRef<InstancedMesh>(null);
   useEffect(() => {
-    const m = ref.current;
-    if (!m) return;
-    const d = new Object3D();
-    let i = 0;
-    for (let k = 0; k < count / 2; k++) {
-      const x = -length / 2 + (k / (count / 2 - 1)) * length;
-      for (const side of [-1, 1]) {
-        d.position.set(x, y - Math.sin((k / (count / 2 - 1)) * Math.PI * 6) * 0.12, side * (beam * 0.5 + 0.08));
-        d.updateMatrix();
-        m.setMatrixAt(i++, d.matrix);
-      }
-    }
-    m.instanceMatrix.needsUpdate = true;
+    fillInstances(ref.current, new Object3D(), count, (i, d) => {
+      const k = Math.floor(i / 2);
+      d.position.set(-length / 2 + (k / (count / 2 - 1)) * length, y - Math.sin((k / (count / 2 - 1)) * Math.PI * 6) * 0.12, (i % 2 ? 1 : -1) * (beam * 0.5 + 0.08));
+    });
   }, [length, beam, y, count]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, count]}>
@@ -612,24 +600,15 @@ function StringLights({ length, beam, y, count, night }: { length: number; beam:
 function Windows({ length, beam, y, count, night, h = 0.7 }: { length: number; beam: number; y: number; count: number; night: number; h?: number }) {
   const ref = useRef<InstancedMesh>(null);
   useEffect(() => {
-    const m = ref.current;
-    if (!m) return;
-    const d = new Object3D();
-    let i = 0;
-    for (let k = 0; k < count / 2; k++) {
-      const x = -length / 2 + ((k + 0.5) / (count / 2)) * length;
-      for (const side of [-1, 1]) {
-        d.position.set(x, y, side * beam * 0.5);
-        d.updateMatrix();
-        m.setMatrixAt(i++, d.matrix);
-      }
-    }
-    m.instanceMatrix.needsUpdate = true;
+    fillInstances(ref.current, new Object3D(), count, (i, d) => {
+      const k = Math.floor(i / 2);
+      d.position.set(-length / 2 + ((k + 0.5) / (count / 2)) * length, y, (i % 2 ? 1 : -1) * beam * 0.5);
+    });
   }, [length, beam, y, count]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, count]}>
       <boxGeometry args={[0.9, h, 0.06]} />
-      <meshStandardMaterial color="#2a3a5a" emissive="#ffd27a" emissiveIntensity={0.4 + night * 2.2} roughness={0.1} metalness={0.5} toneMapped={false} />
+      <LitWindow color="#2a3a5a" intensity={0.4 + night * 2.2} />
     </instancedMesh>
   );
 }
@@ -813,7 +792,7 @@ function Princess({ night }: { night: number }) {
         <Windows length={4.6} beam={4.26} y={1.3} count={8} night={night} h={0.9} />
         <mesh position={[2.52, 1.3, 0]} rotation={[0, Math.PI / 2, 0]}>
           <boxGeometry args={[3.6, 0.9, 0.06]} />
-          <meshStandardMaterial color="#2a3a5a" emissive="#ffd27a" emissiveIntensity={0.4 + night * 2.2} roughness={0.1} metalness={0.5} toneMapped={false} />
+          <LitWindow color="#2a3a5a" intensity={0.4 + night * 2.2} />
         </mesh>
         <Radar position={[0, 2.5, 0]} />
         <mesh position={[-1.4, 2.5, 1.2]}>
@@ -911,31 +890,14 @@ function Laker({ night }: { night: number }) {
   const posts = useRef<InstancedMesh>(null);
   const lamps = useRef<InstancedMesh>(null);
   useEffect(() => {
-    const p = posts.current;
-    const l = lamps.current;
-    if (!p || !l) return;
     const d = new Object3D();
-    let i = 0;
-    for (let k = 0; k < 30; k++) {
-      const x = -44 + (k / 29) * 88;
-      for (const side of [-1, 1]) {
-        d.position.set(x, 0.55, side * 5.8);
-        d.updateMatrix();
-        p.setMatrixAt(i++, d.matrix);
-      }
-    }
-    p.instanceMatrix.needsUpdate = true;
-    for (let k = 0; k < 10; k++) {
-      d.position.set(-38 + k * 8.2, 1.6, (k % 2 ? 1 : -1) * 5.6);
-      d.updateMatrix();
-      l.setMatrixAt(k, d.matrix);
-    }
-    l.instanceMatrix.needsUpdate = true;
+    fillInstances(posts.current, d, 60, (i, o) => o.position.set(-44 + (Math.floor(i / 2) / 29) * 88, 0.55, (i % 2 ? 1 : -1) * 5.8));
+    fillInstances(lamps.current, d, 10, (k, o) => o.position.set(-38 + k * 8.2, 1.6, (k % 2 ? 1 : -1) * 5.6));
   }, []);
   const windows = (k: number) => (
     <mesh position={[0, 1.6, 0]}>
       <boxGeometry args={[9.04 - k * 1.2, 0.9, 10.44 - k * 1.4]} />
-      <meshStandardMaterial color="#1d2a3a" emissive="#ffd27a" emissiveIntensity={0.3 + night * 1.8} roughness={0.1} metalness={0.5} toneMapped={false} />
+      <LitWindow intensity={0.3 + night * 1.8} />
     </mesh>
   );
   return (
@@ -1033,7 +995,7 @@ function Laker({ night }: { night: number }) {
         <Portholes count={6} length={9} y={1.6} z={-5.32} />
         <mesh position={[0, 3.4, 0]}>
           <boxGeometry args={[11.04, 0.8, 10.64]} />
-          <meshStandardMaterial color="#1d2a3a" emissive="#ffd27a" emissiveIntensity={0.3 + night * 1.8} roughness={0.1} metalness={0.5} toneMapped={false} />
+          <LitWindow intensity={0.3 + night * 1.8} />
         </mesh>
         <mesh position={[-1.5, 8.2, 0]}>
           <cylinderGeometry args={[1.3, 1.6, 6.4, 14]} />
@@ -1098,10 +1060,10 @@ function Laker({ night }: { night: number }) {
       <NamePlate text="JONATHAN ADAMS" position={[38, -1.1, 6.1]} width={14} height={1.6} bg="#1a1a22" />
       <NamePlate text="JONATHAN ADAMS" position={[38, -1.1, -6.1]} rotation={[0, Math.PI, 0]} width={14} height={1.6} bg="#1a1a22" />
       <NamePlate text="JONATHAN ADAMS · DETROIT" position={[-48.1, -1.0, 0]} rotation={[0, -Math.PI / 2, 0]} width={9} height={1.2} bg="#1a1a22" />
-      <Text font={DISPLAY_FONT} fontSize={2.0} color={new Color("#f3dfae").multiplyScalar(1.3)} anchorX="center" anchorY="middle" position={[-4, 2.4, 5.7]} letterSpacing={0.12} material-toneMapped={false}>
+      <Text font={DISPLAY_FONT} fontSize={2.0} color={LINE_NAME_COLOR} anchorX="center" anchorY="middle" position={[-4, 2.4, 5.7]} letterSpacing={0.12} material-toneMapped={false}>
         ADAMS LINE
       </Text>
-      <Text font={DISPLAY_FONT} fontSize={2.0} color={new Color("#f3dfae").multiplyScalar(1.3)} anchorX="center" anchorY="middle" position={[-4, 2.4, 4.3]} rotation={[0, Math.PI, 0]} letterSpacing={0.12} material-toneMapped={false}>
+      <Text font={DISPLAY_FONT} fontSize={2.0} color={LINE_NAME_COLOR} anchorX="center" anchorY="middle" position={[-4, 2.4, 4.3]} rotation={[0, Math.PI, 0]} letterSpacing={0.12} material-toneMapped={false}>
         ADAMS LINE
       </Text>
       <Figure position={[43, 10.6, 2.8]} top="#f4f1ea" scale={1.1} rotation={Math.PI / 2} />

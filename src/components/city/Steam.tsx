@@ -21,6 +21,7 @@ import { useDayNight } from "./DayNightContext";
 import type { DayNight } from "./dayNight";
 import { fillInstances } from "./instancing";
 import { CITY_HALF_X, PEOPLE_MOVER_X, PEOPLE_MOVER_Z, RIVER_FAR, RIVER_NEAR, WOODWARD_INDEX, roadLinesX, roadLinesZ } from "./layout";
+import { NOISE_GLSL } from "./noise";
 import { mulberry32 } from "./rng";
 
 const PUFFS_PER_VENT = 12;
@@ -29,20 +30,6 @@ const STEAM_DAY = new Color("#d6d4cf");
 const STEAM_NIGHT = new Color("#6e675c");
 const MIST_COLOR = new Color("#8f97a3");
 const MIST_LAYERS = [0.9, 2.6];
-
-const noiseGlsl = /* glsl */ `
-  float hash(vec2 p) {
-    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
-  }
-  float vnoise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
-  }
-`;
 
 const steamVertex = /* glsl */ `
   uniform float uTime;
@@ -77,7 +64,7 @@ const steamFragment = /* glsl */ `
   varying float vAlpha;
   varying float vSeed;
   #include <fog_pars_fragment>
-  ${noiseGlsl}
+  ${NOISE_GLSL}
 
   void main() {
     float r = length(vUv - 0.5) * 2.0;
@@ -113,7 +100,7 @@ const mistFragment = /* glsl */ `
   varying vec3 vWorld;
   varying vec2 vUv;
   #include <fog_pars_fragment>
-  ${noiseGlsl}
+  ${NOISE_GLSL}
 
   void main() {
     vec2 q = vWorld.xz * 0.025 + vec2(uTime * 0.012, uTime * 0.004) + vWorld.y * 3.1;

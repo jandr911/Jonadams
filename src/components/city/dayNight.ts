@@ -3,7 +3,6 @@ import { Color } from "three";
 export type TimePreset = "auto" | "day" | "dusk" | "night";
 
 export interface DayNight {
-  hour: number;
   night: number;
   cloud: number;
   sunDir: [number, number, number];
@@ -105,7 +104,6 @@ export function computeDayNight(hour: number, cloud = OVERCAST_BASELINE): DayNig
   };
 
   return {
-    hour,
     night,
     cloud,
     sunDir,
