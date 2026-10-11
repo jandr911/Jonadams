@@ -1,7 +1,9 @@
-import { indexLabel } from "../city/layout";
-import { ROOMS, VISUALS } from "@/content/site";
-import PlayerScreen from "./PlayerScreen";
-import RoomConsole from "./RoomConsole";
+import type { VideoSlot } from "@/content/site";
+import { getContent } from "@/lib/content";
+import PagedConsole from "./PagedConsole";
+import { videoPages } from "./videoPages";
+
+const PER_PAGE = 2;
 
 const WINDOWS = [260, 620, 980];
 const WINDOW_W = 340;
@@ -71,9 +73,10 @@ function Column({ x, scale = 1 }: { x: number; scale?: number }) {
   );
 }
 
-export default function WatchScene() {
-  const keys = VISUALS.map((v, i) => ({ id: v.title, index: indexLabel(i), label: v.title }));
-  const screens = VISUALS.map((v, i) => <PlayerScreen key={v.title} slot={v} index={indexLabel(i)} />);
+export default async function WatchScene({ videos }: { videos: VideoSlot[] }) {
+  const { copy } = await getContent();
+  const { watch } = copy.ROOMS;
+  const pages = videoPages(videos, PER_PAGE, watch.pending);
   return (
     <>
       <svg className="stage__art" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden focusable="false">
@@ -290,7 +293,7 @@ export default function WatchScene() {
         <rect width="1600" height="1000" fill="url(#mcs-vignette)" />
       </svg>
 
-      <RoomConsole keys={keys} screens={screens} label={ROOMS.watch.console} preview={false} />
+      <PagedConsole pages={pages} label={watch.console} more={watch.more} moreLabel={watch.moreLabel} preview={false} />
     </>
   );
 }

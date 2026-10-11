@@ -1,7 +1,9 @@
-import { indexLabel } from "../city/layout";
-import { EQ_BARS, ROOMS, VIDEOS } from "@/content/site";
-import PlayerScreen from "./PlayerScreen";
-import RoomConsole from "./RoomConsole";
+import { EQ_BARS, type VideoSlot } from "@/content/site";
+import { getContent } from "@/lib/content";
+import PagedConsole from "./PagedConsole";
+import { videoPages } from "./videoPages";
+
+const PER_PAGE = 4;
 
 const SEAT_ROWS = [
   { y: 486, h: 22, from: 60, to: 1540, step: 46, w: 36 },
@@ -21,9 +23,10 @@ const DESK_LAMPS = [
   { x: 1180, c: "var(--amber)" },
 ];
 
-export default function ListenScene() {
-  const keys = VIDEOS.map((v, i) => ({ id: v.title, index: indexLabel(i), label: v.title }));
-  const screens = VIDEOS.map((v, i) => <PlayerScreen key={v.title} slot={v} index={indexLabel(i)} />);
+export default async function ListenScene({ videos }: { videos: VideoSlot[] }) {
+  const { copy } = await getContent();
+  const { listen } = copy.ROOMS;
+  const pages = videoPages(videos, PER_PAGE, listen.pending);
   return (
     <>
       <svg className="stage__art" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden focusable="false">
@@ -275,7 +278,7 @@ export default function ListenScene() {
           <i key={i} style={{ ["--h" as string]: h, animationDelay: `${-i * 0.23}s` }} />
         ))}
       </div>
-      <RoomConsole keys={keys} screens={screens} label={ROOMS.listen.console} preview={false} />
+      <PagedConsole pages={pages} label={listen.console} more={listen.more} moreLabel={listen.moreLabel} preview={false} />
     </>
   );
 }

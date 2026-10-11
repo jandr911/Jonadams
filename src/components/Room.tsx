@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { SHARE_IMAGE, SITE } from "@/content/site";
+import { fill, type SiteCopy } from "@/content/copy";
+import { SHARE_IMAGE } from "@/content/site";
 import { DESTINATIONS, destinationById, indexLabel } from "./city/layout";
 import RoomStage, { type Plaque, type RoomScene } from "./room/RoomStage";
 import SiteHeader from "./SiteHeader";
@@ -15,12 +16,12 @@ export function roomLinks(ids: string[]): Plaque[] {
   });
 }
 
-export function roomMetadata(district: string, description: string, title = destinationById(district).label): Metadata {
-  const shared = { title: `${title} · ${SITE.name}`, description, images: { url: "/opengraph-image", ...SHARE_IMAGE } };
+export function roomMetadata(copy: SiteCopy, district: string, description: string, title = destinationById(district).label): Metadata {
+  const shared = { title: `${title} · ${copy.SITE.name}`, description, images: { url: "/opengraph-image", ...SHARE_IMAGE, alt: fill(SHARE_IMAGE.alt, { name: copy.SITE.name, artist: copy.SITE.artist }) } };
   return {
     title,
     description,
-    openGraph: { type: "website", siteName: SITE.name, ...shared },
+    openGraph: { type: "website", siteName: copy.SITE.name, ...shared },
     twitter: { card: "summary_large_image", ...shared },
   };
 }

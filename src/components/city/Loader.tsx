@@ -2,7 +2,9 @@
 
 import { useProgress } from "@react-three/drei";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { COORDINATES, EQ_BARS, LOADER, MUSIC, SITE, TAGLINE } from "@/content/site";
+import { fill } from "@/content/copy";
+import { COORDINATES, EQ_BARS } from "@/content/site";
+import { useCopy } from "@/content/CopyProvider";
 import { startMusic, useMusicStatus } from "../SiteMusic";
 
 const VISITED_KEY = "city-visited";
@@ -39,11 +41,6 @@ export function markVisited() {
 
 const RAMP_MS = 2800;
 const QUICK_RAMP_MS = 700;
-const STAGES: [number, string][] = [
-  [30, LOADER.stages.skyline],
-  [62, LOADER.stages.neon],
-  [100, LOADER.stages.doors],
-];
 const BARS = [...EQ_BARS, 0.85, 0.5];
 
 const DETROIT_SKYLINE_FROM_WINDSOR = [
@@ -107,6 +104,12 @@ function Skyline({ mirror = false }: { mirror?: boolean }) {
 type LoaderProps = { ready: boolean; released: boolean; onRelease: () => void; returning: boolean };
 
 export default function Loader({ ready, released, onRelease, returning }: LoaderProps) {
+  const { LOADER, MUSIC, SITE, TAGLINE } = useCopy();
+  const stages: [number, string][] = [
+    [30, LOADER.stages.skyline],
+    [62, LOADER.stages.neon],
+    [100, LOADER.stages.doors],
+  ];
   const { progress: assets } = useProgress();
   const [shown, setShown] = useState(0);
   const [done, setDone] = useState(false);
@@ -158,7 +161,7 @@ export default function Loader({ ready, released, onRelease, returning }: Loader
   if (gone) return null;
   const pct = Math.round(shown);
   const welcome = returning ? LOADER.welcomeBack : LOADER.welcome;
-  const stage = ready ? welcome : STAGES.find(([max]) => pct < max)?.[1] ?? LOADER.stages.doors;
+  const stage = ready ? welcome : stages.find(([max]) => pct < max)?.[1] ?? LOADER.stages.doors;
 
   return (
     <div className={`loader ${returning ? "loader--quick" : ""} ${done ? "is-done" : ""}`} aria-busy={!ready}>
@@ -180,12 +183,12 @@ export default function Loader({ ready, released, onRelease, returning }: Loader
 
       <span className="loader__corner loader__corner--tl" aria-hidden>
         <i className="loader__dot" />
-        {LOADER.established}
+        {fill(LOADER.established, { year: SITE.year, city: SITE.city })}
       </span>
       <span className="loader__corner loader__corner--tr" aria-hidden>{LOADER.nowEntering}</span>
 
       <div className="loader__center">
-        <span className="loader__eyebrow" aria-hidden>{LOADER.presents}</span>
+        <span className="loader__eyebrow" aria-hidden>{fill(LOADER.presents, { artist: SITE.artist })}</span>
         <div className="loader__title" aria-hidden>
           <span style={{ animationDelay: "0.1s" }}>{SITE.surname}</span>
           <span style={{ animationDelay: "0.3s" }}>{SITE.cityName}</span>

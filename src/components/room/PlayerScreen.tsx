@@ -1,7 +1,7 @@
-import { ROOMS, type VideoSlot } from "@/content/site";
+import type { VideoSlot } from "@/content/site";
 import YouTubeFrame from "../YouTubeFrame";
 
-export default function PlayerScreen({ slot, index }: { slot: VideoSlot; index: string }) {
+export default function PlayerScreen({ slot, index, pending }: { slot: VideoSlot; index: string; pending: string }) {
   if (slot.id) {
     return (
       <div className="stage__player stage__player--live">
@@ -15,7 +15,7 @@ export default function PlayerScreen({ slot, index }: { slot: VideoSlot; index: 
       <span className="stage__player-kind">{slot.kind}</span>
       <span className="stage__player-ring" aria-hidden />
       <span className="stage__player-title">{slot.title}</span>
-      <span className="stage__player-note">{ROOMS.listen.pending}</span>
+      <span className="stage__player-note">{pending}</span>
     </div>
   );
 }

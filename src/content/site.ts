@@ -19,7 +19,7 @@ export const MUSIC = {
   title: "",
 };
 
-export const TAGLINE = "Music · Art · The Creatives";
+export const TAGLINE: string = "Music · Art · The Creatives";
 
 export const GEO = { lat: 42.33, lon: -83.05 };
 
@@ -28,10 +28,10 @@ export const COORDINATES = `${GEO.lat}° N, ${-GEO.lon}° W`;
 export const EQ_BARS = [0.55, 0.9, 0.7, 1, 0.6];
 
 export const CITY_HUD = {
-  districtsHint: (count: number) => `${count} districts · Hover to preview · Click to fly in`,
-  lockedHint: (count: number) => `${count} districts · Opening soon`,
+  districtsHint: "{count} districts · Hover to preview · Click to fly in",
+  lockedHint: "{count} districts · Opening soon",
   readout: "All districts online · Sky lanes active",
-  geo: `Downtown Detroit · ${COORDINATES}`,
+  geo: "Downtown Detroit · {coordinates}",
   mouseHint: "Drag to orbit · Scroll to zoom · Shift‑drag or arrows to move · Q/E up and down",
   touchHint: "One finger to look · Two fingers to move · Pinch to zoom",
   padCue: "Press & hold to move",
@@ -39,11 +39,11 @@ export const CITY_HUD = {
   stopMusic: "Stop music",
   localTime: "Local time",
   preview: "Preview",
-  changeTime: (mode: string, phase: string) => `${mode} ${phase}, change time of day`,
+  changeTime: "{mode} {phase}, change time of day",
   phases: { sunrise: "SUNRISE", day: "DAYTIME", dusk: "DUSK", night: "NIGHT" },
   districtsNav: "City districts",
   padLabel: "Camera controls",
-  padHold: (title: string) => `${title}, press and hold`,
+  padHold: "{title}, press and hold",
   pad: {
     forward: "Move forward (W / ↑)",
     left: "Move left (A / ←)",
@@ -66,9 +66,9 @@ export const LOADER = {
   welcome: "Welcome to the city",
   welcomeBack: "Welcome back",
   enter: "Enter the city",
-  established: `Est. ${SITE.year} · ${SITE.city}`,
+  established: "Est. {year} · {city}",
   nowEntering: "Now entering",
-  presents: `${SITE.artist} presents`,
+  presents: "{artist} presents",
   caps: "A city built on music · Downtown Detroit",
 };
 
@@ -78,8 +78,8 @@ export const JOIN = {
   soon: "List opens soon",
   plaque: "First word on every drop",
   close: "Close",
-  subject: `Add me to the ${SITE.name} list`,
-  message: `Hi Jonathan, add me to the ${SITE.name} list.`,
+  subject: "Add me to the {name} list",
+  message: "Hi Jonathan, add me to the {name} list.",
   whatsapp: { label: "WhatsApp", action: "Message on WhatsApp" },
   email: { label: "Email", action: "Write an email" },
   copy: "Copy",
@@ -89,7 +89,7 @@ export const JOIN = {
 
 export const HEADER = {
   nav: "Primary",
-  home: `${SITE.name}, home`,
+  home: "{name}, home",
   join: "Join the list",
   joinShort: "Join",
   back: "Back to the city",
@@ -104,20 +104,21 @@ export const CONTACT = {
   elsewhere: "Elsewhere",
 };
 
-export const districtEyebrow = (index: string) => `District ${index}`;
+export const DISTRICT_EYEBROW: string = "District {index}";
 
-export const CITY_FALLBACK = "This browser can't draw the 3D city. The districts below still take you everywhere.";
+export const CITY_FALLBACK: string = "This browser can't draw the 3D city. The districts below still take you everywhere.";
 
 export const ALTER_EGO = {
   name: "",
-  art: { standing: "/alter-ego/standing.png", smoke: "/alter-ego/smoke.png", walking: "/alter-ego/walking.png" },
   note: "Jonathan Adams' alter ego",
 };
 
-export const DESCRIPTION = "Step into the world of Jonathan Adams. Music, art, and the creatives of Detroit.";
+export const ALTER_EGO_ART = { standing: "/alter-ego/standing.png", smoke: "/alter-ego/smoke.png", walking: "/alter-ego/walking.png" };
+
+export const DESCRIPTION: string = "Step into the world of Jonathan Adams. Music, art, and the creatives of Detroit.";
 
 export const SHARE_IMAGE = {
-  alt: `${SITE.name}, the world of ${SITE.artist} in downtown Detroit`,
+  alt: "{name}, the world of {artist} in downtown Detroit",
   width: 1200,
   height: 630,
 };
@@ -129,12 +130,18 @@ export const ROOMS = {
   listen: {
     description: "Listen to Jonathan Adams: singles, the latest release and live sessions, plus official videos and behind the scenes.",
     pending: "Arriving soon",
-    play: (title: string) => `Play ${title}`,
+    play: "Play {title}",
+    openYoutube: "Open on YouTube",
     console: "Tracks on the desk",
+    more: "More · {page}/{pages}",
+    moreLabel: "Show more tracks, page {next} of {pages}",
   },
   watch: {
     description: "Watch Jonathan Adams: official videos and behind the scenes, screened in Michigan Central Station.",
+    pending: "Arriving soon",
     console: "Reels in the hall",
+    more: "More · {page}/{pages}",
+    moreLabel: "Show more reels, page {next} of {pages}",
   },
   creatives: {
     description: "The Creatives: a curated wall of Detroit artists, builders and makers, picked by Jonathan Adams.",
@@ -143,8 +150,8 @@ export const ROOMS = {
     openCraft: "Open",
     viewProfile: "View profile",
     frames: 6,
-    more: (page: number, pages: number) => `More · ${page}/${pages}`,
-    moreLabel: (next: number, pages: number) => `Show more creatives, page ${next} of ${pages}`,
+    more: "More · {page}/{pages}",
+    moreLabel: "Show more creatives, page {next} of {pages}",
   },
 };
 
@@ -163,9 +170,9 @@ export const GET_LISTED = {
 export const PROFILE = {
   watch: "Watch on YouTube",
   links: "Elsewhere",
-  portrait: (name: string) => `Portrait of ${name}`,
+  portrait: "Portrait of {name}",
   back: { label: "The Creatives", note: "Back to the wall", href: "/creatives" },
-  description: (name: string, craft: string, city: string) => `${name}, ${craft.toLowerCase()} from ${city}, on The Creatives wall at ${SITE.name}.`,
+  description: "{name}, {craft} from {city}, on The Creatives wall at {site}.",
 };
 
 export const CLUB_WALLS = [
@@ -205,33 +212,19 @@ export interface SiteLink {
   href: string;
 }
 
-export const LINKS: SiteLink[] = [
-  { label: "Instagram", href: "" },
-  { label: "YouTube", href: "" },
-  { label: "Spotify", href: "" },
-  { label: "Apple Music", href: "" },
-  { label: "TikTok", href: "" },
-];
+export type VideoKind = "single" | "release" | "live" | "video";
+
+export const VIDEO_KINDS: VideoKind[] = ["single", "release", "live", "video"];
 
 export interface VideoSlot {
+  uid: string;
   id: string;
   title: string;
-  kind: "single" | "release" | "live" | "video";
+  kind: VideoKind;
 }
 
-export const VIDEOS: VideoSlot[] = [
-  { id: "", title: "Lead single", kind: "single" },
-  { id: "", title: "Latest release", kind: "release" },
-  { id: "", title: "Live session", kind: "live" },
-  { id: "", title: "Fan favorite", kind: "release" },
-];
-
-export const VISUALS: VideoSlot[] = [
-  { id: "", title: "Official video", kind: "video" },
-  { id: "", title: "Behind the scenes", kind: "video" },
-];
-
 export interface Creative {
+  id: string;
   slug: string;
   name: string;
   craft: string;
@@ -241,5 +234,3 @@ export interface Creative {
   youtube: string;
   links: SiteLink[];
 }
-
-export const CREATIVES: Creative[] = [];

@@ -4,7 +4,8 @@ import { Html, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, BoxGeometry, Color, ConeGeometry, CylinderGeometry, DoubleSide, Group, InstancedMesh, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
-import { EQ_BARS, SITE } from "@/content/site";
+import { EQ_BARS } from "@/content/site";
+import { useCopy } from "@/content/CopyProvider";
 import AmbassadorBridge from "./AmbassadorBridge";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
@@ -1202,8 +1203,9 @@ function Carousel() {
 }
 
 function AdBoard() {
+  const { SITE } = useCopy();
   const [x, z] = blockCenter(6, 4);
-  const poster = useMemo(() => wheatpastePosterTexture(SITE.artist.toUpperCase(), `Live at ${destinationById("club").label}`, "DETROIT · ONE NIGHT ONLY"), []);
+  const poster = useMemo(() => wheatpastePosterTexture(SITE.artist.toUpperCase(), `Live at ${destinationById("club").label}`, "DETROIT · ONE NIGHT ONLY"), [SITE.artist]);
   return (
     <Landmark name="Rivertown Lofts" note="Converted warehouse" position={[x, PAD, z]} labelHeight={32}>
       <WindowedBox w={16} h={18} d={16} color="#a3563f" winSize={[2.4, 2.6]} seed={171} />

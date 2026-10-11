@@ -1,5 +1,6 @@
 import { Fragment } from "react";
-import { EQ_BARS, ROOM_NAV } from "@/content/site";
+import { EQ_BARS } from "@/content/site";
+import { getContent } from "@/lib/content";
 import RoomConsole from "./RoomConsole";
 import WallGlyph from "./WallGlyph";
 
@@ -61,7 +62,8 @@ const PANEL_LAMPS = [
 
 const DIM_LAMPS = [1330, 1350, 1370, 1390, 1410, 1430, 1450, 1470];
 
-export default function ClubScene({ walls }: { walls: ClubWall[] }) {
+export default async function ClubScene({ walls }: { walls: ClubWall[] }) {
+  const { copy } = await getContent();
   const keys = walls.map((w) => ({ id: w.district, index: w.index, label: w.label, accent: w.accent, href: w.href }));
   const screens = walls.map((w) => (
     <Fragment key={w.district}>
@@ -385,7 +387,7 @@ export default function ClubScene({ walls }: { walls: ClubWall[] }) {
           <i key={i} style={{ ["--h" as string]: h, animationDelay: `${-i * 0.23}s` }} />
         ))}
       </div>
-      <RoomConsole keys={keys} screens={screens} label={ROOM_NAV.console} crt />
+      <RoomConsole keys={keys} screens={screens} label={copy.ROOM_NAV.console} crt />
     </>
   );
 }

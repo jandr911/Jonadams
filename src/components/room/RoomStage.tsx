@@ -1,4 +1,5 @@
-import { JOIN, ROOM_NAV, districtEyebrow } from "@/content/site";
+import { fill } from "@/content/copy";
+import { getContent } from "@/lib/content";
 import type { Destination } from "../city/layout";
 import JoinCard from "./JoinCard";
 import RoomLink from "./RoomLink";
@@ -23,8 +24,6 @@ export interface RoomScene {
   sign?: RoomSign;
 }
 
-const JOIN_PLAQUE: Plaque = { label: JOIN.title, note: JOIN.plaque, href: "#join" };
-
 function PlaqueList({ items, label, className }: { items: Plaque[]; label: string; className: string }) {
   return (
     <nav className={className} aria-label={label}>
@@ -38,10 +37,13 @@ function PlaqueList({ items, label, className }: { items: Plaque[]; label: strin
   );
 }
 
-export default function RoomStage({ destination, index, scene }: { destination: Destination; index: string; scene: RoomScene }) {
-  const plaques = [JOIN_PLAQUE, ...scene.plaques];
+export default async function RoomStage({ destination, index, scene }: { destination: Destination; index: string; scene: RoomScene }) {
+  const { copy } = await getContent();
+  const { JOIN, ROOM_NAV, DISTRICT_EYEBROW } = copy;
+  const joinPlaque: Plaque = { label: JOIN.title, note: JOIN.plaque, href: "#join" };
+  const plaques = [joinPlaque, ...scene.plaques];
   const list = [...plaques, ...scene.links.filter((l) => !plaques.some((p) => p.href === l.href))];
-  const sign = scene.sign ?? { eyebrow: districtEyebrow(index), title: destination.label };
+  const sign = scene.sign ?? { eyebrow: fill(DISTRICT_EYEBROW, { index }), title: destination.label };
   return (
     <StageShell room={destination.id}>
       <div className="stage__view">

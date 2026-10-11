@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import { CITY_HUD, MUSIC } from "@/content/site";
+import { useCopy } from "@/content/CopyProvider";
 
 const STOPPED_KEY = "adams:music-stopped";
 const VOLUME = 0.6;
@@ -126,6 +126,7 @@ export function pauseMusic() {
 }
 
 export function MusicToggle() {
+  const { MUSIC, CITY_HUD } = useCopy();
   const current = useMusicStatus();
   if (!MUSIC.src || current === "unavailable") return null;
   const playing = current === "playing";
@@ -143,6 +144,7 @@ export function MusicToggle() {
 }
 
 export default function SiteMusic() {
+  const { MUSIC } = useCopy();
   const ref = useRef<HTMLAudioElement>(null);
   const current = useMusicStatus();
 

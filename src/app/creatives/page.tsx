@@ -4,16 +4,20 @@ import CreativesScene, { profileHref } from "@/components/room/CreativesScene";
 import GetListed from "@/components/room/GetListed";
 import Portrait from "@/components/room/Portrait";
 import RoomLink from "@/components/room/RoomLink";
-import { CREATIVES, CREATIVES_DESK, ROOMS } from "@/content/site";
+import { getContent } from "@/lib/content";
 
-export const metadata: Metadata = roomMetadata("creatives", ROOMS.creatives.description);
+export async function generateMetadata(): Promise<Metadata> {
+  const { copy } = await getContent();
+  return roomMetadata(copy, "creatives", copy.ROOMS.creatives.description);
+}
 
-export default function CreativesPage() {
+export default async function CreativesPage() {
+  const { copy, creatives } = await getContent();
   const phone = (
     <>
-      {CREATIVES.length > 0 && (
+      {creatives.length > 0 && (
         <ul className="stage__list">
-          {CREATIVES.map((c) => (
+          {creatives.map((c) => (
             <li key={c.slug}>
               <RoomLink href={profileHref(c)} className="creative-card">
                 <Portrait creative={c} alt="" sizes="72px" className="creative-card__portrait" />
@@ -30,6 +34,6 @@ export default function CreativesPage() {
     </>
   );
   return (
-    <Room district="creatives" scene={{ art: <CreativesScene />, phone, plaques: CREATIVES_DESK, links: roomLinks(["club", "listen", "watch"]) }} />
+    <Room district="creatives" scene={{ art: <CreativesScene creatives={creatives} />, phone, plaques: copy.CREATIVES_DESK, links: roomLinks(["club", "listen", "watch"]) }} />
   );
 }
