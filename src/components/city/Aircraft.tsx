@@ -306,14 +306,18 @@ export interface HelicopterParts {
   beam: RefObject<Group | null>;
 }
 
-export function spinHelicopter(parts: HelicopterParts, t: number, turn: number, settle = false) {
+const ROTOR_RATE = 32;
+const TAIL_RATE = 44;
+const ROTOR_STEP_MAX = 1.2;
+
+export function spinHelicopter(parts: HelicopterParts, t: number, dt: number, turn: number, pitch = HELI_PITCH, settle = false) {
   const body = parts.body.current;
   if (body) {
-    body.rotation.x = HELI_PITCH;
-    body.rotation.z = MathUtils.lerp(body.rotation.z, MathUtils.clamp(turn * 28, -0.45, 0.45), settle ? 0.2 : 0.05);
+    body.rotation.x = MathUtils.damp(body.rotation.x, pitch, 2.5, dt);
+    body.rotation.z = MathUtils.damp(body.rotation.z, MathUtils.clamp(turn * 28, -0.45, 0.45), settle ? 12 : 3, dt);
   }
-  if (parts.rotor.current) parts.rotor.current.rotation.y = t * 32;
-  if (parts.tail.current) parts.tail.current.rotation.x = t * 44;
+  if (parts.rotor.current) parts.rotor.current.rotation.y += Math.min(ROTOR_RATE * dt, ROTOR_STEP_MAX);
+  if (parts.tail.current) parts.tail.current.rotation.x += Math.min(TAIL_RATE * dt, ROTOR_STEP_MAX);
   if (parts.beam.current) parts.beam.current.rotation.set(0.35 + Math.sin(t * 0.5) * 0.25, 0, Math.sin(t * 0.37) * 0.3);
 }
 
@@ -543,7 +547,7 @@ function Helicopter() {
   );
   const tmp = useMemo(() => ({ p: new Vector3(), t: new Vector3(), t2: new Vector3(), look: new Vector3() }), []);
   const [parts] = useState<HelicopterParts>(() => ({ body, rotor, tail, beam }));
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
     const g = rig.current;
     if (!g) return;
     const u = (clock.elapsedTime * 0.012) % 1;
@@ -553,7 +557,7 @@ function Helicopter() {
     g.position.copy(tmp.p);
     tmp.look.copy(tmp.p).add(tmp.t);
     g.lookAt(tmp.look);
-    spinHelicopter(parts, clock.elapsedTime, tmp.t.x * tmp.t2.z - tmp.t.z * tmp.t2.x);
+    spinHelicopter(parts, clock.elapsedTime, Math.min(delta, 0.1), tmp.t.x * tmp.t2.z - tmp.t.z * tmp.t2.x);
   });
   return (
     <group ref={rig} name="helicopter">
