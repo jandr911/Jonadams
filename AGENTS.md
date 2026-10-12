@@ -169,8 +169,11 @@ The budget is held by deliberate choices. Do not undo them without a measured re
   object into the reflection with `enableReflection`; never bring the drei reflector back.
 - The shadow map is 2048 and refreshes every sixth frame and at most 10 Hz through
   `ShadowThrottle`.
-- A smooth tier (mirror every frame, shadows every second frame) unlocks only after 10 s
-  at 75 fps or more, once per visit.
+- Mirror and shadow rates are the same on every machine. A smooth tier that raised them
+  (mirror every frame, shadows at 30 Hz) on screens holding 75 fps or more was removed after
+  the client's 120 Hz Mac flickered black: his video ran clean for 18 s at the normal rates,
+  then pulsed every 1.2 to 1.6 s, a 30 Hz beat against the phone camera. Not reproduced on
+  Intel; do not bring a faster tier back without testing on that Mac.
 - The world is clipped at `EXTENT` because fog hides everything further. Clouds sit above
   the camera ceiling and the camera floor keeps the eye above the streets. Do not move
   one without the others.

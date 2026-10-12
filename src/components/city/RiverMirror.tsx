@@ -93,8 +93,7 @@ const frag = /* glsl */ `
 `;
 
 const MIRROR_SCALE = 0.4;
-const MIRROR_NORMAL: CadenceRate = { frames: 3, hz: 20 };
-const MIRROR_SMOOTH: CadenceRate = { frames: 1, hz: 60 };
+const MIRROR_CADENCE: CadenceRate = { frames: 3, hz: 20 };
 
 function resizeTarget(rt: WebGLRenderTarget, width: number, height: number) {
   rt.setSize(width, height);
@@ -178,7 +177,7 @@ export default function RiverMirror({
     const m = mesh.current;
     if (!m) return;
     (m.material as ShaderMaterial).uniforms.uTime.value = clock.elapsedTime;
-    if (!cadenceDue(cadence.current, clock.elapsedTime, MIRROR_NORMAL, MIRROR_SMOOTH)) return;
+    if (!cadenceDue(cadence.current, clock.elapsedTime, MIRROR_CADENCE)) return;
     renderMirror(gl, scene, camera as PerspectiveCamera, m, rt, scratch);
   }, -1);
 
