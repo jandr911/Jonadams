@@ -63,8 +63,7 @@ function Ambience() {
   return null;
 }
 
-const SHADOW_NORMAL: CadenceRate = { frames: 6, hz: 10 };
-const SHADOW_SMOOTH: CadenceRate = { frames: 2, hz: 30 };
+const SHADOW_CADENCE: CadenceRate = { frames: 6, hz: 10 };
 
 function setShadowManual(gl: WebGLRenderer) {
   gl.shadowMap.autoUpdate = false;
@@ -80,7 +79,7 @@ function ShadowThrottle() {
   const cadence = useRef({ last: -Infinity, frames: 0 });
   useEffect(() => setShadowManual(gl), [gl]);
   useFrame(({ clock }) => {
-    if (cadenceDue(cadence.current, clock.elapsedTime, SHADOW_NORMAL, SHADOW_SMOOTH)) requestShadowUpdate(gl);
+    if (cadenceDue(cadence.current, clock.elapsedTime, SHADOW_CADENCE)) requestShadowUpdate(gl);
   }, -2);
   return null;
 }
