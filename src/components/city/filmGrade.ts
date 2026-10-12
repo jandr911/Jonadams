@@ -3,9 +3,16 @@ import { Uniform } from "three";
 
 const fragmentShader = /* glsl */ `
   uniform float uStrength;
+  uniform float uContrast;
+
+  const float BRIGHTNESS = -0.02;
 
   void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-    vec3 c = max(inputColor.rgb, 0.0);
+    // Saturation pushes strong colours below zero, and pow() inside the sRGB conversions turns a
+    // negative into NaN, which phone GPUs draw black. Clamp before each conversion.
+    vec3 s = sRGBTransferOETF(vec4(max(inputColor.rgb, 0.0), 1.0)).rgb;
+    s = (s + BRIGHTNESS - 0.5) / (1.0 - uContrast) + 0.5;
+    vec3 c = sRGBToLinear(vec4(max(s, 0.0), 1.0)).rgb;
     float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
     float shadows = 1.0 - smoothstep(0.0, 0.18, l);
     float highlights = smoothstep(0.25, 1.0, l);
@@ -19,7 +26,14 @@ const fragmentShader = /* glsl */ `
 export class FilmGradeEffect extends Effect {
   constructor(strength = 1) {
     super("FilmGradeEffect", fragmentShader, {
-      uniforms: new Map([["uStrength", new Uniform(strength)]]),
+      uniforms: new Map([
+        ["uStrength", new Uniform(strength)],
+        ["uContrast", new Uniform(0.1)],
+      ]),
     });
   }
+}
+
+export function setGradeContrast(effect: FilmGradeEffect, value: number) {
+  (effect.uniforms.get("uContrast") as Uniform<number>).value = value;
 }

@@ -84,6 +84,9 @@ const CROWN_MAX_HEIGHT = 6;
 const CROWN_MIN_TOP = 28;
 const CROWN_INSET = 0.92;
 const COPPER_SHARE = 0.55;
+// Each cornice top steps this far below the roof and the cornice above it. With the camera near
+// plane at 1, depth resolves about 0.03 at the 720 zoom limit, so flush tops flicker against the roof.
+const CORNICE_DROP = 0.25;
 const BEACON_MAST = 4;
 
 const GHOST_ADS = [
@@ -470,10 +473,10 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
     const green: Placement[] = [];
     lots.forEach((l) => {
       const top = PAD + (l.y ?? 0) + l.h;
-      parapet.push({ x: l.x, y: top + 0.3, z: l.z + l.d / 2, sx: l.w + 0.5, sy: 0.6, sz: 0.4, ry: 0 });
-      parapet.push({ x: l.x, y: top + 0.3, z: l.z - l.d / 2, sx: l.w + 0.5, sy: 0.6, sz: 0.4, ry: 0 });
-      parapet.push({ x: l.x + l.w / 2, y: top + 0.3, z: l.z, sx: 0.4, sy: 0.6, sz: l.d + 0.5, ry: 0 });
-      parapet.push({ x: l.x - l.w / 2, y: top + 0.3, z: l.z, sx: 0.4, sy: 0.6, sz: l.d + 0.5, ry: 0 });
+      parapet.push({ x: l.x, y: top + (0.6 - CORNICE_DROP) / 2, z: l.z + l.d / 2, sx: l.w + 0.5, sy: 0.6 + CORNICE_DROP, sz: 0.4, ry: 0 });
+      parapet.push({ x: l.x, y: top + (0.6 - CORNICE_DROP) / 2, z: l.z - l.d / 2, sx: l.w + 0.5, sy: 0.6 + CORNICE_DROP, sz: 0.4, ry: 0 });
+      parapet.push({ x: l.x + l.w / 2, y: top + (0.6 - CORNICE_DROP) / 2, z: l.z, sx: 0.4, sy: 0.6 + CORNICE_DROP, sz: l.d + 0.5, ry: 0 });
+      parapet.push({ x: l.x - l.w / 2, y: top + (0.6 - CORNICE_DROP) / 2, z: l.z, sx: 0.4, sy: 0.6 + CORNICE_DROP, sz: l.d + 0.5, ry: 0 });
       const roof = (list: Placement[]) => (hasCrown(l) ? [] : list);
       const n = Math.floor(rand() * 4);
       for (let k = 0; k < n; k++) {
@@ -706,9 +709,9 @@ function Facades({ lots }: { lots: Lot[] }) {
     lots.forEach((l) => {
       const y0 = PAD + (l.y ?? 0);
       const top = y0 + l.h;
-      if (l.style !== "mid") cornice.push({ x: l.x, y: top - 0.35, z: l.z, sx: l.w + 0.9, sy: 0.7, sz: l.d + 0.9, ry: 0 });
+      if (l.style !== "mid") cornice.push({ x: l.x, y: top - (0.7 + CORNICE_DROP) / 2, z: l.z, sx: l.w + 0.9, sy: 0.7 - CORNICE_DROP, sz: l.d + 0.9, ry: 0 });
       if (l.h > 12 && l.style !== "mid") cornice.push({ x: l.x, y: top - 1.3, z: l.z, sx: l.w + 0.5, sy: 0.3, sz: l.d + 0.5, ry: 0 });
-      if (l.style === "beaux" && l.top) cornice.push({ x: l.x, y: top - 0.6, z: l.z, sx: l.w + 2.6, sy: 1.1, sz: l.d + 2.6, ry: 0 });
+      if (l.style === "beaux" && l.top) cornice.push({ x: l.x, y: top - (1.15 + 2 * CORNICE_DROP) / 2, z: l.z, sx: l.w + 2.6, sy: 1.15 - 2 * CORNICE_DROP, sz: l.d + 2.6, ry: 0 });
       if (l.style === "beaux" && !l.y) cornice.push({ x: l.x, y: y0 + 0.45, z: l.z, sx: l.w + 0.7, sy: 0.9, sz: l.d + 0.7, ry: 0 });
       const lum = l.color.r * 0.299 + l.color.g * 0.587 + l.color.b * 0.114;
       const glass = lum < 0.2;
