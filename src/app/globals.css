@@ -137,6 +137,21 @@ body {
   flex: 1;
   min-height: 0;
 }
+.city-host {
+  position: fixed;
+  top: var(--header-h);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+}
+.city-host[data-curtain="true"] {
+  z-index: 40;
+}
+.city-host[data-active="false"] {
+  visibility: hidden;
+  pointer-events: none;
+}
 
 .site-header {
   position: relative;

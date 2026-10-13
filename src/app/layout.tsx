@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Space_Grotesk } from "next/font/google";
+import CityHost from "@/components/city/CityHost";
 import SiteMusicGate from "@/components/SiteMusicGate";
 import { CopyProvider } from "@/content/CopyProvider";
 import { fill } from "@/content/copy";
@@ -41,6 +42,7 @@ export default async function RootLayout({
         <CopyProvider copy={copy}>
           {children}
           {copy.MUSIC.src && <SiteMusicGate />}
+          <CityHost />
         </CopyProvider>
       </body>
     </html>

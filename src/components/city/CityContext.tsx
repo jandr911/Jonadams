@@ -17,6 +17,7 @@ export interface CityApi {
   held: RefObject<Set<Move>>;
   quality: Quality;
   reducedMotion: boolean;
+  active: boolean;
 }
 
 export const CityContext = createContext<CityApi | null>(null);

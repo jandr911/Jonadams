@@ -82,7 +82,7 @@ function axis(keys: Set<Move>, pad: Set<Move>, plus: Move, minus: Move) {
 
 export default function CameraRig({ live }: { live: boolean }) {
   const ref = useRef<CameraControls>(null);
-  const { flyRef, homeRef, held, reducedMotion, navigating } = useCity();
+  const { flyRef, homeRef, held, reducedMotion, navigating, active } = useCity();
   const gl = useThree((s) => s.gl);
   const size = useThree((s) => s.size);
   const clock = useThree((s) => s.clock);
@@ -93,7 +93,6 @@ export default function CameraRig({ live }: { live: boolean }) {
   const [scratch] = useState(() => ({ p: new Vector3(), t: new Vector3() }));
   const placed = useRef(false);
   const introPlayed = useRef(false);
-  const wasNavigating = useRef(navigating);
   const takeOver = useRef(() => {});
 
   useEffect(() => {
@@ -135,8 +134,6 @@ export default function CameraRig({ live }: { live: boolean }) {
       const home = homeCamera(aspect);
       void (reducedMotion ? jump(home.position, home.target) : fly(home.position, home.target, FLY_HOME_SECONDS, true));
     };
-    if (wasNavigating.current && !navigating) homeRef.current();
-    wasNavigating.current = navigating;
     flyRef.current = async (d: Destination) => {
       const [x, z] = destinationPosition(d);
       const from: Vec3 = [x + d.view.from[0], d.view.from[1], z + d.view.from[2]];
@@ -190,7 +187,7 @@ export default function CameraRig({ live }: { live: boolean }) {
     const down = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
       const action = ACTIONS[key];
-      if (isTyping(e) || !action || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!active || isTyping(e) || !action || e.metaKey || e.ctrlKey || e.altKey) return;
       if (key.startsWith("arrow") || key.startsWith("page")) e.preventDefault();
       if (action === "home") {
         if (!e.repeat) homeRef.current?.();
@@ -216,7 +213,7 @@ export default function CameraRig({ live }: { live: boolean }) {
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", clear);
     };
-  }, [held, homeRef]);
+  }, [active, held, homeRef]);
 
   useFrame((state, delta) => {
     const c = ref.current;

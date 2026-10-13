@@ -22,7 +22,7 @@ const CityStage = dynamic(() => import("./CityStage"), { ssr: false });
 const PRESETS: TimePreset[] = ["auto", "day", "dusk", "night"];
 
 const FADE_AFTER_MS = 1700;
-const FADE_MS = 420;
+const FADE_MS = 450;
 
 function serverClockSnapshot() {
   return "auto|12.00";
@@ -102,7 +102,7 @@ function NavPad({ held, homeRef }: { held: React.RefObject<Set<Move>>; homeRef: 
   );
 }
 
-export default function CityCanvas() {
+export default function CityCanvas({ active }: { active: boolean }) {
   const { CITY_HUD, CITY_FALLBACK, SITE } = useCopy();
   const router = useRouter();
   const clock = useSyncExternalStore(subscribeMinute, clockSnapshot, serverClockSnapshot);
@@ -149,10 +149,12 @@ export default function CityCanvas() {
   const ready = stageUp && minWait;
   const live = ready && entered;
   const stageReady = useCallback(() => setStageUp(true), []);
+  const [curtain, setCurtain] = useState(true);
+  const dropCurtain = useCallback(() => setCurtain(false), []);
   const enter = useCallback(() => setEntered(true), []);
   const flyRef = useRef<((d: Destination) => Promise<void>) | null>(null);
   const homeRef = useRef<(() => void) | null>(null);
-  const leftForRoom = useRef(false);
+  const [prevActive, setPrevActive] = useState(active);
   const held = useRef(new Set<Move>());
   const trackRef = useRef<HTMLDivElement>(null);
   const [prefetched] = useState(() => new Set<string>());
@@ -205,25 +207,26 @@ export default function CityCanvas() {
       await Promise.race([flight, settle]);
       setFade(true);
       await new Promise((r) => setTimeout(r, reducedMotion ? 0 : FADE_MS));
-      leftForRoom.current = true;
       router.push(d.href);
     },
     [navigating, router, reducedMotion, setHovered, SITE.navLocked],
   );
 
-  useEffect(() => {
-    if (!leftForRoom.current) return;
-    const raf = requestAnimationFrame(() => {
-      leftForRoom.current = false;
+  if (active !== prevActive) {
+    setPrevActive(active);
+    if (active) {
       setFade(false);
       setNavigating(false);
-    });
-    return () => cancelAnimationFrame(raf);
-  }, []);
+    }
+  }
+
+  useEffect(() => {
+    if (active) homeRef.current?.();
+  }, [active]);
 
   const api = useMemo<CityApi>(
-    () => ({ setHovered, hoveredRef, navigating, flyTo, flyRef, homeRef, held, quality, reducedMotion }),
-    [setHovered, navigating, flyTo, quality, reducedMotion],
+    () => ({ setHovered, hoveredRef, navigating, flyTo, flyRef, homeRef, held, quality, reducedMotion, active }),
+    [setHovered, navigating, flyTo, quality, reducedMotion, active],
   );
 
   const pillLabel = preset === "auto" ? CITY_HUD.localTime : CITY_HUD.preview;
@@ -233,6 +236,7 @@ export default function CityCanvas() {
     <DayNightContext.Provider value={dn}>
       <CityContext.Provider value={api}>
         <HoverContext.Provider value={hover}>
+          <div className="city-host" data-active={active} data-curtain={curtain} inert={!active} aria-hidden={!active}>
           <div className={`city-root ${live ? "is-live" : ""}`}>
             <StageBoundary
               name="The 3D city"
@@ -243,7 +247,7 @@ export default function CityCanvas() {
                 </div>
               }
             >
-              <CityStage live={live} quality={quality} onQuality={setQuality} onReady={stageReady} />
+              <CityStage live={live} active={active} quality={quality} onQuality={setQuality} onReady={stageReady} />
             </StageBoundary>
             <div className="city-frame" aria-hidden>
               <i />
@@ -321,7 +325,8 @@ export default function CityCanvas() {
             </div>
 
             <div className={`city-fade ${fade ? "is-on" : ""}`} aria-hidden />
-            <Loader ready={ready} released={entered} onRelease={enter} returning={returning} />
+            <Loader ready={ready} released={entered} onRelease={enter} onGone={dropCurtain} returning={returning} />
+          </div>
           </div>
         </HoverContext.Provider>
       </CityContext.Provider>
