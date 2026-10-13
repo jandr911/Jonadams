@@ -177,7 +177,7 @@ export default function CityCanvas() {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setMinWait(true), returning ? 0 : 2400);
+    const t = setTimeout(() => setMinWait(true), returning ? 0 : 1600);
     return () => clearTimeout(t);
   }, [returning]);
 
@@ -243,7 +243,7 @@ export default function CityCanvas() {
                 </div>
               }
             >
-              <CityStage live={live} onQuality={setQuality} onReady={stageReady} />
+              <CityStage live={live} quality={quality} onQuality={setQuality} onReady={stageReady} />
             </StageBoundary>
             <div className="city-frame" aria-hidden>
               <i />

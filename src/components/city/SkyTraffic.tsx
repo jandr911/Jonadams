@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { BoxGeometry, Color, CylinderGeometry, InstancedMesh, Matrix4, Object3D, Quaternion, SphereGeometry, Vector3 } from "three";
 import { useCity } from "./CityContext";
 import { mulberry32, range } from "./rng";
-import { HIDDEN_MATRIX, mergeParts } from "./instancing";
+import { HIDDEN_MATRIX, mergeParts, useDynamicInstances } from "./instancing";
 
 const DRONE = mergeParts(
   [
@@ -140,6 +140,9 @@ export default function SkyTraffic() {
   const drones = useRef<InstancedMesh>(null);
   const taxis = useRef<InstancedMesh>(null);
   const lights = useRef<InstancedMesh>(null);
+  useDynamicInstances(drones);
+  useDynamicInstances(taxis);
+  useDynamicInstances(lights);
   const { reducedMotion } = useCity();
   useFrame(({ clock }) => {
     if (!drones.current || !taxis.current || !lights.current) return;

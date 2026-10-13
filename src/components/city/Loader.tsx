@@ -39,7 +39,7 @@ export function markVisited() {
   }
 }
 
-const RAMP_MS = 2800;
+const RAMP_MS = 2000;
 const QUICK_RAMP_MS = 700;
 const BARS = [...EQ_BARS, 0.85, 0.5];
 

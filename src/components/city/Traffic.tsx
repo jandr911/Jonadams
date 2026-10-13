@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, BoxGeometry, Color, Group, InstancedMesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
-import { gradientColors, setEmissiveIntensity } from "./instancing";
+import { gradientColors, setEmissiveIntensity, useDynamicInstances } from "./instancing";
 import { CITY_HALF_Z, CROSSWALK_OFFSET, LANE_OFFSET, MEDIAN_LANE_OFFSET, OUTER_COLS, OUTER_HALF_X, PITCH, ROAD_HALF, WOODWARD_INDEX, isMedianLine, lightIsAmber, lightIsGreen, outerRoadLinesX, TRAFFIC_CLOCK, outerRoadLinesZ } from "./layout";
 import { mulberry32, pick, range } from "./rng";
 import VehicleFleet, { type FleetItem, type PoseFn, type VehiclePose } from "./VehicleFleet";
@@ -724,6 +724,7 @@ function trailColors(count: number) {
 function LightTrails({ world }: { world: World }) {
   const dn = useDayNight();
   const ref = useRef<InstancedMesh>(null);
+  useDynamicInstances(ref);
   const mat = useRef<MeshBasicMaterial>(null);
   const [dummy] = useState(() => new Object3D());
   const count = world.cars.length;

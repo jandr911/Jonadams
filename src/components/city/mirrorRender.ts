@@ -12,6 +12,8 @@ import {
 } from "three";
 import { REFLECT_LAYER } from "./layers";
 
+export const MIRROR_SCALE = 0.4;
+
 interface MirrorScratch {
   virtualCamera: PerspectiveCamera;
   reflectorPos: Vector3;

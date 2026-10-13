@@ -9,7 +9,7 @@ import Aircraft from "./Aircraft";
 import AlterEgo from "./AlterEgo";
 import StageBoundary from "./StageBoundary";
 import Buildings from "./Buildings";
-import { useCity } from "./CityContext";
+import { useCity, type Quality } from "./CityContext";
 import DetailCull from "./DetailCull";
 import Details from "./Details";
 import Suburbs from "./Suburbs";
@@ -63,7 +63,8 @@ function Ambience() {
   return null;
 }
 
-const SHADOW_CADENCE: CadenceRate = { frames: 6, hz: 10 };
+const SHADOW_CADENCE: Record<Quality, CadenceRate> = { high: { frames: 6, hz: 10 }, low: { frames: 12, hz: 5 } };
+const SHADOW_MAP_SIZE: Record<Quality, number> = { high: 2048, low: 1024 };
 
 function setShadowManual(gl: WebGLRenderer) {
   gl.shadowMap.autoUpdate = false;
@@ -76,10 +77,11 @@ function requestShadowUpdate(gl: WebGLRenderer) {
 
 function ShadowThrottle() {
   const gl = useThree((s) => s.gl);
+  const { quality } = useCity();
   const cadence = useRef({ last: -Infinity, frames: 0 });
   useEffect(() => setShadowManual(gl), [gl]);
   useFrame(({ clock }) => {
-    if (cadenceDue(cadence.current, clock.elapsedTime, SHADOW_CADENCE)) requestShadowUpdate(gl);
+    if (cadenceDue(cadence.current, clock.elapsedTime, SHADOW_CADENCE[quality])) requestShadowUpdate(gl);
   }, -2);
   return null;
 }
@@ -113,7 +115,7 @@ export default function Scene({ onReady }: { onReady: () => void }) {
         intensity={dn.sunIntensity}
         color={dn.sunColor}
         castShadow={dn.night < 0.85}
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[SHADOW_MAP_SIZE[quality], SHADOW_MAP_SIZE[quality]]}
         shadow-bias={-0.0005}
         shadow-normalBias={0.5}
         shadow-radius={3}
