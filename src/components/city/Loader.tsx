@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { fill } from "@/content/copy";
 import { COORDINATES, EQ_BARS } from "@/content/site";
 import { useCopy } from "@/content/CopyProvider";
-import { startMusic, useMusicStatus } from "../SiteMusic";
+import { cueMusic, startMusic, useMusicStatus } from "../SiteMusic";
 
 const VISITED_KEY = "city-visited";
 
@@ -41,6 +41,7 @@ export function markVisited() {
 
 const RAMP_MS = 1000;
 const QUICK_RAMP_MS = 700;
+const MUSIC_SETTLE_MS = 250;
 const BARS = [...EQ_BARS, 0.85, 0.5];
 
 const DETROIT_SKYLINE_FROM_WINDSOR = [
@@ -116,6 +117,7 @@ export default function Loader({ ready, released, onRelease, onGone, returning }
   const [gone, setGone] = useState(false);
   const music = useMusicStatus();
   const awaitingEnter = ready && !released && Boolean(MUSIC.src) && music === "blocked";
+  const musicSettling = Boolean(MUSIC.src) && music === "pending";
   const start = useRef(0);
   const assetsRef = useRef(0);
   const shownRef = useRef(0);
@@ -132,9 +134,8 @@ export default function Loader({ ready, released, onRelease, onGone, returning }
       const t = Math.min(1, (now - start.current) / rampMs);
       const ramp = (1 - Math.pow(1 - t, 3)) * 88;
       const target = ready ? 100 : Math.max(ramp, assetsRef.current * 0.88);
-      const ease = ready ? 0.3 : 0.12;
       const p = shownRef.current;
-      const next = target - p < 0.05 ? target : p + (target - p) * ease;
+      const next = ready || target - p < 0.05 ? target : p + (target - p) * 0.12;
       shownRef.current = next;
       setShown(next);
       if (ready && next >= 100) return;
@@ -145,21 +146,31 @@ export default function Loader({ ready, released, onRelease, onGone, returning }
   }, [ready, returning]);
 
   useEffect(() => {
-    if (ready && !released && !awaitingEnter) onRelease();
-  }, [ready, released, awaitingEnter, onRelease]);
+    if (ready) cueMusic();
+  }, [ready]);
+
+  useEffect(() => {
+    if (!ready || released || awaitingEnter) return;
+    if (!musicSettling) {
+      onRelease();
+      return;
+    }
+    const t = setTimeout(onRelease, MUSIC_SETTLE_MS);
+    return () => clearTimeout(t);
+  }, [ready, released, awaitingEnter, musicSettling, onRelease]);
 
   useEffect(() => {
     if (!released) return;
-    const a = setTimeout(() => setDone(true), returning ? 120 : 400);
+    const a = setTimeout(() => setDone(true), 80);
     const b = setTimeout(() => {
       setGone(true);
       onGone();
-    }, returning ? 900 : 1300);
+    }, 650);
     return () => {
       clearTimeout(a);
       clearTimeout(b);
     };
-  }, [released, returning, onGone]);
+  }, [released, onGone]);
 
   if (gone) return null;
   const pct = Math.round(shown);
