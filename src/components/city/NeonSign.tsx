@@ -9,7 +9,8 @@ import { setEmissiveIntensity } from "./instancing";
 import { seedOf } from "./rng";
 
 export const DISPLAY_FONT = "/fonts/BebasNeue-Regular.ttf";
-export const SCRIPT_FONT = "/fonts/CormorantGaramond-Italic.ttf";
+export const SCRIPT_FONT = "/fonts/CormorantGaramond-Italic.woff";
+if (typeof window !== "undefined") for (const font of [DISPLAY_FONT, SCRIPT_FONT]) void fetch(font);
 
 interface NeonSignProps {
   text: string;

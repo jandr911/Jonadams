@@ -177,7 +177,7 @@ export default function CityCanvas() {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setMinWait(true), returning ? 0 : 2400);
+    const t = setTimeout(() => setMinWait(true), returning ? 0 : 1600);
     return () => clearTimeout(t);
   }, [returning]);
 

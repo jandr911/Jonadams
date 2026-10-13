@@ -1,6 +1,6 @@
 "use client";
 
-import { Cloud, Clouds } from "@react-three/drei";
+import { Cloud, Clouds, useTexture } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -25,6 +25,9 @@ import { mulberry32, range } from "./rng";
 import { useDynamicInstances } from "./instancing";
 import { enableReflection } from "./layers";
 import { NOISE_GLSL } from "./noise";
+
+const CLOUD_SPRITE = "/textures/cloud.png";
+useTexture.preload(CLOUD_SPRITE);
 
 const SKY_RADIUS = 1100;
 
@@ -336,7 +339,7 @@ function Cumulus() {
   });
   return (
     <group name="cumulus">
-      <Clouds material={MeshBasicMaterial} limit={300} frustumCulled={false}>
+      <Clouds material={MeshBasicMaterial} texture={CLOUD_SPRITE} limit={300} frustumCulled={false}>
         {CLOUD_SPECS.map((c, i) => (
           <group
             key={i}
