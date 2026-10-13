@@ -1,4 +1,19 @@
-import { presetHour, type TimePreset } from "./dayNight";
+export type TimePreset = "auto" | "day" | "dusk" | "night";
+
+export function presetHour(preset: TimePreset, now?: Date): number {
+  switch (preset) {
+    case "day":
+      return 13;
+    case "dusk":
+      return 19.4;
+    case "night":
+      return 23;
+    default: {
+      const at = now ?? new Date();
+      return at.getHours() + at.getMinutes() / 60;
+    }
+  }
+}
 
 const LIGHT_STEPS_PER_HOUR = 4;
 
@@ -16,4 +31,13 @@ export function clockSnapshot() {
 export function readClock(clock: string) {
   const [preset, hour] = clock.split("|") as [TimePreset, string];
   return { preset, hour: Number(hour) };
+}
+
+export type Phase = "sunrise" | "day" | "dusk" | "night";
+
+export function phaseFor(hour: number): Phase {
+  if (hour >= 6 && hour < 8) return "sunrise";
+  if (hour >= 8 && hour < 18) return "day";
+  if (hour >= 18 && hour < 21) return "dusk";
+  return "night";
 }

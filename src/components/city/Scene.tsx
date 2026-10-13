@@ -1,9 +1,8 @@
 "use client";
 
-import { Preload } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useRef } from "react";
-import { InstancedMesh, PMREMGenerator, Scene as ThreeScene, Texture } from "three";
+import { InstancedMesh, PMREMGenerator, Scene as ThreeScene, Texture, WebGLRenderTarget, type Object3D } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import Aircraft from "./Aircraft";
 import AlterEgo from "./AlterEgo";
@@ -28,6 +27,8 @@ import Traffic from "./Traffic";
 import { TreeWind } from "./TreeStand";
 import { WindowClock } from "./useWindowMaterial";
 import Watercraft from "./Watercraft";
+
+const WARM_LIMIT_MS = 8000;
 
 function ignoreFailure() {}
 
@@ -60,6 +61,43 @@ function Ambience() {
   return null;
 }
 
+function WarmShaders({ onWarm }: { onWarm: () => void }) {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  useEffect(() => {
+    let cancelled = false;
+    const warm = () => {
+      if (!cancelled) onWarm();
+    };
+    const giveUp = setTimeout(warm, WARM_LIMIT_MS);
+    const raf = requestAnimationFrame(() => {
+      const hidden: Object3D[] = [];
+      scene.traverse((o) => {
+        if (o.visible) return;
+        hidden.push(o);
+        o.visible = true;
+      });
+      const target = new WebGLRenderTarget(1, 1);
+      const previous = gl.getRenderTarget();
+      gl.setRenderTarget(target);
+      try {
+        gl.compileAsync(scene, camera).then(warm);
+      } finally {
+        gl.setRenderTarget(previous);
+        target.dispose();
+        for (const o of hidden) o.visible = false;
+      }
+    });
+    return () => {
+      cancelled = true;
+      clearTimeout(giveUp);
+      cancelAnimationFrame(raf);
+    };
+  }, [gl, scene, camera, onWarm]);
+  return null;
+}
+
 function FirstFrames({ onReady }: { onReady: () => void }) {
   const frames = useRef(0);
   const scene = useThree((s) => s.scene);
@@ -74,7 +112,7 @@ function FirstFrames({ onReady }: { onReady: () => void }) {
   return null;
 }
 
-export default function Scene({ onReady }: { onReady: () => void }) {
+export default function Scene({ live, onWarm, onReady }: { live: boolean; onWarm: () => void; onReady: () => void }) {
   const dn = useDayNight();
   return (
     <>
@@ -105,11 +143,13 @@ export default function Scene({ onReady }: { onReady: () => void }) {
         <StaticBatch label="aircraft">
           <Aircraft />
         </StaticBatch>
-        <StageBoundary name="The alter ego" fallback={null} onFail={ignoreFailure}>
-          <Suspense fallback={null}>
-            <AlterEgo />
-          </Suspense>
-        </StageBoundary>
+        {live && (
+          <StageBoundary name="The alter ego" fallback={null} onFail={ignoreFailure}>
+            <Suspense fallback={null}>
+              <AlterEgo />
+            </Suspense>
+          </StageBoundary>
+        )}
         <SkyTraffic />
         <HoloBillboards />
         <StaticBatch label="watercraft">
@@ -123,7 +163,7 @@ export default function Scene({ onReady }: { onReady: () => void }) {
           <Suburbs />
         </StaticBatch>
         <TreeWind />
-        <Preload all />
+        <WarmShaders onWarm={onWarm} />
         <FirstFrames onReady={onReady} />
       </Suspense>
       <Ambience />

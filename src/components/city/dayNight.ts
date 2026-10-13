@@ -1,7 +1,5 @@
 import { Color } from "three";
 
-export type TimePreset = "auto" | "day" | "dusk" | "night";
-
 export interface DayNight {
   night: number;
   cloud: number;
@@ -65,21 +63,6 @@ function smooth(a: number, b: number, x: number) {
   return t * t * (3 - 2 * t);
 }
 
-export function presetHour(preset: TimePreset, now?: Date): number {
-  switch (preset) {
-    case "day":
-      return 13;
-    case "dusk":
-      return 19.4;
-    case "night":
-      return 23;
-    default: {
-      const at = now ?? new Date();
-      return at.getHours() + at.getMinutes() / 60;
-    }
-  }
-}
-
 export function computeDayNight(hour: number, cloud = OVERCAST_BASELINE): DayNight {
   const dayAmount = smooth(6, 8, hour) * (1 - smooth(18, 20.5, hour));
   const clear = Math.max(0, 1 - cloud / OVERCAST_BASELINE) * dayAmount;
@@ -119,13 +102,4 @@ export function computeDayNight(hour: number, cloud = OVERCAST_BASELINE): DayNig
     bloom: 0.3 + night * 0.5,
     starAlpha: smooth(0.55, 1, night) * (1 - cloud * 0.7),
   };
-}
-
-export type Phase = "sunrise" | "day" | "dusk" | "night";
-
-export function phaseFor(hour: number): Phase {
-  if (hour >= 6 && hour < 8) return "sunrise";
-  if (hour >= 8 && hour < 18) return "day";
-  if (hour >= 18 && hour < 21) return "dusk";
-  return "night";
 }

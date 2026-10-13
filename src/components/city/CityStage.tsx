@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { memo, useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { memo, useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { NoToneMapping, type Clock } from "three";
 import CameraRig from "./CameraRig";
 import type { Quality } from "./CityContext";
@@ -42,9 +42,11 @@ function ClockKeeper({ active }: { active: boolean }) {
 
 function CityStage({ live, active, quality, onSlow, onReady }: { live: boolean; active: boolean; quality: Quality; onSlow: () => void; onReady: () => void }) {
   const capped = useSyncExternalStore(subscribeResize, cappedDpr, serverDpr);
+  const [warm, setWarm] = useState(false);
+  const markWarm = useCallback(() => setWarm(true), []);
   return (
     <Canvas
-      frameloop={active ? "always" : "never"}
+      frameloop={active && warm ? "always" : "never"}
       dpr={quality === "low" ? capped : 1}
       camera={{ fov: 40, near: 1, far: 2600, position: [0, 80, 260] }}
       gl={{ antialias: false, powerPreference: "high-performance", toneMapping: NoToneMapping }}
@@ -60,7 +62,7 @@ function CityStage({ live, active, quality, onSlow, onReady }: { live: boolean; 
     >
       <ClockKeeper active={active} />
       <QualityGovernor live={live} onSlow={onSlow} />
-      <Scene onReady={onReady} />
+      <Scene live={live} onWarm={markWarm} onReady={onReady} />
       <CameraRig live={live} />
     </Canvas>
   );

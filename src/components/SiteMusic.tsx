@@ -34,6 +34,8 @@ let audio: HTMLAudioElement | null = null;
 let status: MusicStatus | null = null;
 let fade: ReturnType<typeof setInterval> | undefined;
 let disarmGestures = () => {};
+let cued = false;
+let begin = () => {};
 const listeners = new Set<() => void>();
 
 function setStatus(next: MusicStatus) {
@@ -111,6 +113,12 @@ export function startMusic() {
   void tryPlay().then(settle);
 }
 
+export function cueMusic() {
+  if (cued) return;
+  cued = true;
+  begin();
+}
+
 export function stopMusic() {
   disarmGestures();
   silence();
@@ -165,7 +173,8 @@ export default function SiteMusic() {
       armed = false;
       for (const g of GESTURES) window.removeEventListener(g, onGesture);
     };
-    if (snapshot() !== "stopped") {
+    begin = () => {
+      if (snapshot() === "stopped") return;
       void tryPlay().then((result) => {
         if (!alive) return;
         settle(result);
@@ -173,9 +182,11 @@ export default function SiteMusic() {
         armed = true;
         for (const g of GESTURES) window.addEventListener(g, onGesture);
       });
-    }
+    };
+    if (cued) begin();
     return () => {
       alive = false;
+      begin = () => {};
       disarmGestures();
       silence();
       audio = null;
