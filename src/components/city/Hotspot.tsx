@@ -178,7 +178,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
         {children}
       </group>
       <group position={[0, dest.markerHeight, 0]}>
-        <mesh geometry={BEACON_COLUMN} position={[0, BEACON_HEIGHT / 2, 0]} userData={{ noReflect: true }}>
+        <mesh geometry={BEACON_COLUMN} position={[0, BEACON_HEIGHT / 2, 0]}>
           <meshBasicMaterial
             ref={columnMat}
             color={dest.color}
@@ -191,7 +191,7 @@ export default function Hotspot({ dest, position, children }: HotspotProps) {
             toneMapped={false}
           />
         </mesh>
-        <mesh ref={crystal} geometry={CRYSTAL} material={hologram} position={[0, BEACON_HEIGHT + 2.4, 0]} userData={{ noReflect: true }} />
+        <mesh ref={crystal} geometry={CRYSTAL} material={hologram} position={[0, BEACON_HEIGHT + 2.4, 0]} />
       </group>
       <mesh ref={ring} position={[0, dest.markerHeight + BEACON_HEIGHT + 2.4, 0]} rotation={[Math.PI / 2, 0, 0]} scale={0} visible={false}>
         <torusGeometry args={[3.4, 0.22, 8, 32]} />

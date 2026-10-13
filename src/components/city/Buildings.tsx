@@ -28,8 +28,7 @@ import { ghostAdTexture, labelTexture } from "./labels";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { makeShadowBlobTexture } from "./textures";
 import { fillColors, fillInstances, fillPlacements, mergeParts, useBaseBoxGeometry, type Placement } from "./instancing";
-import { enableReflection } from "./layers";
-import type { BufferGeometry, Group } from "three";
+import type { BufferGeometry } from "three";
 
 export const RESERVED_BLOCKS = new Set<string>([
   ...DESTINATIONS.map((d) => `${d.block[0]},${d.block[1]}`),
@@ -294,7 +293,7 @@ function InstancedLots({ lots }: { lots: Lot[] }) {
     m.geometry.setAttribute("aArch", new InstancedBufferAttribute(arch, 3));
   }, [lots, seeds, arch]);
   return (
-    <instancedMesh ref={ref} args={[lotGeometry, mat, lots.length]} castShadow receiveShadow />
+    <instancedMesh ref={ref} args={[lotGeometry, mat, lots.length]} />
   );
 }
 
@@ -535,7 +534,7 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
   }, [dn]);
   const beaconMast = BEACON_MAST + (hasCrown(beaconLot) ? crownHeight(beaconLot) : 0);
   return (
-    <group name="roof-details" userData={{ noReflect: true }}>
+    <group name="roof-details">
       <instancedMesh ref={parapets} args={[undefined, undefined, extras.parapet.length]}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="#9c8f78" roughness={0.95} />
@@ -818,7 +817,7 @@ function Facades({ lots }: { lots: Lot[] }) {
         <icosahedronGeometry args={[0.5, 0]} />
         <meshStandardMaterial color="#44603c" roughness={1} flatShading />
       </instancedMesh>
-      <instancedMesh ref={cornices} args={[undefined, undefined, data.cornice.length]} castShadow>
+      <instancedMesh ref={cornices} args={[undefined, undefined, data.cornice.length]}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="#b9a88c" roughness={0.9} />
       </instancedMesh>
@@ -895,10 +894,10 @@ function Crowns({ lots }: { lots: Lot[] }) {
   }, [dn]);
   return (
     <group name="crowns">
-      <instancedMesh ref={plain} args={[CROWN, undefined, dark.length]} castShadow>
+      <instancedMesh ref={plain} args={[CROWN, undefined, dark.length]}>
         <meshStandardMaterial color="#ffffff" roughness={0.75} metalness={0.2} />
       </instancedMesh>
-      <instancedMesh ref={lit} args={[CROWN, undefined, floodlit.length]} castShadow>
+      <instancedMesh ref={lit} args={[CROWN, undefined, floodlit.length]}>
         <meshStandardMaterial ref={litMat} color="#ffffff" emissive="#ffcf96" emissiveIntensity={0} roughness={0.75} metalness={0.2} />
       </instancedMesh>
     </group>
@@ -937,10 +936,8 @@ function GhostAds({ lots }: { lots: Lot[] }) {
 
 export default function Buildings() {
   const { city } = useMemo(() => buildLots(), []);
-  const root = useRef<Group>(null);
-  useEffect(() => enableReflection(root.current), []);
   return (
-    <group ref={root}>
+    <group>
       <InstancedLots lots={city} />
       <ContactShadows lots={city} />
       <RoofDetails lots={city} />

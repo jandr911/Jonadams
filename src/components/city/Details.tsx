@@ -315,7 +315,7 @@ function ResidentialSlabs() {
   return (
     <group>
       {SLABS.map((s, i) => (
-        <mesh key={i} position={[s.x, s.h / 2, s.z]} rotation={[0, s.rot, 0]} castShadow>
+        <mesh key={i} position={[s.x, s.h / 2, s.z]} rotation={[0, s.rot, 0]}>
           <boxGeometry args={[s.w, s.h, s.d]} />
           <meshStandardMaterial color="#8c8678" roughness={0.95} />
         </mesh>

@@ -19,6 +19,7 @@ import {
 } from "three";
 import { useCity, type Quality } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
+import { reflectionRoot } from "./layers";
 import { cadenceDue, type CadenceRate } from "./renderCadence";
 import { MIRROR_SCALE, makeMirrorScratch, renderMirror } from "./mirrorRender";
 import { NOISE_GLSL } from "./noise";
@@ -111,7 +112,6 @@ export default function RiverMirror({
   const dn = useDayNight();
   const { quality } = useCity();
   const gl = useThree((s) => s.gl);
-  const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
   const dpr = useThree((s) => s.viewport.dpr);
@@ -179,8 +179,9 @@ export default function RiverMirror({
     const m = mesh.current;
     if (!m) return;
     (m.material as ShaderMaterial).uniforms.uTime.value = clock.elapsedTime;
-    if (!cadenceDue(cadence.current, clock.elapsedTime, MIRROR_CADENCE[quality])) return;
-    renderMirror(gl, scene, camera as PerspectiveCamera, m, rt, scratch);
+    const sky = reflectionRoot.current;
+    if (!sky || !cadenceDue(cadence.current, clock.elapsedTime, MIRROR_CADENCE[quality])) return;
+    renderMirror(gl, sky, camera as PerspectiveCamera, m, rt, scratch);
   }, -1);
 
   return (

@@ -72,14 +72,12 @@ function Stand({
   species,
   quality,
   seed,
-  castShadow,
   groundY,
 }: {
   trees: TreeSpec[];
   species: TreeSpecies;
   quality: CrownQuality;
   seed: number;
-  castShadow: boolean;
   groundY: number;
 }) {
   const geo = useTreeGeometry(species, quality, seed);
@@ -100,8 +98,8 @@ function Stand({
   }, [trees, groundY, geo]);
   return (
     <group>
-      <instancedMesh ref={trunks} args={[geo.trunk, trunkMat, trees.length]} castShadow={castShadow} />
-      {geo.crown && <instancedMesh ref={crowns} args={[geo.crown, crownMat, trees.length]} castShadow={castShadow} />}
+      <instancedMesh ref={trunks} args={[geo.trunk, trunkMat, trees.length]} />
+      {geo.crown && <instancedMesh ref={crowns} args={[geo.crown, crownMat, trees.length]} />}
     </group>
   );
 }
@@ -117,13 +115,11 @@ export default function TreeStand({
   trees,
   quality,
   seed = 1,
-  castShadow = false,
   groundY = 0,
 }: {
   trees: TreeSpec[];
   quality: CrownQuality;
   seed?: number;
-  castShadow?: boolean;
   groundY?: number;
 }) {
   const groups = useMemo(() => {
@@ -138,7 +134,7 @@ export default function TreeStand({
   return (
     <group>
       {groups.map(([species, list]) => (
-        <Stand key={species} species={species} trees={list} quality={quality} seed={seed} castShadow={castShadow} groundY={groundY} />
+        <Stand key={species} species={species} trees={list} quality={quality} seed={seed} groundY={groundY} />
       ))}
       {quality !== "far" && <FallenLeaves trees={trees} groundY={groundY} />}
     </group>

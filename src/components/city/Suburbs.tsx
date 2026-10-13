@@ -385,7 +385,7 @@ function Banks({ banks }: { banks: Bank[] }) {
     fillColors(m, banks.length, (i) => banks[i].color);
   }, [banks]);
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, banks.length]} receiveShadow>
+    <instancedMesh ref={ref} args={[undefined, undefined, banks.length]}>
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial roughness={1} />
     </instancedMesh>
@@ -465,12 +465,12 @@ function HideAbove({ y, children }: { y: number; children: React.ReactNode }) {
   );
 }
 
-function Parts({ items, children, geometry, castShadow = false }: { items: Placement[]; children?: React.ReactNode; geometry?: BufferGeometry; castShadow?: boolean }) {
+function Parts({ items, children, geometry }: { items: Placement[]; children?: React.ReactNode; geometry?: BufferGeometry }) {
   const ref = useRef<InstancedMesh>(null);
   useEffect(() => fillPlacements(ref.current, items), [items]);
   if (items.length === 0) return null;
   return (
-    <instancedMesh ref={ref} args={[geometry, undefined, items.length]} castShadow={castShadow}>
+    <instancedMesh ref={ref} args={[geometry, undefined, items.length]}>
       {children}
     </instancedMesh>
   );
@@ -516,7 +516,7 @@ function Houses({ houses, pads, textures }: { houses: House[]; pads: { x: number
   }, [dn]);
   return (
     <group name="houses">
-      <instancedMesh ref={padMesh} args={[undefined, undefined, pads.length]} receiveShadow>
+      <instancedMesh ref={padMesh} args={[undefined, undefined, pads.length]}>
         <boxGeometry args={[LOT_PAD, GROUND * 2, LOT_PAD]} />
         <meshStandardMaterial color="#63615c" map={concrete} roughness={1} />
       </instancedMesh>
@@ -685,7 +685,7 @@ function SuburbStreets() {
     });
   }, [items]);
   return (
-    <instancedMesh ref={ref} name="suburb-streets" args={[undefined, undefined, items.length]} receiveShadow>
+    <instancedMesh ref={ref} name="suburb-streets" args={[undefined, undefined, items.length]}>
       <boxGeometry args={[7, 0.1, STREET]} />
       <meshStandardMaterial color="#8a8a94" map={road} roughness={1} />
     </instancedMesh>
@@ -759,7 +759,7 @@ function Freeway() {
   const mid = (FREEWAY_Z0 + FREEWAY_Z1) / 2;
   return (
     <group>
-      <mesh position={[FREEWAY_X, FREEWAY_Y, mid]} receiveShadow>
+      <mesh position={[FREEWAY_X, FREEWAY_Y, mid]}>
         <boxGeometry args={[16, 1, len]} />
         <meshStandardMaterial color="#3a3a46" roughness={1} />
       </mesh>
@@ -900,7 +900,7 @@ function BlockFeatures({ features, textures }: { features: Features; textures: S
       <Parts items={features.fields} geometry={FIELD_DISC}>
         <meshStandardMaterial color="#8a6a46" roughness={1} />
       </Parts>
-      <Parts items={features.boxes} castShadow>
+      <Parts items={features.boxes}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="#ffffff" roughness={0.95} />
       </Parts>
