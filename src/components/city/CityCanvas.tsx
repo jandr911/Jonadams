@@ -180,7 +180,7 @@ export default function CityCanvas({ active }: { active: boolean }) {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setMinWait(true), returning ? 0 : 1600);
+    const t = setTimeout(() => setMinWait(true), returning ? 0 : 800);
     return () => clearTimeout(t);
   }, [returning]);
 
