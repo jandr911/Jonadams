@@ -16,7 +16,7 @@ import {
 } from "three";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
-import { fillInstances, setEmissiveIntensity } from "./instancing";
+import { fillInstances, setEmissiveIntensity, useDynamicInstances } from "./instancing";
 import { labelTexture } from "./labels";
 import { PEOPLE_MOVER_X, PEOPLE_MOVER_Z, ROAD_HALF, roadLinesX, roadLinesZ } from "./layout";
 import { enableReflection } from "./layers";
@@ -460,6 +460,7 @@ function placePulses(m: InstancedMesh, d: Object3D, loop: ReturnType<typeof samp
 
 function MaglevPulses({ curve }: { curve: CatmullRomCurve3 }) {
   const ref = useRef<InstancedMesh>(null);
+  useDynamicInstances(ref);
   const [dummy] = useState(() => new Object3D());
   const [loop] = useState(() => sampleLoop(curve));
   const { reducedMotion } = useCity();

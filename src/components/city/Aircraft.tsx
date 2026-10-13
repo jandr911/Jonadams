@@ -3,7 +3,7 @@
 import { Float, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { AdditiveBlending, Color, CatmullRomCurve3, ConeGeometry, DoubleSide, Group, MathUtils, Mesh, MeshStandardMaterial, PlaneGeometry, Vector3 } from "three";
+import { AdditiveBlending, BufferAttribute, Color, CatmullRomCurve3, ConeGeometry, DoubleSide, DynamicDrawUsage, Group, MathUtils, Mesh, MeshStandardMaterial, PlaneGeometry, Vector3 } from "three";
 import { useCopy } from "@/content/CopyProvider";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
@@ -571,6 +571,12 @@ function Helicopter() {
   );
 }
 
+function bannerGeometry() {
+  const geo = new PlaneGeometry(30, 4, 30, 1);
+  (geo.attributes.position as BufferAttribute).setUsage(DynamicDrawUsage);
+  return geo;
+}
+
 function rippleBanner(geo: PlaneGeometry, t: number, side: 1 | -1) {
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
@@ -589,8 +595,8 @@ function BannerPlane() {
   const rig = useRef<Group>(null);
   const prop = useRef<Group>(null);
   const banner = useRef<Group>(null);
-  const bannerGeo = useMemo(() => new PlaneGeometry(30, 4, 30, 1), []);
-  const bannerBackGeo = useMemo(() => new PlaneGeometry(30, 4, 30, 1), []);
+  const bannerGeo = useMemo(() => bannerGeometry(), []);
+  const bannerBackGeo = useMemo(() => bannerGeometry(), []);
   useEffect(
     () => () => {
       bannerGeo.dispose();

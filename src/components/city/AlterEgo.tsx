@@ -21,6 +21,7 @@ const STANDING = { src: ALTER_EGO_ART.standing, aspect: 430 / 775, anchor: { x: 
 const SMOKE = { src: ALTER_EGO_ART.smoke, aspect: 314 / 298, height: 0.3845 * STAND_H, anchor: { x: -0.4108, y: 0 } };
 const SMOKE_ROOT = new Vector3(-0.0942 * STAND_H, 0.9626 * STAND_H, 0.02);
 const WALKING = { src: ALTER_EGO_ART.walking, aspect: 394 / 913, anchor: { x: 0.04, y: 0.62 } };
+useTexture.preload([STANDING.src, SMOKE.src, WALKING.src]);
 const ROPE_END = new Vector3(0, (0.9 - WALKING.anchor.y) * WALK_H, -0.8);
 const ROPE = 12;
 

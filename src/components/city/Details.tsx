@@ -4,7 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BoxGeometry, CapsuleGeometry, Color, DoubleSide, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
 import { useDayNight } from "./DayNightContext";
-import { fillColors, fillInstances } from "./instancing";
+import { fillColors, fillInstances, useDynamicInstances } from "./instancing";
 import MacArthurBridge from "./MacArthurBridge";
 import {
   BLOCK,
@@ -38,6 +38,7 @@ function TrafficLights() {
   const poles = useRef<InstancedMesh>(null);
   const housings = useRef<InstancedMesh>(null);
   const lamps = useRef<InstancedMesh>(null);
+  useDynamicInstances(lamps);
   const dummy = useMemo(() => new Object3D(), []);
   const items = useMemo(() => {
     const out: { x: number; z: number; rot: number; axis: "x" | "z"; ix: number; iz: number }[] = [];
@@ -160,6 +161,9 @@ function Gulls() {
   const body = useRef<InstancedMesh>(null);
   const wingL = useRef<InstancedMesh>(null);
   const wingR = useRef<InstancedMesh>(null);
+  useDynamicInstances(body);
+  useDynamicInstances(wingL);
+  useDynamicInstances(wingR);
   const dummy = useMemo(() => new Object3D(), []);
   const flock = useMemo(() => {
     const rand = mulberry32(8);

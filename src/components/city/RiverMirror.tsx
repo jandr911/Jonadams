@@ -17,9 +17,10 @@ import {
   Vector3,
   WebGLRenderTarget,
 } from "three";
+import { useCity, type Quality } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import { cadenceDue, type CadenceRate } from "./renderCadence";
-import { makeMirrorScratch, renderMirror } from "./mirrorRender";
+import { MIRROR_SCALE, makeMirrorScratch, renderMirror } from "./mirrorRender";
 import { NOISE_GLSL } from "./noise";
 
 const vert = /* glsl */ `
@@ -92,8 +93,7 @@ const frag = /* glsl */ `
   }
 `;
 
-const MIRROR_SCALE = 0.4;
-const MIRROR_CADENCE: CadenceRate = { frames: 3, hz: 20 };
+const MIRROR_CADENCE: Record<Quality, CadenceRate> = { high: { frames: 3, hz: 20 }, low: { frames: 6, hz: 10 } };
 
 function resizeTarget(rt: WebGLRenderTarget, width: number, height: number) {
   rt.setSize(width, height);
@@ -109,15 +109,17 @@ export default function RiverMirror({
   position: [number, number, number];
 }) {
   const dn = useDayNight();
+  const { quality } = useCity();
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
+  const dpr = useThree((s) => s.viewport.dpr);
   const mesh = useRef<Mesh>(null);
   const cadence = useRef({ last: -Infinity, frames: 0 });
 
-  const mirrorWidth = Math.max(256, Math.floor(size.width * MIRROR_SCALE));
-  const mirrorHeight = Math.max(144, Math.floor(size.height * MIRROR_SCALE));
+  const mirrorWidth = Math.max(256, Math.floor(size.width * dpr * MIRROR_SCALE));
+  const mirrorHeight = Math.max(144, Math.floor(size.height * dpr * MIRROR_SCALE));
   const [rt] = useState(
     () =>
       new WebGLRenderTarget(mirrorWidth, mirrorHeight, {
@@ -177,7 +179,7 @@ export default function RiverMirror({
     const m = mesh.current;
     if (!m) return;
     (m.material as ShaderMaterial).uniforms.uTime.value = clock.elapsedTime;
-    if (!cadenceDue(cadence.current, clock.elapsedTime, MIRROR_CADENCE)) return;
+    if (!cadenceDue(cadence.current, clock.elapsedTime, MIRROR_CADENCE[quality])) return;
     renderMirror(gl, scene, camera as PerspectiveCamera, m, rt, scratch);
   }, -1);
 
