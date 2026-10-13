@@ -21,7 +21,7 @@ const CityStage = dynamic(() => import("./CityStage"), { ssr: false });
 
 const PRESETS: TimePreset[] = ["auto", "day", "dusk", "night"];
 
-const FADE_AFTER_MS = 1700;
+const FADE_AFTER_MS = 700;
 const FADE_MS = 450;
 
 function serverClockSnapshot() {
