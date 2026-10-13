@@ -3,9 +3,8 @@
 import { useState, useSyncExternalStore } from "react";
 import { fill } from "@/content/copy";
 import { useCopy } from "@/content/CopyProvider";
-import { clockSnapshot, readClock, subscribeMinute } from "../city/clock";
+import { clockSnapshot, phaseFor, presetHour, readClock, subscribeMinute, type TimePreset } from "../city/clock";
 import { MusicToggle } from "../SiteMusic";
-import { phaseFor, presetHour, type TimePreset } from "../city/dayNight";
 
 const PRESETS: TimePreset[] = ["auto", "day", "dusk", "night"];
 
