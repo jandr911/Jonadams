@@ -154,6 +154,11 @@ written by `next dev` and says the same thing.
 
 `src/components/city/` is the homepage. It is the whole pitch, and it has a frame budget.
 
+The city is mounted once, from the root layout through `CityHost`, and stays mounted while a
+room is open: hidden, inert and with the render loop stopped (`frameloop="never"`), so coming
+back is instant and no shader recompiles. `src/app/page.tsx` only renders the header and the
+stage area the fixed `.city-host` sits over. Do not move the canvas back into the page.
+
 **Budget.** 50 to 60 fps at 1440×900 on an Intel integrated GPU in the home view, and
 never below about 35 fps zoomed far out. That is what the client's machine does. A
 change that drops the home view under 50 does not ship until it is back.
