@@ -177,13 +177,23 @@ The budget is held by deliberate choices. Do not undo them without a measured re
   is what keeps the mirror pass near 200 draws instead of 330. Never bring the drei
   reflector back.
 - The shadow map is 2048 and refreshes every sixth frame and at most 10 Hz through
-  `ShadowThrottle` (1024, every twelfth frame and 5 Hz in the low tier).
+  `ShadowThrottle` (1024, every twelfth frame and 5 Hz in the low tier). `cadenceDue` in
+  `renderCadence.ts` lets one heavy pass claim a frame, so the mirror, the shadow map and
+  the detail cull never land on the same frame; a pass that finds the frame taken waits one.
 - Mirror and shadow rates never rise above those defaults on any machine; the low tier
   only lowers them. A smooth tier that raised them
   (mirror every frame, shadows at 30 Hz) on screens holding 75 fps or more was removed after
   the client's 120 Hz Mac flickered black: his video ran clean for 18 s at the normal rates,
   then pulsed every 1.2 to 1.6 s, a 30 Hz beat against the phone camera. Not reproduced on
   Intel; do not bring a faster tier back without testing on that Mac.
+- The quality tier moves one way. `QualityGovernor` drops a visit from high to low after
+  4 s under 26 fps (clear of the 30 fps that browser power saving caps to) and never
+  raises it again, and the two tiers draw the same objects
+  and the same post chain: low only lowers the mirror and shadow rates, the shadow map
+  size and the pixel ratio. A governor that also rose back after 6 s over 40 fps, with a
+  low tier that dropped the post chain and the sky extras, flipped the whole look every
+  minute or two on 1080p laptops that run about 30 fps high and 40 low; the client's
+  testers called it glitching. Do not add a visible difference between the tiers.
 - The world is clipped at `EXTENT` because fog hides everything further. Clouds sit above
   the camera ceiling and the camera floor keeps the eye above the streets. Do not move
   one without the others.

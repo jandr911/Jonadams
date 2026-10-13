@@ -143,6 +143,7 @@ export default function CityCanvas({ active }: { active: boolean }) {
   const [navigating, setNavigating] = useState(false);
   const [fade, setFade] = useState(false);
   const [quality, setQuality] = useState<Quality>("high");
+  const dropQuality = useCallback(() => setQuality("low"), []);
   const [stageUp, setStageUp] = useState(false);
   const [minWait, setMinWait] = useState(false);
   const [entered, setEntered] = useState(false);
@@ -247,7 +248,7 @@ export default function CityCanvas({ active }: { active: boolean }) {
                 </div>
               }
             >
-              <CityStage live={live} active={active} quality={quality} onQuality={setQuality} onReady={stageReady} />
+              <CityStage live={live} active={active} quality={quality} onSlow={dropQuality} onReady={stageReady} />
             </StageBoundary>
             <div className="city-frame" aria-hidden>
               <i />

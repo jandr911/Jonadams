@@ -5,10 +5,11 @@ import { useRef } from "react";
 import { InstancedMesh, Mesh, PerspectiveCamera, type Object3D } from "three";
 import { REFLECT_LAYER, REFLECTS } from "./layers";
 import { MIRROR_SCALE } from "./mirrorRender";
+import { cadenceDue, type CadenceRate } from "./renderCadence";
 
 const HIDE_BELOW_PX = 1.1;
 const SHOW_ABOVE_PX = 1.8;
-const EVERY_FRAMES = 8;
+const CULL_CADENCE: CadenceRate = { frames: 8, hz: Infinity };
 // Under 8 px in the 0.4-scale river mirror a reflection is lost in the ripple; dropping those meshes cut the mirror pass from 326 to about 190 draws at the home view.
 const HIDE_REFLECTION_BELOW_PX = 8;
 const SHOW_REFLECTION_ABOVE_PX = 12;
@@ -52,10 +53,9 @@ function cullVisit(o: Object3D) {
 
 export default function DetailCull() {
   const scene = useThree((s) => s.scene);
-  const frame = useRef(0);
-  useFrame(({ camera, size }) => {
-    frame.current += 1;
-    if (frame.current % EVERY_FRAMES !== 0 || !(camera instanceof PerspectiveCamera)) return;
+  const cadence = useRef({ last: -Infinity, frames: 0 });
+  useFrame(({ camera, size, clock }) => {
+    if (!(camera instanceof PerspectiveCamera) || !cadenceDue(cadence.current, clock.elapsedTime, CULL_CADENCE)) return;
     view.pxPerUnit = size.height / (2 * Math.tan((camera.fov * Math.PI) / 360));
     view.cx = camera.position.x;
     view.cy = camera.position.y;
