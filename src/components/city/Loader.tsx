@@ -101,9 +101,9 @@ function Skyline({ mirror = false }: { mirror?: boolean }) {
   );
 }
 
-type LoaderProps = { ready: boolean; released: boolean; onRelease: () => void; returning: boolean };
+type LoaderProps = { ready: boolean; released: boolean; onRelease: () => void; onGone: () => void; returning: boolean };
 
-export default function Loader({ ready, released, onRelease, returning }: LoaderProps) {
+export default function Loader({ ready, released, onRelease, onGone, returning }: LoaderProps) {
   const { LOADER, MUSIC, SITE, TAGLINE } = useCopy();
   const stages: [number, string][] = [
     [30, LOADER.stages.skyline],
@@ -151,12 +151,15 @@ export default function Loader({ ready, released, onRelease, returning }: Loader
   useEffect(() => {
     if (!released) return;
     const a = setTimeout(() => setDone(true), returning ? 120 : 500);
-    const b = setTimeout(() => setGone(true), returning ? 900 : 2100);
+    const b = setTimeout(() => {
+      setGone(true);
+      onGone();
+    }, returning ? 900 : 2100);
     return () => {
       clearTimeout(a);
       clearTimeout(b);
     };
-  }, [released, returning]);
+  }, [released, returning, onGone]);
 
   if (gone) return null;
   const pct = Math.round(shown);
