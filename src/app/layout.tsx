@@ -20,11 +20,14 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-body",
 });
 
+const SITE_URL = "https://jonnadams.com";
+
 export async function generateMetadata(): Promise<Metadata> {
   const { copy } = await getContent();
   const { SITE, DESCRIPTION } = copy;
-  const images = { url: "/opengraph-image", ...SHARE_IMAGE, alt: fill(SHARE_IMAGE.alt, { name: SITE.name, artist: SITE.artist }) };
+  const images = { url: "/share-image", ...SHARE_IMAGE, alt: fill(SHARE_IMAGE.alt, { name: SITE.name, artist: SITE.artist }) };
   return {
+    metadataBase: SITE_URL,
     title: { default: SITE.name, template: `%s · ${SITE.name}` },
     description: DESCRIPTION,
     openGraph: { type: "website", siteName: SITE.name, title: SITE.name, description: DESCRIPTION, images },

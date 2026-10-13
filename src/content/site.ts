@@ -119,6 +119,7 @@ export const DESCRIPTION: string = "Step into the world of Jonathan Adams. Music
 
 export const SHARE_IMAGE = {
   alt: "{name}, the world of {artist} in downtown Detroit",
+  type: "image/png",
   width: 1200,
   height: 630,
 };
