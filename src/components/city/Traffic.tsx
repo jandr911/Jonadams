@@ -3,7 +3,6 @@
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, BoxGeometry, Color, Group, InstancedMesh, MeshBasicMaterial, MeshStandardMaterial, Object3D } from "three";
-import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import { gradientColors, setEmissiveIntensity, useDynamicInstances } from "./instancing";
 import { CITY_HALF_Z, CROSSWALK_OFFSET, LANE_OFFSET, MEDIAN_LANE_OFFSET, OUTER_COLS, OUTER_HALF_X, PITCH, ROAD_HALF, WOODWARD_INDEX, isMedianLine, lightIsAmber, lightIsGreen, outerRoadLinesX, TRAFFIC_CLOCK, outerRoadLinesZ } from "./layout";
@@ -669,7 +668,7 @@ function Streetcars({ world }: { world: World }) {
             <boxGeometry args={[2, 0.6, 10.4]} />
             <meshStandardMaterial color="#1a1a22" roughness={0.9} />
           </mesh>
-          <mesh position={[0, 1.8, 0]} castShadow>
+          <mesh position={[0, 1.8, 0]}>
             <boxGeometry args={[2.2, 2.4, 11]} />
             <meshStandardMaterial color="#c8102e" roughness={0.4} metalness={0.2} />
           </mesh>
@@ -747,12 +746,11 @@ function LightTrails({ world }: { world: World }) {
 export default function Traffic() {
   const [world] = useState(() => buildWorld());
   const pose = useCallback<PoseFn>((i, out, time) => poseCar(world, i, out, time), [world]);
-  const { quality } = useCity();
   return (
     <group>
-      <VehicleFleet items={world.items} pose={pose} dynamic castShadow />
+      <VehicleFleet items={world.items} pose={pose} dynamic />
       <Streetcars world={world} />
-      {quality === "high" && <LightTrails world={world} />}
+      <LightTrails world={world} />
     </group>
   );
 }

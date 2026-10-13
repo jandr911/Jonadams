@@ -3,15 +3,11 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useRef } from "react";
 import { InstancedMesh, Mesh, PerspectiveCamera, type Object3D } from "three";
-import { REFLECT_LAYER, REFLECTS } from "./layers";
-import { MIRROR_SCALE } from "./mirrorRender";
+import { cadenceDue, type CadenceRate } from "./renderCadence";
 
 const HIDE_BELOW_PX = 1.1;
 const SHOW_ABOVE_PX = 1.8;
-const EVERY_FRAMES = 8;
-// Under 8 px in the 0.4-scale river mirror a reflection is lost in the ripple; dropping those meshes cut the mirror pass from 326 to about 190 draws at the home view.
-const HIDE_REFLECTION_BELOW_PX = 8;
-const SHOW_REFLECTION_ABOVE_PX = 12;
+const CULL_CADENCE: CadenceRate = { frames: 8, hz: Infinity };
 export const DETAIL_CULLED = "detailCulled";
 
 function worldRadius(m: Mesh) {
@@ -36,11 +32,6 @@ function cullVisit(o: Object3D) {
   const dy = e[13] - view.cy;
   const dz = e[14] - view.cz;
   const px = radius > 0 ? (radius * view.pxPerUnit) / Math.max(Math.sqrt(dx * dx + dy * dy + dz * dz), 1) : Infinity;
-  if (o.userData[REFLECTS]) {
-    const mirrorPx = px * MIRROR_SCALE;
-    if (mirrorPx < HIDE_REFLECTION_BELOW_PX) o.layers.disable(REFLECT_LAYER);
-    else if (mirrorPx > SHOW_REFLECTION_ABOVE_PX) o.layers.enable(REFLECT_LAYER);
-  }
   if (!culled && px < HIDE_BELOW_PX) {
     o.visible = false;
     o.userData[DETAIL_CULLED] = true;
@@ -52,10 +43,9 @@ function cullVisit(o: Object3D) {
 
 export default function DetailCull() {
   const scene = useThree((s) => s.scene);
-  const frame = useRef(0);
-  useFrame(({ camera, size }) => {
-    frame.current += 1;
-    if (frame.current % EVERY_FRAMES !== 0 || !(camera instanceof PerspectiveCamera)) return;
+  const cadence = useRef({ last: -Infinity, frames: 0 });
+  useFrame(({ camera, size, clock }) => {
+    if (!(camera instanceof PerspectiveCamera) || !cadenceDue(cadence.current, clock.elapsedTime, CULL_CADENCE)) return;
     view.pxPerUnit = size.height / (2 * Math.tan((camera.fov * Math.PI) / 360));
     view.cx = camera.position.x;
     view.cy = camera.position.y;

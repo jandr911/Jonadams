@@ -143,6 +143,7 @@ export default function CityCanvas({ active }: { active: boolean }) {
   const [navigating, setNavigating] = useState(false);
   const [fade, setFade] = useState(false);
   const [quality, setQuality] = useState<Quality>("high");
+  const dropQuality = useCallback(() => setQuality("low"), []);
   const [stageUp, setStageUp] = useState(false);
   const [minWait, setMinWait] = useState(false);
   const [entered, setEntered] = useState(false);
@@ -179,7 +180,7 @@ export default function CityCanvas({ active }: { active: boolean }) {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setMinWait(true), returning ? 0 : 1600);
+    const t = setTimeout(() => setMinWait(true), returning ? 0 : 800);
     return () => clearTimeout(t);
   }, [returning]);
 
@@ -220,10 +221,6 @@ export default function CityCanvas({ active }: { active: boolean }) {
     }
   }
 
-  useEffect(() => {
-    if (active) homeRef.current?.();
-  }, [active]);
-
   const api = useMemo<CityApi>(
     () => ({ setHovered, hoveredRef, navigating, flyTo, flyRef, homeRef, held, quality, reducedMotion, active }),
     [setHovered, navigating, flyTo, quality, reducedMotion, active],
@@ -247,7 +244,7 @@ export default function CityCanvas({ active }: { active: boolean }) {
                 </div>
               }
             >
-              <CityStage live={live} active={active} quality={quality} onQuality={setQuality} onReady={stageReady} />
+              <CityStage live={live} active={active} quality={quality} onSlow={dropQuality} onReady={stageReady} />
             </StageBoundary>
             <div className="city-frame" aria-hidden>
               <i />

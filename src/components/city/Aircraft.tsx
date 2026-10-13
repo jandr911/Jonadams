@@ -9,7 +9,6 @@ import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
 import { gradientColors } from "./instancing";
 import { labelTexture } from "./labels";
-import { enableReflection } from "./layers";
 import { destinationById } from "./layout";
 import { SCRIPT_FONT } from "./NeonSign";
 import { LitWindow } from "./Watercraft";
@@ -21,10 +20,10 @@ const SEARCHLIGHT_CONE = gradientColors(new ConeGeometry(3.2, SEARCHLIGHT_LENGTH
 function Searchlight({ color, intensity }: { color: string; intensity: number }) {
   return (
     <group>
-      <mesh geometry={SEARCHLIGHT_CONE} position={[0, -SEARCHLIGHT_LENGTH / 2, 0]} userData={{ noReflect: true }}>
+      <mesh geometry={SEARCHLIGHT_CONE} position={[0, -SEARCHLIGHT_LENGTH / 2, 0]}>
         <meshBasicMaterial color={color} vertexColors transparent opacity={0.07 * intensity} blending={AdditiveBlending} depthWrite={false} side={DoubleSide} toneMapped={false} />
       </mesh>
-      <mesh geometry={SEARCHLIGHT_CONE} position={[0, -SEARCHLIGHT_LENGTH / 2, 0]} scale={[0.45, 1, 0.45]} userData={{ noReflect: true }}>
+      <mesh geometry={SEARCHLIGHT_CONE} position={[0, -SEARCHLIGHT_LENGTH / 2, 0]} scale={[0.45, 1, 0.45]}>
         <meshBasicMaterial color={color} vertexColors transparent opacity={0.1 * intensity} blending={AdditiveBlending} depthWrite={false} side={DoubleSide} toneMapped={false} />
       </mesh>
       <mesh>
@@ -117,7 +116,7 @@ function Blimp() {
   return (
     <group ref={rig} name="blimp">
       <Float speed={1.2} rotationIntensity={0.08} floatIntensity={0.6}>
-        <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
+        <mesh rotation={[0, 0, Math.PI / 2]}>
           <capsuleGeometry args={[5, 20, 12, 28]} />
           <meshStandardMaterial color={BLIMP_SKIN} roughness={0.6} metalness={0.05} />
         </mesh>
@@ -728,10 +727,8 @@ function BannerPlane() {
 }
 
 export default function Aircraft() {
-  const root = useRef<Group>(null);
-  useEffect(() => enableReflection(root.current), []);
   return (
-    <group ref={root}>
+    <group>
       <Blimp />
       <Helicopter />
       <BannerPlane />

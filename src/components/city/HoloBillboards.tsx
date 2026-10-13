@@ -106,7 +106,6 @@ function HoloPanel({ holo, seed }: { holo: Holo; seed: number }) {
       rotation={[0, holo.yaw, 0]}
       scale={[holo.width, holo.width, 1]}
       renderOrder={2}
-      userData={{ noReflect: true }}
     />
   );
 }

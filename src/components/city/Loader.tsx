@@ -39,7 +39,7 @@ export function markVisited() {
   }
 }
 
-const RAMP_MS = 2000;
+const RAMP_MS = 1000;
 const QUICK_RAMP_MS = 700;
 const BARS = [...EQ_BARS, 0.85, 0.5];
 
@@ -150,11 +150,11 @@ export default function Loader({ ready, released, onRelease, onGone, returning }
 
   useEffect(() => {
     if (!released) return;
-    const a = setTimeout(() => setDone(true), returning ? 120 : 500);
+    const a = setTimeout(() => setDone(true), returning ? 120 : 400);
     const b = setTimeout(() => {
       setGone(true);
       onGone();
-    }, returning ? 900 : 2100);
+    }, returning ? 900 : 1300);
     return () => {
       clearTimeout(a);
       clearTimeout(b);

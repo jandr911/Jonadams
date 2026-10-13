@@ -40,13 +40,12 @@ function ClockKeeper({ active }: { active: boolean }) {
   return null;
 }
 
-function CityStage({ live, active, quality, onQuality, onReady }: { live: boolean; active: boolean; quality: Quality; onQuality: (q: Quality) => void; onReady: () => void }) {
+function CityStage({ live, active, quality, onSlow, onReady }: { live: boolean; active: boolean; quality: Quality; onSlow: () => void; onReady: () => void }) {
   const capped = useSyncExternalStore(subscribeResize, cappedDpr, serverDpr);
   return (
     <Canvas
       frameloop={active ? "always" : "never"}
       dpr={quality === "low" ? capped : 1}
-      shadows
       camera={{ fov: 40, near: 1, far: 2600, position: [0, 80, 260] }}
       gl={{ antialias: false, powerPreference: "high-performance", toneMapping: NoToneMapping }}
       style={{ position: "absolute", inset: 0 }}
@@ -60,7 +59,7 @@ function CityStage({ live, active, quality, onQuality, onReady }: { live: boolea
       }}
     >
       <ClockKeeper active={active} />
-      <QualityGovernor live={live} onQuality={onQuality} />
+      <QualityGovernor live={live} onSlow={onSlow} />
       <Scene onReady={onReady} />
       <CameraRig live={live} />
     </Canvas>

@@ -215,6 +215,10 @@ export default function CameraRig({ live }: { live: boolean }) {
     };
   }, [active, held, homeRef]);
 
+  useEffect(() => {
+    if (active && introPlayed.current) homeRef.current?.();
+  }, [active, homeRef]);
+
   useFrame((state, delta) => {
     const c = ref.current;
     if (!c) return;

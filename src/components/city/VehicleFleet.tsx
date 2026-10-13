@@ -242,13 +242,11 @@ export default function VehicleFleet({
   pose,
   dynamic = false,
   pools = true,
-  castShadow = false,
 }: {
   items: FleetItem[];
   pose: PoseFn;
   dynamic?: boolean;
   pools?: boolean;
-  castShadow?: boolean;
 }) {
   const dn = useDayNight();
   const { reducedMotion } = useCity();
@@ -349,7 +347,7 @@ export default function VehicleFleet({
         const decalTex = g.parts.decal && decal ? labelTexture(decal.text, decal.opts) : null;
         return (
           <group key={kind}>
-            <instancedMesh ref={bind(`${kind}:body`)} args={[g.body, undefined, count]} castShadow={castShadow} frustumCulled={false}>
+            <instancedMesh ref={bind(`${kind}:body`)} args={[g.body, undefined, count]} frustumCulled={false}>
               <meshPhysicalMaterial color="#ffffff" roughness={0.28} metalness={0.45} clearcoat={1} clearcoatRoughness={0.08} />
             </instancedMesh>
             <instancedMesh ref={bind(`${kind}:glass`)} args={[g.glass, undefined, count]} frustumCulled={false}>

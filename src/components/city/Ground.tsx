@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { Color, Group, InstancedMesh, MeshStandardMaterial } from "three";
+import { Color, InstancedMesh, MeshStandardMaterial } from "three";
 import { useDayNight } from "./DayNightContext";
 import {
   BLOCK,
@@ -20,7 +20,6 @@ import { makeAsphaltTexture, makeConcreteTexture } from "./textures";
 import TreeStand, { plantTrees, type TreePlace } from "./TreeStand";
 import BelleIsle from "./BelleIsle";
 import RiverMirror from "./RiverMirror";
-import { enableReflection } from "./layers";
 import { fillInstances } from "./instancing";
 
 function BlockPads() {
@@ -41,7 +40,7 @@ function BlockPads() {
     });
   }, [blocks, count]);
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, count]} receiveShadow>
+    <instancedMesh ref={ref} args={[undefined, undefined, count]}>
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial color="#8f8c86" map={concrete} roughness={0.95} />
     </instancedMesh>
@@ -60,8 +59,6 @@ function Riverwalk() {
   const z0 = WALK_Z0;
   const z1 = WALK_Z1;
   const depth = z1 - z0;
-  const root = useRef<Group>(null);
-  useEffect(() => enableReflection(root.current), []);
   const postsRef = useRef<InstancedMesh>(null);
   const postCount = 70;
   useEffect(() => {
@@ -70,8 +67,8 @@ function Riverwalk() {
     });
   }, []);
   return (
-    <group ref={root}>
-      <mesh position={[0, 0.25, z0 + depth / 2]} receiveShadow>
+    <group>
+      <mesh position={[0, 0.25, z0 + depth / 2]}>
         <boxGeometry args={[RIVERWALK_HALF * 2, 0.5, depth]} />
         <meshStandardMaterial color="#77736b" roughness={0.9} />
       </mesh>
@@ -117,7 +114,7 @@ function Trees() {
     }
     return [...plantTrees(rand, blocks, { shade: 0.6, elm: 0.25, bare: 0.15 }), ...plantTrees(rand, allee, { elm: 1 })];
   }, []);
-  return <TreeStand trees={trees} quality="mid" seed={7} castShadow groundY={PAD} />;
+  return <TreeStand trees={trees} quality="mid" seed={7} groundY={PAD} />;
 }
 
 const ASPHALT_DAY = new Color("#7d7b77");
@@ -147,11 +144,11 @@ function Asphalt() {
   }, [dn]);
   return (
     <group>
-      <mesh rotation-x={-Math.PI / 2} position={[0, -2.5, 0]} receiveShadow>
+      <mesh rotation-x={-Math.PI / 2} position={[0, -2.5, 0]}>
         <planeGeometry args={[9000, 9000]} />
         <meshStandardMaterial ref={base} color="#3d4a3f" map={asphaltFar} roughness={1} />
       </mesh>
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0, (OUTER_MIN_Z - 30 + CITY_HALF_Z) / 2]} receiveShadow>
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0, (OUTER_MIN_Z - 30 + CITY_HALF_Z) / 2]}>
         <planeGeometry args={[OUTER_HALF_X * 2 + 60, CITY_HALF_Z - OUTER_MIN_Z + 30]} />
         <meshStandardMaterial ref={mat} color="#2b2a28" map={asphalt} roughness={1} />
       </mesh>

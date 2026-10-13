@@ -26,7 +26,6 @@ import { mulberry32 } from "./rng";
 import TreeStand, { plantTrees } from "./TreeStand";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { baseBoxGeometry, fillInstances, mergeParts, setEmissiveIntensity } from "./instancing";
-import { enableReflection } from "./layers";
 import type { WindowMaterialOptions } from "./windowMaterial";
 
 const BASE_BOX = baseBoxGeometry();
@@ -110,12 +109,12 @@ function SearchBeams({ position, color }: { position: [number, number, number]; 
   return (
     <group position={position}>
       <group ref={a}>
-        <mesh ref={beam} position={[0, 30, 0]} material={mat} userData={{ noReflect: true }}>
+        <mesh ref={beam} position={[0, 30, 0]} material={mat}>
           <coneGeometry args={[2, 60, 12, 1, true]} />
         </mesh>
       </group>
       <group ref={b}>
-        <mesh position={[0, 30, 0]} material={mat} userData={{ noReflect: true }}>
+        <mesh position={[0, 30, 0]} material={mat}>
           <coneGeometry args={[2, 60, 12, 1, true]} />
         </mesh>
       </group>
@@ -642,11 +641,11 @@ function MichiganCentral() {
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="#1a1a22" roughness={0.6} />
       </instancedMesh>
-      <instancedMesh ref={columns} args={[undefined, undefined, MC_COLUMN_X.length]} castShadow>
+      <instancedMesh ref={columns} args={[undefined, undefined, MC_COLUMN_X.length]}>
         <cylinderGeometry args={[0.42, 0.46, 9.6, 10]} />
         <meshStandardMaterial color="#d2c3a2" roughness={0.9} />
       </instancedMesh>
-      <mesh position={[0, 13.4, 4]} castShadow>
+      <mesh position={[0, 13.4, 4]}>
         <boxGeometry args={[27.4, 1.2, 13.4]} />
         <meshStandardMaterial color="#b9a88c" roughness={0.9} />
       </mesh>
@@ -671,7 +670,7 @@ function MichiganCentral() {
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="#a8977c" roughness={0.95} />
       </instancedMesh>
-      <mesh position={[0, 52.4, -4]} castShadow>
+      <mesh position={[0, 52.4, -4]}>
         <boxGeometry args={[25.8, 1.6, 13.8]} />
         <meshStandardMaterial color="#8a7050" />
       </mesh>
@@ -854,7 +853,7 @@ function CampusMartius() {
       <mesh ref={jet} geometry={JET_PLUME} position={[0, 0.6, 0]}>
         <meshStandardMaterial color="#dfe9ec" emissive="#ffffff" emissiveIntensity={0.15} transparent opacity={0.55} />
       </mesh>
-      <TreeStand trees={CAMPUS_TREES} quality="near" seed={1879} castShadow />
+      <TreeStand trees={CAMPUS_TREES} quality="near" seed={1879} />
     </Landmark>
   );
 }
@@ -1149,7 +1148,7 @@ function MillikenLighthouse() {
           <meshBasicMaterial color="#fff2c0" transparent opacity={0.08} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
         </mesh>
       </group>
-      <TreeStand trees={MILLIKEN_TREES} quality="near" seed={1879} castShadow />
+      <TreeStand trees={MILLIKEN_TREES} quality="near" seed={1879} />
     </Landmark>
   );
 }
@@ -1233,10 +1232,8 @@ function Welcome() {
 }
 
 export default function Landmarks() {
-  const root = useRef<Group>(null);
-  useEffect(() => enableReflection(root.current), []);
   return (
-    <group ref={root}>
+    <group>
       <ClubAdams />
       <ListenTower />
       <RivertownWarehouse />
