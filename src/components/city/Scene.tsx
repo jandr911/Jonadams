@@ -103,7 +103,6 @@ function FirstFrames({ onReady }: { onReady: () => void }) {
 export default function Scene({ onReady }: { onReady: () => void }) {
   const dn = useDayNight();
   const { quality } = useCity();
-  const extras = quality === "high";
   return (
     <>
       <fog attach="fog" args={[dn.fog, 420 + dn.night * 60, 1250 + dn.night * 150]} />
@@ -147,11 +146,11 @@ export default function Scene({ onReady }: { onReady: () => void }) {
         </StaticBatch>
         <StageBoundary name="The alter ego" fallback={null} onFail={ignoreFailure}>
           <Suspense fallback={null}>
-            <AlterEgo flyBy={extras} />
+            <AlterEgo />
           </Suspense>
         </StageBoundary>
-        {extras && <SkyTraffic />}
-        {extras && <HoloBillboards />}
+        <SkyTraffic />
+        <HoloBillboards />
         <StaticBatch label="watercraft">
           <Watercraft />
         </StaticBatch>

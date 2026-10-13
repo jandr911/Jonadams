@@ -476,7 +476,6 @@ function MaglevPulses({ curve }: { curve: CatmullRomCurve3 }) {
 
 export default function PeopleMover() {
   const curve = useMemo(() => buildLoop(), []);
-  const { quality } = useCity();
   const concrete = useMemo(() => makeStainedConcreteTexture(), []);
   useEffect(() => () => concrete.dispose(), [concrete]);
   const root = useRef<Group>(null);
@@ -487,7 +486,7 @@ export default function PeopleMover() {
       <Guideway curve={curve} concrete={concrete} />
       <Pylons curve={curve} concrete={concrete} />
       <Train curve={curve} />
-      {quality === "high" && <MaglevPulses curve={curve} />}
+      <MaglevPulses curve={curve} />
     </group>
   );
 }

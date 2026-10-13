@@ -367,7 +367,7 @@ function poseHanging(hang: Group | null, rope: Mesh | null, body: Group | null, 
   rope.quaternion.setFromUnitVectors(up, ropeDir.normalize());
 }
 
-export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
+export default function AlterEgo() {
   const dn = useDayNight();
   const { reducedMotion, navigating, hoveredRef } = useCity();
   const [lift] = useState<RoofLift>(() => ({ value: 0, hang: 0 }));
@@ -424,7 +424,7 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
     const t = clock.elapsedTime;
     const dt = Math.min(0.1, delta);
     const c = t % CYCLE;
-    const flying = flyBy && !reducedMotion && c >= VISIBLE[0] && c <= VISIBLE[1];
+    const flying = !reducedMotion && c >= VISIBLE[0] && c <= VISIBLE[1];
     const hanging = flying && c >= PICKUP && c < DROP;
     const hold = inHold(c);
     const heli = chopper.current;
@@ -463,13 +463,11 @@ export default function AlterEgo({ flyBy }: { flyBy: boolean }) {
 
   return (
     <group name="alter-ego">
-      {flyBy && (
-        <group ref={chopper} visible={false}>
-          <group scale={CHOPPER_SCALE}>
-            <HelicopterBody livery={DETROIT_POLICE} bodyRef={body} rotorRef={rotor} tailRef={tail} beamRef={beam} />
-          </group>
+      <group ref={chopper} visible={false}>
+        <group scale={CHOPPER_SCALE}>
+          <HelicopterBody livery={DETROIT_POLICE} bodyRef={body} rotorRef={rotor} tailRef={tail} beamRef={beam} />
         </group>
-      )}
+      </group>
       <mesh ref={shadow} position={[STAND.x + SHADOW.x, STAND.y + 0.05, STAND.z]} rotation={[-Math.PI / 2, 0, 0]} material={art.shadow} renderOrder={-1} raycast={ignoreRaycast}>
         <planeGeometry args={[SHADOW.width, SHADOW.depth]} />
       </mesh>

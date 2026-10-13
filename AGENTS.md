@@ -184,6 +184,14 @@ The budget is held by deliberate choices. Do not undo them without a measured re
   the client's 120 Hz Mac flickered black: his video ran clean for 18 s at the normal rates,
   then pulsed every 1.2 to 1.6 s, a 30 Hz beat against the phone camera. Not reproduced on
   Intel; do not bring a faster tier back without testing on that Mac.
+- The quality tier moves one way. `QualityGovernor` drops a visit from high to low after
+  4 s under 26 fps (clear of the 30 fps that browser power saving caps to) and never
+  raises it again, and the two tiers draw the same objects
+  and the same post chain: low only lowers the mirror and shadow rates, the shadow map
+  size and the pixel ratio. A governor that also rose back after 6 s over 40 fps, with a
+  low tier that dropped the post chain and the sky extras, flipped the whole look every
+  minute or two on 1080p laptops that run about 30 fps high and 40 low; the client's
+  testers called it glitching. Do not add a visible difference between the tiers.
 - The world is clipped at `EXTENT` because fog hides everything further. Clouds sit above
   the camera ceiling and the camera floor keeps the eye above the streets. Do not move
   one without the others.
