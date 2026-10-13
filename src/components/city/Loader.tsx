@@ -132,9 +132,8 @@ export default function Loader({ ready, released, onRelease, onGone, returning }
       const t = Math.min(1, (now - start.current) / rampMs);
       const ramp = (1 - Math.pow(1 - t, 3)) * 88;
       const target = ready ? 100 : Math.max(ramp, assetsRef.current * 0.88);
-      const ease = ready ? 0.3 : 0.12;
       const p = shownRef.current;
-      const next = target - p < 0.05 ? target : p + (target - p) * ease;
+      const next = ready || target - p < 0.05 ? target : p + (target - p) * 0.12;
       shownRef.current = next;
       setShown(next);
       if (ready && next >= 100) return;
@@ -150,16 +149,16 @@ export default function Loader({ ready, released, onRelease, onGone, returning }
 
   useEffect(() => {
     if (!released) return;
-    const a = setTimeout(() => setDone(true), returning ? 120 : 400);
+    const a = setTimeout(() => setDone(true), 80);
     const b = setTimeout(() => {
       setGone(true);
       onGone();
-    }, returning ? 900 : 1300);
+    }, 650);
     return () => {
       clearTimeout(a);
       clearTimeout(b);
     };
-  }, [released, returning, onGone]);
+  }, [released, onGone]);
 
   if (gone) return null;
   const pct = Math.round(shown);
