@@ -221,10 +221,6 @@ export default function CityCanvas({ active }: { active: boolean }) {
     }
   }
 
-  useEffect(() => {
-    if (active) homeRef.current?.();
-  }, [active]);
-
   const api = useMemo<CityApi>(
     () => ({ setHovered, hoveredRef, navigating, flyTo, flyRef, homeRef, held, quality, reducedMotion, active }),
     [setHovered, navigating, flyTo, quality, reducedMotion, active],
