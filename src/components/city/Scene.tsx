@@ -112,7 +112,7 @@ function FirstFrames({ onReady }: { onReady: () => void }) {
   return null;
 }
 
-export default function Scene({ onWarm, onReady }: { onWarm: () => void; onReady: () => void }) {
+export default function Scene({ live, onWarm, onReady }: { live: boolean; onWarm: () => void; onReady: () => void }) {
   const dn = useDayNight();
   return (
     <>
@@ -143,11 +143,13 @@ export default function Scene({ onWarm, onReady }: { onWarm: () => void; onReady
         <StaticBatch label="aircraft">
           <Aircraft />
         </StaticBatch>
-        <StageBoundary name="The alter ego" fallback={null} onFail={ignoreFailure}>
-          <Suspense fallback={null}>
-            <AlterEgo />
-          </Suspense>
-        </StageBoundary>
+        {live && (
+          <StageBoundary name="The alter ego" fallback={null} onFail={ignoreFailure}>
+            <Suspense fallback={null}>
+              <AlterEgo />
+            </Suspense>
+          </StageBoundary>
+        )}
         <SkyTraffic />
         <HoloBillboards />
         <StaticBatch label="watercraft">

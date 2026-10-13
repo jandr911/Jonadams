@@ -62,7 +62,7 @@ function CityStage({ live, active, quality, onSlow, onReady }: { live: boolean; 
     >
       <ClockKeeper active={active} />
       <QualityGovernor live={live} onSlow={onSlow} />
-      <Scene onWarm={markWarm} onReady={onReady} />
+      <Scene live={live} onWarm={markWarm} onReady={onReady} />
       <CameraRig live={live} />
     </Canvas>
   );
