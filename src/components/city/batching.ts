@@ -266,11 +266,8 @@ function merge(b: Batcher, owner: Object3D, sources: Source[]): Group | null {
   batch.name = `${b.label}-batch`;
   batch.position.copy(centre);
   batch.layers.mask = source.layers.mask;
-  batch.castShadow = source.castShadow;
-  batch.receiveShadow = source.receiveShadow;
   batch.renderOrder = source.renderOrder;
   batch.userData.noCull = true;
-  batch.userData.noReflect = true;
   batch.updateMatrix();
   batch.matrixAutoUpdate = false;
   owner.add(batch);
@@ -296,7 +293,7 @@ function build(b: Batcher, sources: Source[]) {
     const g = m.geometry;
     const attrs = Object.keys(g.attributes).sort().join(",");
     const place = s.owner === b.root ? cellOf(m) : "";
-    const key = [s.owner.uuid, place, materialKey(m.material as Material), attrs, g.index ? "i" : "n", m.layers.mask, m.castShadow, m.receiveShadow, m.renderOrder].join("#");
+    const key = [s.owner.uuid, place, materialKey(m.material as Material), attrs, g.index ? "i" : "n", m.layers.mask, m.renderOrder].join("#");
     const bin = bins.get(key) ?? { owner: s.owner, sources: [] };
     bin.sources.push(s);
     bins.set(key, bin);

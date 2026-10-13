@@ -8,7 +8,6 @@ import { useCopy } from "@/content/CopyProvider";
 import { useDayNight } from "./DayNightContext";
 import { labelTexture } from "./labels";
 import { fillInstances } from "./instancing";
-import { enableReflection } from "./layers";
 import { RIVER_FAR, RIVER_NEAR } from "./layout";
 import NeonSign, { DISPLAY_FONT } from "./NeonSign";
 import { loopLength, loopPose, newLoopPose } from "./loopPath";
@@ -1198,9 +1197,7 @@ export default function Watercraft() {
   const dn = useDayNight();
   const [fleet] = useState(() => buildFleet());
   const refs = useRef<(Group | null)[]>([]);
-  const root = useRef<Group>(null);
   const [pose] = useState<CraftPose>(() => ({ x: 0, z: 0, yaw: 0, calm: 1, lean: 0 }));
-  useEffect(() => enableReflection(root.current), []);
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
     for (let i = 0; i < fleet.length; i++) {
@@ -1219,7 +1216,7 @@ export default function Watercraft() {
     }
   });
   return (
-    <group ref={root}>
+    <group>
       {fleet.map((b, i) => (
         <group
           key={i}

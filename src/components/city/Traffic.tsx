@@ -668,7 +668,7 @@ function Streetcars({ world }: { world: World }) {
             <boxGeometry args={[2, 0.6, 10.4]} />
             <meshStandardMaterial color="#1a1a22" roughness={0.9} />
           </mesh>
-          <mesh position={[0, 1.8, 0]} castShadow>
+          <mesh position={[0, 1.8, 0]}>
             <boxGeometry args={[2.2, 2.4, 11]} />
             <meshStandardMaterial color="#c8102e" roughness={0.4} metalness={0.2} />
           </mesh>
@@ -748,7 +748,7 @@ export default function Traffic() {
   const pose = useCallback<PoseFn>((i, out, time) => poseCar(world, i, out, time), [world]);
   return (
     <group>
-      <VehicleFleet items={world.items} pose={pose} dynamic castShadow />
+      <VehicleFleet items={world.items} pose={pose} dynamic />
       <Streetcars world={world} />
       <LightTrails world={world} />
     </group>

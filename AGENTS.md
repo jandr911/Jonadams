@@ -170,27 +170,28 @@ The budget is held by deliberate choices. Do not undo them without a measured re
 - Anti-aliasing is SMAA in the post chain. **Never enable multisampling on the canvas**;
   4× MSAA took the scene from 55 to 9 fps.
 - The river is a custom planar mirror (`RiverMirror.tsx`, `mirrorRender.ts`) that
-  renders only objects on `REFLECT_LAYER`, at 0.4 scale, every third frame and at most
-  20 Hz (every sixth frame and 10 Hz in the low tier). It replaced a drei reflector that
-  re-rendered the whole scene per frame. Opt an object into the reflection with
-  `enableReflection`; `DetailCull` then drops meshes under 8 mirror pixels from it, which
-  is what keeps the mirror pass near 200 draws instead of 330. Never bring the drei
-  reflector back.
-- The shadow map is 2048 and refreshes every sixth frame and at most 10 Hz through
-  `ShadowThrottle` (1024, every twelfth frame and 5 Hz in the low tier). `cadenceDue` in
-  `renderCadence.ts` lets one heavy pass claim a frame, so the mirror, the shadow map and
-  the detail cull never land on the same frame; a pass that finds the frame taken waits one.
-- Mirror and shadow rates never rise above those defaults on any machine; the low tier
-  only lowers them. A smooth tier that raised them
-  (mirror every frame, shadows at 30 Hz) on screens holding 75 fps or more was removed after
+  renders only the sky (`Sky` opts in through `enableReflection` on `REFLECT_LAYER`), at
+  0.4 scale, every third frame and at most 20 Hz (every sixth frame and 10 Hz in the low
+  tier). It replaced a drei reflector that re-rendered the whole scene per frame, and
+  until 2026-10-13 it mirrored the buildings, boats and bridges too, about 190 draws
+  every third frame; the client chose the sky-only shimmer for the frame rate. Never
+  bring the drei reflector back, and do not opt the city back in without a measured
+  budget.
+- There is no shadow map. The sun light casts nothing and the canvas has no `shadows`
+  flag; downtown lots sit on instanced contact-shadow blobs and everything else casts nothing. A 2048 map refreshed at
+  10 Hz cost about 6 ms every sixth frame at 1080p on Intel, and the client chose to drop
+  it on 2026-10-13 for the frame rate. `cadenceDue` in `renderCadence.ts` lets one
+  throttled pass claim a frame, so the mirror and the detail cull never share one.
+- The mirror rate never rises above that default on any machine; the low tier only
+  lowers it. A smooth tier that raised the rates
+  (mirror every frame, the shadow map of the time at 30 Hz) on screens holding 75 fps or more was removed after
   the client's 120 Hz Mac flickered black: his video ran clean for 18 s at the normal rates,
   then pulsed every 1.2 to 1.6 s, a 30 Hz beat against the phone camera. Not reproduced on
   Intel; do not bring a faster tier back without testing on that Mac.
 - The quality tier moves one way. `QualityGovernor` drops a visit from high to low after
   4 s under 26 fps (clear of the 30 fps that browser power saving caps to) and never
   raises it again, and the two tiers draw the same objects
-  and the same post chain: low only lowers the mirror and shadow rates, the shadow map
-  size and the pixel ratio. A governor that also rose back after 6 s over 40 fps, with a
+  and the same post chain: low only lowers the mirror rate and the pixel ratio. A governor that also rose back after 6 s over 40 fps, with a
   low tier that dropped the post chain and the sky extras, flipped the whole look every
   minute or two on 1080p laptops that run about 30 fps high and 40 low; the client's
   testers called it glitching. Do not add a visible difference between the tiers.
@@ -406,7 +407,7 @@ build, and your own eyes in a browser on the development machine.
 ## Reviewing code
 
 Top down by blast radius: **frame budget** (per-frame allocation, draw calls, render
-targets, shadow and reflection cost) → **framework boundary** (client directive, server
+targets, reflection cost) → **framework boundary** (client directive, server
 components, generated files, Next.js docs followed) → **correctness** (empty content
 slots, day and night phase, resize, dispose) → **convention** (tokens, comments, naming).
 

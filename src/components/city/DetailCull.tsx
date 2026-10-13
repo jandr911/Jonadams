@@ -3,16 +3,11 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useRef } from "react";
 import { InstancedMesh, Mesh, PerspectiveCamera, type Object3D } from "three";
-import { REFLECT_LAYER, REFLECTS } from "./layers";
-import { MIRROR_SCALE } from "./mirrorRender";
 import { cadenceDue, type CadenceRate } from "./renderCadence";
 
 const HIDE_BELOW_PX = 1.1;
 const SHOW_ABOVE_PX = 1.8;
 const CULL_CADENCE: CadenceRate = { frames: 8, hz: Infinity };
-// Under 8 px in the 0.4-scale river mirror a reflection is lost in the ripple; dropping those meshes cut the mirror pass from 326 to about 190 draws at the home view.
-const HIDE_REFLECTION_BELOW_PX = 8;
-const SHOW_REFLECTION_ABOVE_PX = 12;
 export const DETAIL_CULLED = "detailCulled";
 
 function worldRadius(m: Mesh) {
@@ -37,11 +32,6 @@ function cullVisit(o: Object3D) {
   const dy = e[13] - view.cy;
   const dz = e[14] - view.cz;
   const px = radius > 0 ? (radius * view.pxPerUnit) / Math.max(Math.sqrt(dx * dx + dy * dy + dz * dz), 1) : Infinity;
-  if (o.userData[REFLECTS]) {
-    const mirrorPx = px * MIRROR_SCALE;
-    if (mirrorPx < HIDE_REFLECTION_BELOW_PX) o.layers.disable(REFLECT_LAYER);
-    else if (mirrorPx > SHOW_REFLECTION_ABOVE_PX) o.layers.enable(REFLECT_LAYER);
-  }
   if (!culled && px < HIDE_BELOW_PX) {
     o.visible = false;
     o.userData[DETAIL_CULLED] = true;

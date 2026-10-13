@@ -46,7 +46,6 @@ function CityStage({ live, active, quality, onSlow, onReady }: { live: boolean; 
     <Canvas
       frameloop={active ? "always" : "never"}
       dpr={quality === "low" ? capped : 1}
-      shadows
       camera={{ fov: 40, near: 1, far: 2600, position: [0, 80, 260] }}
       gl={{ antialias: false, powerPreference: "high-performance", toneMapping: NoToneMapping }}
       style={{ position: "absolute", inset: 0 }}

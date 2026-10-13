@@ -19,7 +19,6 @@ import { useDayNight } from "./DayNightContext";
 import { fillInstances, setEmissiveIntensity, useDynamicInstances } from "./instancing";
 import { labelTexture } from "./labels";
 import { PEOPLE_MOVER_X, PEOPLE_MOVER_Z, ROAD_HALF, roadLinesX, roadLinesZ } from "./layout";
-import { enableReflection } from "./layers";
 import { makeStainedConcreteTexture } from "./textures";
 
 const TRACK_Y = 9;
@@ -87,7 +86,7 @@ function Pylons({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canvas
   }, [curve, spots, count]);
   return (
     <group>
-      <instancedMesh ref={ref} args={[undefined, undefined, count]} castShadow frustumCulled={false}>
+      <instancedMesh ref={ref} args={[undefined, undefined, count]} frustumCulled={false}>
         <cylinderGeometry args={[0.55, 0.8, TRACK_Y - 0.6, 10]} />
         <meshStandardMaterial color="#b5b0a6" map={concrete} roughness={0.9} />
       </instancedMesh>
@@ -157,7 +156,7 @@ function Guideway({ curve, concrete }: { curve: CatmullRomCurve3; concrete: Canv
   }, [curve, segLen]);
   return (
     <group>
-      <instancedMesh ref={beam} args={[undefined, undefined, GUIDEWAY_SEGMENTS]} castShadow>
+      <instancedMesh ref={beam} args={[undefined, undefined, GUIDEWAY_SEGMENTS]}>
         <boxGeometry args={[1.5, 1.3, 1]} />
         <meshStandardMaterial color="#b0aca2" map={concrete} roughness={0.9} />
       </instancedMesh>
@@ -193,7 +192,7 @@ function TrainCar({ index, winMat, headMat }: { index: number; winMat?: React.Re
   const seats = [-2.9, -1.6, -0.3, 1.0, 2.3];
   return (
     <group>
-      <mesh position={[0, 1.6, 0]} castShadow>
+      <mesh position={[0, 1.6, 0]}>
         <boxGeometry args={[2.4, 2.6, 8.4]} />
         <meshStandardMaterial color="#e8e8f2" roughness={0.35} metalness={0.4} />
       </mesh>
@@ -468,7 +467,7 @@ function MaglevPulses({ curve }: { curve: CatmullRomCurve3 }) {
     if (ref.current) placePulses(ref.current, dummy, loop, reducedMotion ? 0 : clock.elapsedTime);
   });
   return (
-    <instancedMesh ref={ref} args={[PULSE, undefined, PULSE_COUNT]} frustumCulled={false} name="maglev-pulses" userData={{ noReflect: true }}>
+    <instancedMesh ref={ref} args={[PULSE, undefined, PULSE_COUNT]} frustumCulled={false} name="maglev-pulses">
       <meshBasicMaterial color={MAGLEV_PULSE} toneMapped={false} />
     </instancedMesh>
   );
@@ -478,10 +477,8 @@ export default function PeopleMover() {
   const curve = useMemo(() => buildLoop(), []);
   const concrete = useMemo(() => makeStainedConcreteTexture(), []);
   useEffect(() => () => concrete.dispose(), [concrete]);
-  const root = useRef<Group>(null);
-  useEffect(() => enableReflection(root.current), []);
   return (
-    <group ref={root}>
+    <group>
       <Stations curve={curve} />
       <Guideway curve={curve} concrete={concrete} />
       <Pylons curve={curve} concrete={concrete} />

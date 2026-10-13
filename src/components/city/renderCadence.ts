@@ -10,7 +10,7 @@ export interface CadenceRate {
 
 const FRAME_SLACK_SECONDS = 0.004;
 
-// One heavy pass per frame. The mirror and the shadow map used to land on the same frame every sixth frame, a 37 ms frame at 1920x1080 on Intel against 31 ms for the mirror alone; a pass that finds the frame taken fires on the next one.
+// One throttled pass per frame: a pass that finds the frame taken fires on the next one.
 const taken = { at: -1 };
 
 export function cadenceDue(c: Cadence, now: number, rate: CadenceRate) {
