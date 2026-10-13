@@ -1,17 +1,34 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { memo } from "react";
+import { memo, useSyncExternalStore } from "react";
 import { NoToneMapping } from "three";
 import CameraRig from "./CameraRig";
 import type { Quality } from "./CityContext";
 import QualityGovernor from "./QualityGovernor";
 import Scene from "./Scene";
 
-function CityStage({ live, onQuality, onReady }: { live: boolean; onQuality: (q: Quality) => void; onReady: () => void }) {
+// Low tier only: windows over 1600x1000 (the 1440x900 Intel budget with headroom) render smaller and scale up.
+const MAX_RENDER_PIXELS = 1_600_000;
+
+function subscribeResize(cb: () => void) {
+  window.addEventListener("resize", cb);
+  return () => window.removeEventListener("resize", cb);
+}
+
+function cappedDpr() {
+  return Math.min(1, Math.round(Math.sqrt(MAX_RENDER_PIXELS / (window.innerWidth * window.innerHeight)) * 100) / 100);
+}
+
+function serverDpr() {
+  return 1;
+}
+
+function CityStage({ live, quality, onQuality, onReady }: { live: boolean; quality: Quality; onQuality: (q: Quality) => void; onReady: () => void }) {
+  const capped = useSyncExternalStore(subscribeResize, cappedDpr, serverDpr);
   return (
     <Canvas
-      dpr={1}
+      dpr={quality === "low" ? capped : 1}
       shadows
       camera={{ fov: 40, near: 1, far: 2600, position: [0, 80, 260] }}
       gl={{ antialias: false, powerPreference: "high-performance", toneMapping: NoToneMapping }}

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BoxGeometry, BufferGeometry, Color, DoubleSide, InstancedMesh, Matrix4, MeshStandardMaterial, Quaternion, SphereGeometry, TorusGeometry, Vector3 } from "three";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
-import { HIDDEN_MATRIX, cachedByKey, mergeParts } from "./instancing";
+import { HIDDEN_MATRIX, cachedByKey, dynamicInstances, mergeParts } from "./instancing";
 import { labelTexture } from "./labels";
 import { BLOCK, CITY_HALF_X, CITY_HALF_Z, DESTINATIONS, allBlocks, blockCenter, destinationPosition } from "./layout";
 import { loopLength, loopPose, newLoopPose } from "./loopPath";
@@ -598,8 +598,12 @@ export default function People() {
     () =>
       cachedByKey((key: PartKey) => (m: InstancedMesh | null) => {
         if (refs.get(key) !== (m ?? undefined)) scratch.limbs = null;
-        if (m) refs.set(key, m);
-        else refs.delete(key);
+        if (m) {
+          dynamicInstances(m);
+          refs.set(key, m);
+        } else {
+          refs.delete(key);
+        }
       }),
     [refs, scratch],
   );

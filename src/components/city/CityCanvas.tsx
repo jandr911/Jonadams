@@ -243,7 +243,7 @@ export default function CityCanvas() {
                 </div>
               }
             >
-              <CityStage live={live} onQuality={setQuality} onReady={stageReady} />
+              <CityStage live={live} quality={quality} onQuality={setQuality} onReady={stageReady} />
             </StageBoundary>
             <div className="city-frame" aria-hidden>
               <i />

@@ -160,16 +160,21 @@ change that drops the home view under 50 does not ship until it is back.
 
 The budget is held by deliberate choices. Do not undo them without a measured reason:
 
-- Default pixel ratio is 1. Do not raise it.
+- Default pixel ratio is 1. Do not raise it. The low quality tier renders windows over
+  1.6 Mpx at a reduced ratio and scales up (`CityStage.tsx`); the high tier never does.
 - Anti-aliasing is SMAA in the post chain. **Never enable multisampling on the canvas**;
   4× MSAA took the scene from 55 to 9 fps.
 - The river is a custom planar mirror (`RiverMirror.tsx`, `mirrorRender.ts`) that
   renders only objects on `REFLECT_LAYER`, at 0.4 scale, every third frame and at most
-  20 Hz. It replaced a drei reflector that re-rendered the whole scene per frame. Opt an
-  object into the reflection with `enableReflection`; never bring the drei reflector back.
+  20 Hz (every sixth frame and 10 Hz in the low tier). It replaced a drei reflector that
+  re-rendered the whole scene per frame. Opt an object into the reflection with
+  `enableReflection`; `DetailCull` then drops meshes under 8 mirror pixels from it, which
+  is what keeps the mirror pass near 200 draws instead of 330. Never bring the drei
+  reflector back.
 - The shadow map is 2048 and refreshes every sixth frame and at most 10 Hz through
-  `ShadowThrottle`.
-- Mirror and shadow rates are the same on every machine. A smooth tier that raised them
+  `ShadowThrottle` (1024, every twelfth frame and 5 Hz in the low tier).
+- Mirror and shadow rates never rise above those defaults on any machine; the low tier
+  only lowers them. A smooth tier that raised them
   (mirror every frame, shadows at 30 Hz) on screens holding 75 fps or more was removed after
   the client's 120 Hz Mac flickered black: his video ran clean for 18 s at the normal rates,
   then pulsed every 1.2 to 1.6 s, a 30 Hz beat against the phone camera. Not reproduced on
@@ -178,7 +183,9 @@ The budget is held by deliberate choices. Do not undo them without a measured re
   the camera ceiling and the camera floor keeps the eye above the streets. Do not move
   one without the others.
 - Repeated geometry is instanced. A loop that mounts one mesh per building, car, window,
-  or house is wrong here.
+  or house is wrong here. An instance buffer rewritten every frame is marked dynamic
+  (`useDynamicInstances` / `dynamicInstances` in `instancing.ts`); Windows' Direct3D path
+  stalls on per-frame uploads to a static buffer.
 - Procedural canvas textures live in `textures.ts`, and text and sign textures in
   `labels.ts`. Do not add image textures without asking; there is no asset pipeline and
   the memory ceiling is real.

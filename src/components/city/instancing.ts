@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from "react";
-import { BoxGeometry, BufferAttribute, Matrix4, Object3D } from "three";
+import { useEffect, useLayoutEffect, useMemo, type RefObject } from "react";
+import { BoxGeometry, BufferAttribute, DynamicDrawUsage, Matrix4, Object3D } from "three";
 import type { BufferGeometry, Color, InstancedMesh, MeshStandardMaterial } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
@@ -51,6 +51,14 @@ export function fillColors(mesh: InstancedMesh | null, count: number, colorAt: (
     if (color) mesh.setColorAt(i, color);
   }
   if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+}
+
+export function dynamicInstances(mesh: InstancedMesh | null) {
+  mesh?.instanceMatrix.setUsage(DynamicDrawUsage);
+}
+
+export function useDynamicInstances(ref: RefObject<InstancedMesh | null>) {
+  useLayoutEffect(() => dynamicInstances(ref.current), [ref]);
 }
 
 export function baseBoxGeometry() {

@@ -22,6 +22,7 @@ import {
 import { useDayNight } from "./DayNightContext";
 import { CAMERA_CEILING } from "./layout";
 import { mulberry32, range } from "./rng";
+import { useDynamicInstances } from "./instancing";
 import { enableReflection } from "./layers";
 import { NOISE_GLSL } from "./noise";
 
@@ -260,6 +261,7 @@ const BIRD_GEOMETRY = (() => {
 function HighBirds() {
   const dn = useDayNight();
   const ref = useRef<InstancedMesh>(null);
+  useDynamicInstances(ref);
   const dummy = useMemo(() => new Object3D(), []);
   const flock = useMemo(() => {
     const rand = mulberry32(44);

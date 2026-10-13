@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, CanvasTexture, Color, Euler, InstancedMesh, Matrix4, MeshBasicMaterial, MeshStandardMaterial, Quaternion, Vector3 } from "three";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
-import { HIDDEN_MATRIX, cachedByKey } from "./instancing";
+import { HIDDEN_MATRIX, cachedByKey, dynamicInstances } from "./instancing";
 import { labelTexture } from "./labels";
 import { makeHeadlightPoolTexture } from "./textures";
 import {
@@ -286,8 +286,12 @@ export default function VehicleFleet({
   const bind = useMemo(
     () =>
       cachedByKey((key: string) => (m: InstancedMesh | null) => {
-        if (m) meshes.set(key, m);
-        else meshes.delete(key);
+        if (m) {
+          dynamicInstances(m);
+          meshes.set(key, m);
+        } else {
+          meshes.delete(key);
+        }
         indexBodyParts(meshes, bodies, key);
       }),
     [meshes, bodies],

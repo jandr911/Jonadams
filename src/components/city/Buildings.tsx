@@ -535,7 +535,7 @@ function RoofDetails({ lots }: { lots: Lot[] }) {
   }, [dn]);
   const beaconMast = BEACON_MAST + (hasCrown(beaconLot) ? crownHeight(beaconLot) : 0);
   return (
-    <group name="roof-details">
+    <group name="roof-details" userData={{ noReflect: true }}>
       <instancedMesh ref={parapets} args={[undefined, undefined, extras.parapet.length]}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="#9c8f78" roughness={0.95} />
