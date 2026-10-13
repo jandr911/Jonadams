@@ -177,7 +177,9 @@ The budget is held by deliberate choices. Do not undo them without a measured re
   is what keeps the mirror pass near 200 draws instead of 330. Never bring the drei
   reflector back.
 - The shadow map is 2048 and refreshes every sixth frame and at most 10 Hz through
-  `ShadowThrottle` (1024, every twelfth frame and 5 Hz in the low tier).
+  `ShadowThrottle` (1024, every twelfth frame and 5 Hz in the low tier). `cadenceDue` in
+  `renderCadence.ts` lets one heavy pass claim a frame, so the mirror, the shadow map and
+  the detail cull never land on the same frame; a pass that finds the frame taken waits one.
 - Mirror and shadow rates never rise above those defaults on any machine; the low tier
   only lowers them. A smooth tier that raised them
   (mirror every frame, shadows at 30 Hz) on screens holding 75 fps or more was removed after
