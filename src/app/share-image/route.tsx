@@ -1,13 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { fill } from "@/content/copy";
-import { EQ_BARS, SHARE_IMAGE, SITE as DEFAULT_SITE } from "@/content/site";
+import { EQ_BARS, SHARE_IMAGE } from "@/content/site";
 import { getContent } from "@/lib/content";
-
-export const alt = fill(SHARE_IMAGE.alt, { name: DEFAULT_SITE.name, artist: DEFAULT_SITE.artist });
-export const size = { width: SHARE_IMAGE.width, height: SHARE_IMAGE.height };
-export const contentType = "image/png";
 
 // ImageResponse cannot read CSS variables; these mirror --ink, --gold, --gold-2, --paper and --muted in globals.css.
 const INK = "#07060f";
@@ -16,7 +11,7 @@ const GOLD_2 = "#f3dfae";
 const PAPER = "#f4f1ea";
 const MUTED = "#9a95a8";
 
-export default async function Image() {
+export async function GET() {
   const { SITE, TAGLINE } = (await getContent()).copy;
   const caps = await readFile(join(process.cwd(), "public/fonts/BebasNeue-Regular.ttf"));
   return new ImageResponse(
@@ -51,7 +46,8 @@ export default async function Image() {
       </div>
     ),
     {
-      ...size,
+      width: SHARE_IMAGE.width,
+      height: SHARE_IMAGE.height,
       fonts: [{ name: "Bebas", data: caps, style: "normal", weight: 400 }],
     },
   );

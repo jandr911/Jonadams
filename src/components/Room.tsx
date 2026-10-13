@@ -17,7 +17,7 @@ export function roomLinks(ids: string[]): Plaque[] {
 }
 
 export function roomMetadata(copy: SiteCopy, district: string, description: string, title = destinationById(district).label): Metadata {
-  const shared = { title: `${title} · ${copy.SITE.name}`, description, images: { url: "/opengraph-image", ...SHARE_IMAGE, alt: fill(SHARE_IMAGE.alt, { name: copy.SITE.name, artist: copy.SITE.artist }) } };
+  const shared = { title: `${title} · ${copy.SITE.name}`, description, images: { url: "/share-image", ...SHARE_IMAGE, alt: fill(SHARE_IMAGE.alt, { name: copy.SITE.name, artist: copy.SITE.artist }) } };
   return {
     title,
     description,
