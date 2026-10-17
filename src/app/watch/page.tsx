@@ -18,5 +18,5 @@ export default async function WatchPage() {
       ))}
     </div>
   );
-  return <Room district="watch" scene={{ art: <WatchScene videos={watch} />, phone, plaques: copy.WATCH_DESK, links: roomLinks(["club", "listen", "creatives"]) }} />;
+  return <Room district="watch" scene={{ art: <WatchScene videos={watch} />, phone, plaques: copy.WATCH_DESK, links: roomLinks(["club", "listen", "creatives", "merch"]) }} />;
 }

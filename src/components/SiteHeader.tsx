@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { getContent } from "@/lib/content";
-import { DESTINATIONS, indexLabel } from "./city/layout";
+import { PLACES, indexLabel } from "./city/layout";
 import SiteMenu, { type MenuLink } from "./SiteMenu";
 import Wordmark from "./Wordmark";
 
-const NAV: MenuLink[] = DESTINATIONS.map((d, i) => ({
+const NAV: MenuLink[] = PLACES.map((d, i) => ({
   href: d.href,
   label: d.label,
   sub: d.sub,
