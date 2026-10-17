@@ -28,6 +28,7 @@ import { ghostAdTexture, labelTexture } from "./labels";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { makeShadowBlobTexture } from "./textures";
 import { fillColors, fillInstances, fillPlacements, mergeParts, useBaseBoxGeometry, type Placement } from "./instancing";
+import { markSolid } from "./cameraCollision";
 import type { BufferGeometry } from "three";
 
 export const RESERVED_BLOCKS = new Set<string>([
@@ -289,6 +290,7 @@ function InstancedLots({ lots }: { lots: Lot[] }) {
       d.scale.set(l.w, l.h, l.d);
     });
     fillColors(m, lots.length, (i) => lots[i].color);
+    markSolid(m);
     m.geometry.setAttribute("aSeed", new InstancedBufferAttribute(seeds, 1));
     m.geometry.setAttribute("aArch", new InstancedBufferAttribute(arch, 3));
   }, [lots, seeds, arch]);
