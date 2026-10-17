@@ -1,6 +1,6 @@
 import { fill, type SiteCopy } from "@/content/copy";
 import { getContent } from "@/lib/content";
-import { mailHref, whatsappDigits, whatsappHref } from "./contact";
+import { mailHref, phoneDigits, telHref, whatsappHref } from "./contact";
 import CopyValue from "./CopyValue";
 import JoinDialog from "./JoinDialog";
 
@@ -26,7 +26,7 @@ function formatPhone(digits: string) {
 
 function contactRows({ JOIN, SITE }: SiteCopy): ContactRow[] {
   const rows: ContactRow[] = [];
-  const digits = whatsappDigits(SITE.whatsapp);
+  const digits = phoneDigits(SITE.whatsapp);
   if (digits) {
     rows.push({
       label: JOIN.whatsapp.label,
@@ -35,6 +35,17 @@ function contactRows({ JOIN, SITE }: SiteCopy): ContactRow[] {
       action: JOIN.whatsapp.action,
       href: whatsappHref(digits, fill(JOIN.message, { name: SITE.name })),
       external: true,
+    });
+  }
+  const phone = phoneDigits(SITE.phone);
+  if (phone) {
+    rows.push({
+      label: JOIN.phone.label,
+      value: `+${phone}`,
+      display: formatPhone(phone),
+      action: JOIN.phone.action,
+      href: telHref(SITE.phone),
+      external: false,
     });
   }
   if (SITE.submitEmail) {

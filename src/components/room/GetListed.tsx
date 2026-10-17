@@ -1,6 +1,6 @@
 import type { SiteCopy } from "@/content/copy";
 import { getContent } from "@/lib/content";
-import { mailHref, whatsappDigits, whatsappHref } from "./contact";
+import { mailHref, phoneDigits, telHref, whatsappHref } from "./contact";
 
 interface ContactLink {
   label: string;
@@ -16,8 +16,9 @@ export function contactLinks(copy: SiteCopy): ContactLink[] {
   const { GET_LISTED, SITE } = copy;
   const body = template(copy);
   const out: ContactLink[] = [];
-  const whatsapp = whatsappDigits(SITE.whatsapp);
+  const whatsapp = phoneDigits(SITE.whatsapp);
   if (whatsapp) out.push({ label: GET_LISTED.whatsapp, href: whatsappHref(whatsapp, body), external: true });
+  if (phoneDigits(SITE.phone)) out.push({ label: GET_LISTED.call, href: telHref(SITE.phone), external: false });
   if (SITE.submitEmail) out.push({ label: GET_LISTED.email, href: mailHref(SITE.submitEmail, GET_LISTED.subject, body), external: false });
   return out;
 }
