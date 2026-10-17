@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 import { fill } from "@/content/copy";
 import { useCopy } from "@/content/CopyProvider";
 import type { MerchItem } from "@/content/site";
-import { mailHref, whatsappDigits, whatsappHref } from "./contact";
+import { mailHref, phoneDigits, telHref, whatsappHref } from "./contact";
 
 export default function MerchOrder({ item }: { item: MerchItem }) {
   const { MERCH, SITE } = useCopy();
@@ -16,9 +16,10 @@ export default function MerchOrder({ item }: { item: MerchItem }) {
   const kind = MERCH.kinds[item.kind];
   const message = fill(sized ? MERCH.message : MERCH.messageOneSize, { item: item.name, kind, size, price: item.price });
   const subject = fill(MERCH.subject, { item: item.name });
-  const digits = whatsappDigits(SITE.whatsapp);
+  const digits = phoneDigits(SITE.whatsapp);
   const links = [
     digits && { label: MERCH.whatsapp, href: whatsappHref(digits, message), external: true },
+    phoneDigits(SITE.phone) && { label: MERCH.call, href: telHref(SITE.phone), external: false },
     SITE.submitEmail && { label: MERCH.email, href: mailHref(SITE.submitEmail, subject, message), external: false },
   ].filter((l) => !!l);
 
