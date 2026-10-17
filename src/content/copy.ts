@@ -13,6 +13,8 @@ import {
   JOIN,
   LISTEN_DESK,
   LOADER,
+  MERCH,
+  MERCH_DESK,
   MUSIC,
   PROFILE,
   ROOMS,
@@ -40,10 +42,12 @@ export const DEFAULT_COPY = {
   LISTEN_DESK,
   WATCH_DESK,
   CREATIVES_DESK,
+  MERCH_DESK,
   JOIN,
   CONTACT,
   GET_LISTED,
   PROFILE,
+  MERCH,
 };
 
 export type SiteCopy = typeof DEFAULT_COPY;
@@ -71,6 +75,8 @@ export const COPY_SECTIONS: Record<CopySection, string> = {
   CONTACT: "Contact labels",
   GET_LISTED: "Get on the wall",
   PROFILE: "Creative profile",
+  MERCH: "Merch",
+  MERCH_DESK: "Merch front desk",
 };
 
 export const COPY_SECTION_KEYS = Object.keys(COPY_SECTIONS) as CopySection[];
