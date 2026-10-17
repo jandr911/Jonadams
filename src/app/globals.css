@@ -3361,9 +3361,14 @@ a.site-nav__link:hover .site-nav__sub,
   --room-canvas: #23212c;
 }
 @media (max-width: 720px), (max-aspect-ratio: 3 / 2) {
+  .stage__view {
+    margin-bottom: 48px;
+  }
   .stage__controls {
-    top: 12px;
+    top: calc(100cqw * 10 / 16 + 10px);
     right: 12px;
+    flex-direction: row;
+    align-items: center;
   }
   .stage__controls .city-pill {
     gap: 8px;
