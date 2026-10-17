@@ -148,9 +148,21 @@ body {
 .city-host[data-curtain="true"] {
   z-index: 40;
 }
+.city-host[data-route="room"] {
+  z-index: 40;
+}
 .city-host[data-active="false"] {
   visibility: hidden;
   pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 0.35s ease,
+    visibility 0s linear 0.35s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .city-host[data-active="false"] {
+    transition: none;
+  }
 }
 
 .site-header {
@@ -963,11 +975,16 @@ a.site-nav__link:hover .site-nav__sub,
   background: var(--ink);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.45s ease;
+  transition: opacity var(--fade-ms) ease;
 }
 .city-fade.is-on {
   opacity: 1;
   pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .city-fade {
+    transition: none;
+  }
 }
 
 /* loader */
