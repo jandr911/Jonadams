@@ -1,6 +1,6 @@
 import { fill } from "@/content/copy";
 import { getContent } from "@/lib/content";
-import type { Destination } from "../city/layout";
+import type { RoomPlace } from "../city/layout";
 import JoinCard from "./JoinCard";
 import RoomLink from "./RoomLink";
 import StageShell from "./StageShell";
@@ -37,7 +37,7 @@ function PlaqueList({ items, label, className }: { items: Plaque[]; label: strin
   );
 }
 
-export default async function RoomStage({ destination, index, scene }: { destination: Destination; index: string; scene: RoomScene }) {
+export default async function RoomStage({ destination, index, scene }: { destination: RoomPlace; index: string; scene: RoomScene }) {
   const { copy } = await getContent();
   const { JOIN, ROOM_NAV, DISTRICT_EYEBROW } = copy;
   const joinPlaque: Plaque = { label: JOIN.title, note: JOIN.plaque, href: "#join" };
