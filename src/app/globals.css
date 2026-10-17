@@ -148,9 +148,21 @@ body {
 .city-host[data-curtain="true"] {
   z-index: 40;
 }
+.city-host[data-route="room"] {
+  z-index: 40;
+}
 .city-host[data-active="false"] {
   visibility: hidden;
   pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 0.35s ease,
+    visibility 0s linear 0.35s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .city-host[data-active="false"] {
+    transition: none;
+  }
 }
 
 .site-header {
@@ -963,11 +975,16 @@ a.site-nav__link:hover .site-nav__sub,
   background: var(--ink);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.45s ease;
+  transition: opacity var(--fade-ms) ease;
 }
 .city-fade.is-on {
   opacity: 1;
   pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .city-fade {
+    transition: none;
+  }
 }
 
 /* loader */
@@ -1053,7 +1070,7 @@ a.site-nav__link:hover .site-nav__sub,
   height: 100%;
   fill: var(--paper);
   opacity: 0;
-  animation: loader-fade 2.4s ease 0.3s forwards;
+  animation: loader-fade 2.7s ease forwards;
 }
 .loader__stars circle {
   opacity: 0.2;
@@ -1072,11 +1089,11 @@ a.site-nav__link:hover .site-nav__sub,
   background: linear-gradient(to right, transparent 0%, color-mix(in srgb, var(--gold) 16%, transparent) 50%, transparent 100%);
   mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.35) 45%, transparent 85%);
   opacity: 0;
-  animation: loader-fade 2s ease 0.6s forwards, loader-beam-a 11s ease-in-out 0.6s infinite alternate;
+  animation: loader-fade 2.6s ease forwards, loader-beam-a 11s ease-in-out 0.6s infinite alternate;
 }
 .loader__beam--b {
   background: linear-gradient(to right, transparent 0%, color-mix(in srgb, var(--gold-2) 11%, transparent) 50%, transparent 100%);
-  animation: loader-fade 2s ease 0.9s forwards, loader-beam-b 13s ease-in-out 0.9s infinite alternate;
+  animation: loader-fade 2.9s ease forwards, loader-beam-b 13s ease-in-out 0.9s infinite alternate;
 }
 .loader__horizon {
   position: absolute;
@@ -1086,7 +1103,7 @@ a.site-nav__link:hover .site-nav__sub,
   height: 1px;
   background: linear-gradient(to right, transparent, color-mix(in srgb, var(--gold-2) 35%, transparent) 30%, color-mix(in srgb, var(--gold-2) 35%, transparent) 70%, transparent);
   opacity: 0;
-  animation: loader-fade 1s ease 0.3s forwards;
+  animation: loader-fade 1.3s ease forwards;
   transition: transform 0.8s cubic-bezier(0.7, 0, 0.84, 0), opacity 0.8s ease;
 }
 .loader__water {
@@ -1104,7 +1121,7 @@ a.site-nav__link:hover .site-nav__sub,
   height: clamp(120px, 24vh, 240px);
   transform: scaleY(-1);
   opacity: 0;
-  animation: loader-fade-water 1s ease 0.3s forwards, loader-ripple 6s ease-in-out 0.3s infinite;
+  animation: loader-fade-water 1.3s ease forwards, loader-ripple 6s ease-in-out 0.3s infinite;
   mask-image: linear-gradient(to right, transparent 0%, #000 22%, #000 78%, transparent 100%), linear-gradient(to bottom, #000, transparent 90%);
   mask-composite: intersect;
   -webkit-mask-composite: source-in;
@@ -1122,7 +1139,7 @@ a.site-nav__link:hover .site-nav__sub,
   fill: var(--skyline);
   opacity: 0;
   mask-image: linear-gradient(to right, transparent 0%, #000 22%, #000 78%, transparent 100%);
-  animation: loader-fade 1s ease 0.2s forwards;
+  animation: loader-fade 1.2s ease forwards;
   transition: transform 0.8s cubic-bezier(0.7, 0, 0.84, 0), opacity 0.8s ease;
 }
 .loader__skyline:not(.loader__skyline--mirror) {
@@ -1151,7 +1168,7 @@ a.site-nav__link:hover .site-nav__sub,
   border: 1px solid var(--line);
   pointer-events: none;
   opacity: 0;
-  animation: loader-fade 0.8s ease 0.1s forwards;
+  animation: loader-fade 0.9s ease forwards;
   transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.8s ease;
 }
 .loader__frame::before,
@@ -1186,7 +1203,7 @@ a.site-nav__link:hover .site-nav__sub,
   color: var(--muted);
   white-space: nowrap;
   opacity: 0;
-  animation: loader-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+  animation: loader-rise 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transition: opacity 0.6s ease;
 }
 .loader__corner--tl {
@@ -1198,7 +1215,7 @@ a.site-nav__link:hover .site-nav__sub,
   right: calc(var(--inset) + 22px);
   color: var(--gold);
   text-shadow: 0 0 12px color-mix(in srgb, var(--gold) 50%, transparent);
-  animation: loader-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards, loader-neon 5s steps(1) 2s infinite;
+  animation: loader-rise 1s cubic-bezier(0.16, 1, 0.3, 1) forwards, loader-neon 5s steps(1) 2s infinite;
 }
 .loader__corner--bl {
   bottom: calc(var(--inset) + 18px);
@@ -1258,7 +1275,7 @@ a.site-nav__link:hover .site-nav__sub,
 .loader__title span {
   display: inline-block;
   opacity: 0;
-  animation: loader-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: loader-rise 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .loader__title span:last-child {
   background: linear-gradient(100deg, var(--paper) 0%, var(--gold-2) 35%, var(--gold) 55%, var(--gold-2) 75%, var(--paper) 100%);
@@ -1266,7 +1283,7 @@ a.site-nav__link:hover .site-nav__sub,
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: loader-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards, loader-shimmer 7s ease-in-out 1.6s infinite;
+  animation: loader-rise 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards, loader-shimmer 7s ease-in-out 1.6s infinite;
 }
 .loader__caps {
   font-size: 10px;
@@ -1274,7 +1291,7 @@ a.site-nav__link:hover .site-nav__sub,
   text-transform: uppercase;
   color: var(--muted);
   opacity: 0;
-  animation: loader-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+  animation: loader-rise 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .loader__eq {
   display: flex;
@@ -1283,7 +1300,7 @@ a.site-nav__link:hover .site-nav__sub,
   height: 26px;
   margin-top: 8px;
   opacity: 0;
-  animation: loader-fade 0.6s ease 0.4s forwards;
+  animation: loader-fade 1s ease forwards;
 }
 .loader__eq i {
   display: block;
@@ -1303,7 +1320,7 @@ a.site-nav__link:hover .site-nav__sub,
   width: min(360px, 72vw);
   margin-top: 10px;
   opacity: 0;
-  animation: loader-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
+  animation: loader-rise 1.05s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .loader__stage {
   font-family: var(--font-serif), serif;
@@ -3344,9 +3361,14 @@ a.site-nav__link:hover .site-nav__sub,
   --room-canvas: #23212c;
 }
 @media (max-width: 720px), (max-aspect-ratio: 3 / 2) {
+  .stage__view {
+    margin-bottom: 48px;
+  }
   .stage__controls {
-    top: 12px;
+    top: calc(100cqw * 10 / 16 + 10px);
     right: 12px;
+    flex-direction: row;
+    align-items: center;
   }
   .stage__controls .city-pill {
     gap: 8px;

@@ -207,6 +207,18 @@ The budget is held by deliberate choices. Do not undo them without a measured re
   the memory ceiling is real.
 - `labels.ts` textures are cached globally and shared. Never dispose one from a
   consumer; the next sign to ask for it gets a dead texture.
+- The post chain starts with `sanitizePass.ts`, which zeroes NaN, infinite and negative
+  texels. Bloom's mip blur spreads one bad texel over the whole frame: 1,565 NaN pixels
+  out of 1.2 Mpx blacked out the entire city on Intel when tested. Apple GPUs produce
+  them in normal use; it was the full-screen black flicker on Macs and iPads the client
+  reported four times. Keep it first; nothing that blurs or samples neighbours goes
+  ahead of it. It costs one full-screen pass; A/B on the Intel laptop at night showed
+  no measurable change (home 33–35 vs 32–34, street 37–39 vs 38, aerial 43 both).
+- The canvas rebuilds at most three times; after that the city shows its fallback
+  rather than loop.
+- When the browser drops the WebGL context (iPads under memory pressure), `ContextWatch`
+  in `CityStage.tsx` remounts the canvas and `CameraRig` resumes the visitor's view.
+  Anything that holds GPU resources must rebuild cleanly on a fresh mount.
 
 **Measure, do not guess.** `window.__cityGL` (the renderer) and `window.__cityControls`
 (camera-controls) are exposed in development for exactly this. Check the home view, a
@@ -242,6 +254,10 @@ Add a token to `globals.css` if one is missing.
   way. 3D text meshes and the share image load fonts only from `public/fonts`; canvas
   sign textures may fall back to system fonts.
 - The site is a single dark theme by design. Do not add a light theme.
+- Never put an `animation-delay` on anything that fades or rises into view on the loader.
+  WebKit (Safari, and every browser on iPad and iPhone) starts a delayed animation only
+  on its next free frame, so on a slow first load the iPad showed "Adams" alone for about
+  14 s. Stagger with a longer duration instead; looping effects may keep their delays.
 - Inside the 3D scene, colours are Three.js values and belong in the component that
   owns the material or in `dayNight.ts`, where the day and night palettes live.
 

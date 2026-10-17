@@ -5,6 +5,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { BufferGeometry, CircleGeometry, Color, ConeGeometry, CylinderGeometry, DoubleSide, Group, InstancedBufferAttribute, InstancedMesh, MeshStandardMaterial, PlaneGeometry, Texture } from "three";
 import { labelTexture } from "./labels";
 import { fillColors, fillInstances, fillPlacements, mergeParts, useBaseBoxGeometry, type Placement } from "./instancing";
+import { markSolid } from "./cameraCollision";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { useDayNight } from "./DayNightContext";
 import { AMBASSADOR_CLEAR_HALF, AMBASSADOR_RAMP_Z, AMBASSADOR_X, CITY_HALF_Z, OUTER_HALF_X, OUTER_MIN_Z, RIVER_FAR, RIVER_NEAR, RIVERWALK_HALF, ROAD } from "./layout";
@@ -637,6 +638,7 @@ function MidRise({ lots }: { lots: MidLot[] }) {
       d.scale.set(l.w, l.h, l.d);
     });
     fillColors(m, lots.length, (i) => lots[i].color);
+    markSolid(m);
     m.geometry.setAttribute("aSeed", new InstancedBufferAttribute(seeds, 1));
   }, [lots, seeds]);
   return (

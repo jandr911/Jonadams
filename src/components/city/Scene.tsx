@@ -2,11 +2,12 @@
 
 import { useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useRef } from "react";
-import { InstancedMesh, PMREMGenerator, Scene as ThreeScene, Texture, WebGLRenderTarget, type Object3D } from "three";
+import { InstancedMesh, Mesh, PMREMGenerator, Scene as ThreeScene, Texture, WebGLRenderTarget, type Material, type Object3D } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import Aircraft from "./Aircraft";
 import AlterEgo from "./AlterEgo";
 import StageBoundary from "./StageBoundary";
+import { batchVariantProbes } from "./batching";
 import Buildings from "./Buildings";
 import DetailCull from "./DetailCull";
 import Details from "./Details";
@@ -29,6 +30,7 @@ import { WindowClock } from "./useWindowMaterial";
 import Watercraft from "./Watercraft";
 
 const WARM_LIMIT_MS = 8000;
+const WARM_SLICE_MS = 12;
 
 function ignoreFailure() {}
 
@@ -61,38 +63,99 @@ function Ambience() {
   return null;
 }
 
+function withHiddenShown(root: Object3D, run: () => void) {
+  const hidden: Object3D[] = [];
+  root.traverse((o) => {
+    if (o.visible) return;
+    hidden.push(o);
+    o.visible = true;
+  });
+  try {
+    run();
+  } finally {
+    for (const o of hidden) o.visible = false;
+  }
+}
+
+function unwarmedParts(scene: Object3D, seen: Set<Object3D>) {
+  const parts: Object3D[] = [];
+  for (const child of scene.children) {
+    const units = "material" in child || child.children.length === 0 ? [child] : child.children;
+    for (const unit of units) {
+      if (seen.has(unit)) continue;
+      seen.add(unit);
+      parts.push(unit);
+    }
+  }
+  return parts;
+}
+
 function WarmShaders({ onWarm }: { onWarm: () => void }) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
   useEffect(() => {
     let cancelled = false;
-    const warm = () => {
-      if (!cancelled) onWarm();
+    let raf = 0;
+    const seen = new Set<Object3D>();
+    let queue: Object3D[] = [];
+    let probes: Object3D | null = null;
+    const target = new WebGLRenderTarget(1, 1);
+    const finish = () => {
+      if (cancelled) return;
+      cancelled = true;
+      target.dispose();
+      onWarm();
     };
-    const giveUp = setTimeout(warm, WARM_LIMIT_MS);
-    const raf = requestAnimationFrame(() => {
-      const hidden: Object3D[] = [];
-      scene.traverse((o) => {
-        if (o.visible) return;
-        hidden.push(o);
-        o.visible = true;
-      });
-      const target = new WebGLRenderTarget(1, 1);
+    const giveUp = setTimeout(finish, WARM_LIMIT_MS);
+    const offscreen = (run: () => void) => {
       const previous = gl.getRenderTarget();
       gl.setRenderTarget(target);
       try {
-        gl.compileAsync(scene, camera).then(warm);
+        withHiddenShown(scene, run);
       } finally {
         gl.setRenderTarget(previous);
-        target.dispose();
-        for (const o of hidden) o.visible = false;
       }
-    });
+    };
+    const compilePart = (part: Object3D) => {
+      try {
+        gl.compile(part, camera, scene);
+      } catch (error) {
+        console.error("Shader warm-up failed for part of the city", error);
+      }
+    };
+    const step = () => {
+      if (cancelled) return;
+      if (queue.length === 0) queue = unwarmedParts(scene, seen);
+      if (queue.length === 0 && !probes) {
+        probes = batchVariantProbes();
+        queue = [...probes.children];
+      }
+      if (queue.length === 0) {
+        if (!gl.extensions.has("KHR_parallel_shader_compile")) return finish();
+        const variants = probes;
+        offscreen(() => {
+          const ready = [gl.compileAsync(scene, camera)];
+          if (variants) ready.push(gl.compileAsync(variants, camera, scene));
+          Promise.all(ready).then(finish, finish);
+        });
+        return;
+      }
+      const start = performance.now();
+      offscreen(() => {
+        while (queue.length > 0 && performance.now() - start < WARM_SLICE_MS) compilePart(queue.shift() as Object3D);
+      });
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
     return () => {
       cancelled = true;
       clearTimeout(giveUp);
       cancelAnimationFrame(raf);
+      target.dispose();
+      probes?.traverse((o) => {
+        if (o instanceof Mesh) (o.material as Material).dispose();
+      });
     };
   }, [gl, scene, camera, onWarm]);
   return null;

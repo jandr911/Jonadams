@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { CityContext, HoverContext, type CityApi, type Move, type Quality } from "./CityContext";
 import { DayNightContext } from "./DayNightContext";
 import { computeDayNight } from "./dayNight";
@@ -23,6 +23,7 @@ const PRESETS: TimePreset[] = ["auto", "day", "dusk", "night"];
 
 const FADE_AFTER_MS = 700;
 const FADE_MS = 450;
+const FADE_STYLE = { ["--fade-ms" as string]: `${FADE_MS}ms` } as CSSProperties;
 
 function serverClockSnapshot() {
   return "auto|12.00";
@@ -142,6 +143,14 @@ export default function CityCanvas({ active }: { active: boolean }) {
   const hover = useMemo(() => ({ hovered, leaving }), [hovered, leaving]);
   const [navigating, setNavigating] = useState(false);
   const [fade, setFade] = useState(false);
+  const [covered, setCovered] = useState(false);
+  useEffect(() => {
+    if (!fade) return;
+    const t = setTimeout(() => setCovered(true), reducedMotion ? 0 : FADE_MS);
+    return () => clearTimeout(t);
+  }, [fade, reducedMotion]);
+  const dark = fade && covered;
+  const shown = active || (fade && !covered);
   const [quality, setQuality] = useState<Quality>("high");
   const dropQuality = useCallback(() => setQuality("low"), []);
   const [stageUp, setStageUp] = useState(false);
@@ -206,8 +215,8 @@ export default function CityCanvas({ active }: { active: boolean }) {
       const flight = flyRef.current?.(d) ?? Promise.resolve();
       const settle = new Promise<void>((r) => setTimeout(r, reducedMotion ? 0 : FADE_AFTER_MS));
       await Promise.race([flight, settle]);
+      setCovered(false);
       setFade(true);
-      await new Promise((r) => setTimeout(r, reducedMotion ? 0 : FADE_MS));
       router.push(d.href);
     },
     [navigating, router, reducedMotion, setHovered, SITE.navLocked],
@@ -233,7 +242,7 @@ export default function CityCanvas({ active }: { active: boolean }) {
     <DayNightContext.Provider value={dn}>
       <CityContext.Provider value={api}>
         <HoverContext.Provider value={hover}>
-          <div className="city-host" data-active={active} data-curtain={curtain} inert={!active} aria-hidden={!active}>
+          <div className="city-host" data-active={shown} data-route={active ? "city" : "room"} data-curtain={curtain} inert={!active} aria-hidden={!active}>
           <div className={`city-root ${live ? "is-live" : ""}`}>
             <StageBoundary
               name="The 3D city"
@@ -244,7 +253,7 @@ export default function CityCanvas({ active }: { active: boolean }) {
                 </div>
               }
             >
-              <CityStage live={live} active={active} quality={quality} onSlow={dropQuality} onReady={stageReady} />
+              <CityStage live={live} active={shown && !dark} quality={quality} onSlow={dropQuality} onReady={stageReady} />
             </StageBoundary>
             <div className="city-frame" aria-hidden>
               <i />
@@ -321,7 +330,7 @@ export default function CityCanvas({ active }: { active: boolean }) {
               <NavPad held={held} homeRef={homeRef} />
             </div>
 
-            <div className={`city-fade ${fade ? "is-on" : ""}`} aria-hidden />
+            <div className={`city-fade ${fade ? "is-on" : ""}`} style={FADE_STYLE} aria-hidden />
             <Loader ready={ready} released={entered} onRelease={enter} onGone={dropCurtain} returning={returning} />
           </div>
           </div>
