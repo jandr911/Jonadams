@@ -6,9 +6,12 @@ import { useEffect, useRef, useState } from "react";
 import { useDayNight } from "./DayNightContext";
 import { FilmGradeEffect, setGradeContrast } from "./filmGrade";
 import { InkEdgesEffect, setInkStrength } from "./inkEdges";
+import { createSanitizePass } from "./sanitizePass";
 
 export default function Effects() {
   const dn = useDayNight();
+  const [sanitize] = useState(createSanitizePass);
+  useEffect(() => () => sanitize.dispose(), [sanitize]);
   const [grade] = useState(() => new FilmGradeEffect());
   useEffect(() => () => grade.dispose(), [grade]);
   const [ink] = useState(() => new InkEdgesEffect());
@@ -24,6 +27,7 @@ export default function Effects() {
   }, [dn, ink, grade]);
   return (
     <EffectComposer multisampling={0}>
+      <primitive object={sanitize} />
       <SMAA />
       <primitive object={ink} />
       <Bloom ref={bloom} mipmapBlur luminanceThreshold={1} luminanceSmoothing={0.2} intensity={0.3} radius={0.5} />

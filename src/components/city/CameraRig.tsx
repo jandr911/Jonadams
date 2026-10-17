@@ -2,7 +2,7 @@
 
 import { CameraControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Box3, MathUtils, PerspectiveCamera, Vector3 } from "three";
 import { useCity, type Move } from "./CityContext";
 import { CAMERA_CEILING, INTRO_CAMERA, destinationPosition, homeCamera, type Destination } from "./layout";
@@ -45,6 +45,11 @@ const ACTIONS: Record<string, Move | "home"> = {
 
 type Vec3 = [number, number, number];
 
+export interface CameraView {
+  position: Vec3;
+  target: Vec3;
+}
+
 interface Pose {
   tx: number;
   ty: number;
@@ -71,6 +76,14 @@ function poseOf(p: Vector3, t: Vector3): Pose {
   return { tx: t.x, ty: t.y, tz: t.z, radius, theta: Math.atan2(dx, dz), phi: Math.acos(Math.min(1, Math.max(-1, dy / radius))) };
 }
 
+function viewOf(pose: Pose): CameraView {
+  const s = Math.sin(pose.phi) * pose.radius;
+  return {
+    position: [pose.tx + s * Math.sin(pose.theta), pose.ty + Math.cos(pose.phi) * pose.radius, pose.tz + s * Math.cos(pose.theta)],
+    target: [pose.tx, pose.ty, pose.tz],
+  };
+}
+
 function shortestTurn(from: number, to: number) {
   const d = ((((to - from) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
   return from + d;
@@ -80,7 +93,7 @@ function axis(keys: Set<Move>, pad: Set<Move>, plus: Move, minus: Move) {
   return (keys.has(plus) || pad.has(plus) ? 1 : 0) - (keys.has(minus) || pad.has(minus) ? 1 : 0);
 }
 
-export default function CameraRig({ live }: { live: boolean }) {
+export default function CameraRig({ live, resumeRef }: { live: boolean; resumeRef: RefObject<CameraView | null> }) {
   const ref = useRef<CameraControls>(null);
   const { flyRef, homeRef, held, reducedMotion, navigating, active } = useCity();
   const gl = useThree((s) => s.gl);
@@ -144,7 +157,12 @@ export default function CameraRig({ live }: { live: boolean }) {
       placed.current = true;
       c.setBoundary(WORLD_BOUNDS);
       c.boundaryEnclosesCamera = true;
-      if (reducedMotion) {
+      const view = resumeRef.current;
+      resumeRef.current = null;
+      if (view) {
+        introPlayed.current = true;
+        void jump(view.position, view.target);
+      } else if (reducedMotion) {
         introPlayed.current = true;
         const home = homeCamera(aspect);
         void jump(home.position, home.target);
@@ -176,7 +194,7 @@ export default function CameraRig({ live }: { live: boolean }) {
       flyRef.current = null;
       homeRef.current = null;
     };
-  }, [aspect, clock, flyRef, gl, homeRef, live, navigating, reducedMotion, scratch]);
+  }, [aspect, clock, flyRef, gl, homeRef, live, navigating, reducedMotion, resumeRef, scratch]);
 
   useEffect(() => {
     const isTyping = (e: KeyboardEvent) => {
@@ -215,8 +233,11 @@ export default function CameraRig({ live }: { live: boolean }) {
     };
   }, [active, held, homeRef]);
 
+  const wasActive = useRef(active);
   useEffect(() => {
-    if (active && introPlayed.current) homeRef.current?.();
+    const returning = active && !wasActive.current;
+    wasActive.current = active;
+    if (returning && introPlayed.current) homeRef.current?.();
   }, [active, homeRef]);
 
   useFrame((state, delta) => {
@@ -266,6 +287,20 @@ export default function CameraRig({ live }: { live: boolean }) {
     const t = state.clock.elapsedTime;
     c.rotate(Math.sin(t * 0.12) * DRIFT_YAW * dt, Math.cos(t * 0.09) * DRIFT_PITCH * dt, false);
   });
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const remember = () => {
+      const c = ref.current;
+      if (!c || !introPlayed.current) return;
+      const f = flight.current;
+      resumeRef.current = f
+        ? viewOf(f.to)
+        : { position: c.getPosition(scratch.p, false).toArray(), target: c.getTarget(scratch.t, false).toArray() };
+    };
+    canvas.addEventListener("webglcontextlost", remember);
+    return () => canvas.removeEventListener("webglcontextlost", remember);
+  }, [gl, resumeRef, scratch]);
 
   useEffect(() => {
     const cam = ref.current?.camera;
