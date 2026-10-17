@@ -2,11 +2,12 @@
 
 import { useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useRef } from "react";
-import { InstancedMesh, PMREMGenerator, Scene as ThreeScene, Texture, WebGLRenderTarget, type Object3D } from "three";
+import { InstancedMesh, Mesh, PMREMGenerator, Scene as ThreeScene, Texture, WebGLRenderTarget, type Material, type Object3D } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import Aircraft from "./Aircraft";
 import AlterEgo from "./AlterEgo";
 import StageBoundary from "./StageBoundary";
+import { batchVariantProbes } from "./batching";
 import Buildings from "./Buildings";
 import DetailCull from "./DetailCull";
 import Details from "./Details";
@@ -98,6 +99,7 @@ function WarmShaders({ onWarm }: { onWarm: () => void }) {
     let raf = 0;
     const seen = new Set<Object3D>();
     let queue: Object3D[] = [];
+    let probes: Object3D | null = null;
     const target = new WebGLRenderTarget(1, 1);
     const finish = () => {
       if (cancelled) return;
@@ -125,10 +127,17 @@ function WarmShaders({ onWarm }: { onWarm: () => void }) {
     const step = () => {
       if (cancelled) return;
       if (queue.length === 0) queue = unwarmedParts(scene, seen);
+      if (queue.length === 0 && !probes) {
+        probes = batchVariantProbes();
+        queue = [...probes.children];
+      }
       if (queue.length === 0) {
         if (!gl.extensions.has("KHR_parallel_shader_compile")) return finish();
+        const variants = probes;
         offscreen(() => {
-          gl.compileAsync(scene, camera).then(finish, finish);
+          const ready = [gl.compileAsync(scene, camera)];
+          if (variants) ready.push(gl.compileAsync(variants, camera, scene));
+          Promise.all(ready).then(finish, finish);
         });
         return;
       }
@@ -144,6 +153,9 @@ function WarmShaders({ onWarm }: { onWarm: () => void }) {
       clearTimeout(giveUp);
       cancelAnimationFrame(raf);
       target.dispose();
+      probes?.traverse((o) => {
+        if (o instanceof Mesh) (o.material as Material).dispose();
+      });
     };
   }, [gl, scene, camera, onWarm]);
   return null;

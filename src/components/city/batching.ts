@@ -1,4 +1,4 @@
-import { BufferAttribute, Color, Euler, Matrix4, Mesh, Texture, Vector2, Vector3, Vector4, type BufferGeometry, type Material, type Object3D, type InstancedMesh } from "three";
+import { BufferAttribute, BufferGeometry, Color, Euler, Matrix4, Mesh, Object3D, Texture, Vector2, Vector3, Vector4, type Material, type InstancedMesh } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { DETAIL_CULLED } from "./DetailCull";
 
@@ -259,10 +259,7 @@ function merge(b: Batcher, owner: Object3D, sources: Source[]): Group | null {
   merged.translate(-centre.x, -centre.y, -centre.z);
   merged.computeBoundingSphere();
   const source = sources[0].mesh;
-  const material = (source.material as Material).clone() as Tintable;
-  material.color.setRGB(1, 1, 1);
-  material.vertexColors = true;
-  const batch = new Mesh(merged, material);
+  const batch = new Mesh(merged, batchMaterial(source.material as Material));
   batch.name = `${b.label}-batch`;
   batch.position.copy(centre);
   batch.layers.mask = source.layers.mask;
@@ -278,6 +275,39 @@ function merge(b: Batcher, owner: Object3D, sources: Source[]): Group | null {
     writeLook(s.look, s.mesh);
   }
   return { owner, sources, batch };
+}
+
+export function batchMaterial(source: Material) {
+  const material = source.clone() as Tintable;
+  material.color.setRGB(1, 1, 1);
+  material.vertexColors = true;
+  return material;
+}
+
+const active = new Set<Batcher>();
+
+function probeGeometry(source: BufferGeometry) {
+  const color = source.attributes.color;
+  if (!color || color.itemSize === 3) return source;
+  const probe = new BufferGeometry();
+  for (const [name, attribute] of Object.entries(source.attributes)) probe.setAttribute(name, attribute);
+  probe.setAttribute("color", new BufferAttribute(new Float32Array(3), 3));
+  return probe;
+}
+
+export function batchVariantProbes() {
+  const seen = new Set<string>();
+  const probes = new Object3D();
+  for (const b of active) {
+    for (const mesh of b.candidates) {
+      const material = mesh.material as Material;
+      const key = `${materialKey(material)}#${Object.keys(mesh.geometry.attributes).sort().join(",")}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      probes.add(new Mesh(probeGeometry(mesh.geometry), batchMaterial(material)));
+    }
+  }
+  return probes;
 }
 
 function cellOf(mesh: Mesh) {
@@ -455,6 +485,7 @@ export function createBatcher(root: Object3D, label: string): Batcher {
     frozen: new WeakMap(),
   };
   watchSources(b);
+  active.add(b);
   return b;
 }
 
@@ -469,6 +500,7 @@ export function tickBatcher(b: Batcher) {
 }
 
 export function disposeBatcher(b: Batcher) {
+  active.delete(b);
   for (const g of b.groups) dissolve(b, g);
   b.groups = [];
   b.pending = [];
