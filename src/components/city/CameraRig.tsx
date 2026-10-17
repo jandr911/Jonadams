@@ -4,10 +4,12 @@ import { CameraControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { Box3, MathUtils, PerspectiveCamera, Vector3 } from "three";
+import { collectSolids, pushOutOfSolids, type Solids } from "./cameraCollision";
 import { useCity, type Move } from "./CityContext";
 import { CAMERA_CEILING, INTRO_CAMERA, destinationPosition, homeCamera, type Destination } from "./layout";
 
 const EYE_FLOOR = 3.2;
+const SOLID_MARGIN = 2;
 const MAX_POLAR = 1.56;
 const FLY_DISTRICT_SECONDS = 2;
 const FLY_HOME_SECONDS = 1.6;
@@ -97,13 +99,15 @@ export default function CameraRig({ live, resumeRef }: { live: boolean; resumeRe
   const ref = useRef<CameraControls>(null);
   const { flyRef, homeRef, held, reducedMotion, navigating, active } = useCity();
   const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
   const size = useThree((s) => s.size);
   const clock = useThree((s) => s.clock);
   const aspect = size.width / size.height;
   const vel = useRef({ x: 0, y: 0, f: 0, d: 0 });
   const keys = useRef(new Set<Move>());
   const flight = useRef<Flight | null>(null);
-  const [scratch] = useState(() => ({ p: new Vector3(), t: new Vector3() }));
+  const solids = useRef<Solids | null>(null);
+  const [scratch] = useState(() => ({ p: new Vector3(), t: new Vector3(), eye: new Vector3() }));
   const placed = useRef(false);
   const introPlayed = useRef(false);
   const takeOver = useRef(() => {});
@@ -286,6 +290,19 @@ export default function CameraRig({ live, resumeRef }: { live: boolean; resumeRe
     if (reducedMotion || c.active) return;
     const t = state.clock.elapsedTime;
     c.rotate(Math.sin(t * 0.12) * DRIFT_YAW * dt, Math.cos(t * 0.09) * DRIFT_PITCH * dt, false);
+  });
+
+  useFrame(() => {
+    const c = ref.current;
+    if (!c || !live) return;
+    if (!solids.current) solids.current = collectSolids(scene, SOLID_MARGIN);
+    const s = solids.current;
+    const heading = c.getPosition(scratch.eye, true);
+    if (pushOutOfSolids(s, heading)) void c.setPosition(heading.x, heading.y, heading.z, true);
+    const now = c.getPosition(scratch.eye, false);
+    if (!pushOutOfSolids(s, now)) return;
+    void c.setPosition(now.x, now.y, now.z, false);
+    c.update(0);
   });
 
   useEffect(() => {

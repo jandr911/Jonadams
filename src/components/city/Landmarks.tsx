@@ -27,6 +27,7 @@ import TreeStand, { plantTrees } from "./TreeStand";
 import { useWindowMaterial } from "./useWindowMaterial";
 import { baseBoxGeometry, fillInstances, mergeParts, setEmissiveIntensity } from "./instancing";
 import type { WindowMaterialOptions } from "./windowMaterial";
+import { markSolid } from "./cameraCollision";
 
 const BASE_BOX = baseBoxGeometry();
 const FOUNTAIN_PLUME = new CylinderGeometry(0.6, 1.6, 9.5, 10).translate(0, 4.75, 0);
@@ -49,7 +50,7 @@ function WindowedBox({
 }) {
   const mat = useWindowMaterial({ ...opts, glow });
   return (
-    <mesh material={mat} geometry={BASE_BOX} position={position} rotation={rotation} scale={[w, h, d]} />
+    <mesh ref={markSolid} material={mat} geometry={BASE_BOX} position={position} rotation={rotation} scale={[w, h, d]} />
   );
 }
 
@@ -173,7 +174,7 @@ const GOLD_LIGHT = "#f3dfae";
 
 function TaperedGlassTower({ scale, position = [0, 0, 0], seed, glow = 0.18 }: { scale: [number, number, number]; position?: [number, number, number]; seed: number; glow?: number }) {
   const mat = useWindowMaterial({ color: "#0b0d16", cylindrical: true, seed, winSize: [1.6, 2.0], litDensity: 0.55, cool: "#f3dfae", warm: "#ffd9a0", glow });
-  return <mesh material={mat} geometry={CLUB_TOWER} position={position} scale={scale} />;
+  return <mesh ref={markSolid} material={mat} geometry={CLUB_TOWER} position={position} scale={scale} />;
 }
 
 function ClubLightRings() {
