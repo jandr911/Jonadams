@@ -34,6 +34,6 @@ export default async function CreativesPage() {
     </>
   );
   return (
-    <Room district="creatives" scene={{ art: <CreativesScene creatives={creatives} />, phone, plaques: copy.CREATIVES_DESK, links: roomLinks(["club", "listen", "watch"]) }} />
+    <Room district="creatives" scene={{ art: <CreativesScene creatives={creatives} />, phone, plaques: copy.CREATIVES_DESK, links: roomLinks(["club", "listen", "watch", "merch"]) }} />
   );
 }
