@@ -254,6 +254,10 @@ Add a token to `globals.css` if one is missing.
   way. 3D text meshes and the share image load fonts only from `public/fonts`; canvas
   sign textures may fall back to system fonts.
 - The site is a single dark theme by design. Do not add a light theme.
+- Never put an `animation-delay` on anything that fades or rises into view on the loader.
+  WebKit (Safari, and every browser on iPad and iPhone) starts a delayed animation only
+  on its next free frame, so on a slow first load the iPad showed "Adams" alone for about
+  14 s. Stagger with a longer duration instead; looping effects may keep their delays.
 - Inside the 3D scene, colours are Three.js values and belong in the component that
   owns the material or in `dayNight.ts`, where the day and night palettes live.
 

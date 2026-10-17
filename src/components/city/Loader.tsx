@@ -204,8 +204,8 @@ export default function Loader({ ready, released, onRelease, onGone, returning }
       <div className="loader__center">
         <span className="loader__eyebrow" aria-hidden>{fill(LOADER.presents, { artist: SITE.artist })}</span>
         <div className="loader__title" aria-hidden>
-          <span style={{ animationDelay: "0.1s" }}>{SITE.surname}</span>
-          <span style={{ animationDelay: "0.3s" }}>{SITE.cityName}</span>
+          <span>{SITE.surname}</span>
+          <span>{SITE.cityName}</span>
         </div>
         <span className="loader__caps" aria-hidden>{LOADER.caps}</span>
 
