@@ -132,14 +132,17 @@ export function isMedianLine(axis: "x" | "z", line: number) {
   return (axis === "x" ? MEDIAN_X : MEDIAN_Z).some((m) => Math.abs(m - line) < 0.01);
 }
 
-export interface Destination {
+export interface RoomPlace {
   id: string;
   href: string;
   label: string;
   sub: string;
   blurb: string;
-  color: string;
   accent: string;
+}
+
+export interface Destination extends RoomPlace {
+  color: string;
   block: [number, number];
   view: { from: [number, number, number]; at: [number, number, number] };
   markerHeight: number;
@@ -206,6 +209,25 @@ export function destinationPosition(d: Destination): [number, number] {
 
 export function indexLabel(index: number) {
   return String(index + 1).padStart(2, "0");
+}
+
+export const MENU_ROOMS: RoomPlace[] = [
+  {
+    id: "merch",
+    href: "/merch",
+    label: "Merch",
+    sub: "Eastern Market",
+    blurb: "Tees, hoodies and joggers",
+    accent: "var(--gold)",
+  },
+];
+
+export const PLACES: RoomPlace[] = [...DESTINATIONS, ...MENU_ROOMS];
+
+export function placeById(id: string): RoomPlace {
+  const p = PLACES.find((x) => x.id === id);
+  if (!p) throw new Error(`unknown room ${id}`);
+  return p;
 }
 
 export function destinationById(id: string): Destination {

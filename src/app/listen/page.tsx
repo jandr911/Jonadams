@@ -18,5 +18,5 @@ export default async function ListenPage() {
       ))}
     </div>
   );
-  return <Room district="listen" scene={{ art: <ListenScene videos={listen} />, phone, plaques: copy.LISTEN_DESK, links: roomLinks(["club", "watch", "creatives"]) }} />;
+  return <Room district="listen" scene={{ art: <ListenScene videos={listen} />, phone, plaques: copy.LISTEN_DESK, links: roomLinks(["club", "watch", "creatives", "merch"]) }} />;
 }

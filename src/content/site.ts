@@ -154,7 +154,39 @@ export const ROOMS = {
     more: "More · {page}/{pages}",
     moreLabel: "Show more creatives, page {next} of {pages}",
   },
+  merch: {
+    description: "Jonathan Adams merch: tees, hoodies and joggers from Detroit. Pick a size and order straight from the artist.",
+    console: "Pieces on the rack",
+    frames: 6,
+    more: "More · {page}/{pages}",
+    moreLabel: "Show more pieces, page {next} of {pages}",
+  },
 };
+
+export const MERCH = {
+  eyebrow: "Eastern Market",
+  soon: "Dropping soon",
+  soonNote: "The first drop lands here. Join the list and hear about it first.",
+  join: "Join the list",
+  kinds: { tee: "T-shirt", hoodie: "Hoodie", joggers: "Joggers", other: "Merch" },
+  sizes: "Sizes",
+  oneSize: "One size",
+  pickSize: "Pick a size to order",
+  soldOut: "Sold out",
+  sizeSoldOut: "{size}, sold out",
+  whatsapp: "Order on WhatsApp",
+  email: "Order by email",
+  orderSoon: "Ordering opens soon",
+  subject: "Merch order: {item}",
+  message: "Hi Jonathan, I'd like to order the {item} ({kind}), size {size}, {price}. Where do I pay?",
+  messageOneSize: "Hi Jonathan, I'd like to order the {item} ({kind}), {price}. Where do I pay?",
+  photo: "{item}, {kind}",
+};
+
+export const MERCH_DESK = [
+  { label: "Listen", note: "Back to the booth", href: "/listen" },
+  { label: "Club Adams", note: "Back to the front door", href: "/club" },
+];
 
 export const GET_LISTED = {
   ask: "Want on the wall?",
@@ -234,4 +266,25 @@ export interface Creative {
   photo: string;
   youtube: string;
   links: SiteLink[];
+}
+
+export type MerchKind = "tee" | "hoodie" | "joggers" | "other";
+
+export const MERCH_KINDS: MerchKind[] = ["tee", "hoodie", "joggers", "other"];
+
+export const MERCH_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL"];
+
+export interface MerchSize {
+  size: string;
+  soldOut: boolean;
+}
+
+export interface MerchItem {
+  id: string;
+  name: string;
+  kind: MerchKind;
+  price: string;
+  note: string;
+  photo: string;
+  sizes: MerchSize[];
 }
