@@ -3,12 +3,13 @@ import { getContent } from "@/lib/content";
 import { SECTIONS } from "./sections";
 
 export default async function AdminHome() {
-  const { listen, watch, creatives, links } = await getContent();
+  const { listen, watch, creatives, merch, links } = await getContent();
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   const counts: Record<string, string> = {
     "/admin/videos/listen": plural(listen.length, "video", "videos"),
     "/admin/videos/watch": plural(watch.length, "video", "videos"),
     "/admin/creatives": plural(creatives.length, "person", "people"),
+    "/admin/merch": plural(merch.length, "piece", "pieces"),
     "/admin/links": `${links.filter((l) => l.href).length} showing`,
   };
   return (

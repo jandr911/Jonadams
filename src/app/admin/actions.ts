@@ -5,7 +5,7 @@ import { updateTag } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import type { FormState } from "@/components/admin/ActionForm";
 import { DEFAULT_COPY, isCopyKey, type CopySection } from "@/content/copy";
-import { VIDEO_KINDS, type VideoKind } from "@/content/site";
+import { MERCH_KINDS, MERCH_SIZES, VIDEO_KINDS, type MerchKind, type MerchSize, type VideoKind } from "@/content/site";
 import { requireAdmin } from "@/lib/admin/session";
 import { CONTENT_TAG } from "@/lib/content";
 import { MEDIA_BUCKET } from "@/lib/supabase/env";
@@ -211,6 +211,66 @@ export async function removeCreative(_prev: FormState, formData: FormData): Prom
     await dropStored(db, before?.photo ?? "", "");
   });
   if (result?.ok) redirect("/admin/creatives");
+  return result;
+}
+
+function merchKind(value: string): MerchKind {
+  return (MERCH_KINDS as string[]).includes(value) ? (value as MerchKind) : "other";
+}
+
+const STARTER_SIZES: MerchSize[] = ["S", "M", "L", "XL"].map((size) => ({ size, soldOut: false }));
+
+function merchSizes(formData: FormData): MerchSize[] {
+  return MERCH_SIZES.flatMap((size) => {
+    const stock = text(formData, `size${size}`);
+    return stock === "in" || stock === "out" ? [{ size, soldOut: stock === "out" }] : [];
+  });
+}
+
+export async function saveMerch(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = text(formData, "id");
+  let created = "";
+  const result = await run(async (db) => {
+    const kind = merchKind(text(formData, "kind"));
+    const values = {
+      name: must(formData, "name", "the name"),
+      kind,
+      price: must(formData, "price", "the price"),
+      note: text(formData, "note"),
+      photo: text(formData, "photo"),
+      sizes: id ? merchSizes(formData) : kind === "other" ? [] : STARTER_SIZES,
+    };
+    if (id) {
+      const { data: before, error } = await db.from("merch").select("photo").eq("id", id).single();
+      check(error);
+      check((await db.from("merch").update(values).eq("id", id)).error);
+      await dropStored(db, before?.photo ?? "", values.photo);
+    } else {
+      const position = await nextPosition(db, "merch");
+      const { data, error } = await db.from("merch").insert({ ...values, position }).select("id").single();
+      check(error);
+      created = data?.id ?? "";
+    }
+  });
+  if (created) redirect(`/admin/merch/${created}`);
+  return result;
+}
+
+export async function moveMerch(_prev: FormState, formData: FormData): Promise<FormState> {
+  return run(async (db) => {
+    await move(db, "merch", must(formData, "id", "the item"), text(formData, "direction"));
+  }, null);
+}
+
+export async function removeMerch(_prev: FormState, formData: FormData): Promise<FormState> {
+  const result = await run(async (db) => {
+    const id = must(formData, "id", "the item");
+    const { data: before, error } = await db.from("merch").select("photo").eq("id", id).single();
+    check(error);
+    check((await db.from("merch").delete().eq("id", id)).error);
+    await dropStored(db, before?.photo ?? "", "");
+  });
+  if (result?.ok) redirect("/admin/merch");
   return result;
 }
 
