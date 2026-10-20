@@ -4,7 +4,7 @@ import CityHost from "@/components/city/CityHost";
 import SiteMusicGate from "@/components/SiteMusicGate";
 import { CopyProvider } from "@/content/CopyProvider";
 import { fill } from "@/content/copy";
-import { SHARE_IMAGE } from "@/content/site";
+import { IN_DEVELOPMENT, SHARE_IMAGE } from "@/content/site";
 import { getContent } from "@/lib/content";
 import "./globals.css";
 
@@ -23,6 +23,7 @@ const spaceGrotesk = Space_Grotesk({
 const SITE_URL = "https://jonnadams.com";
 
 export async function generateMetadata(): Promise<Metadata> {
+  if (IN_DEVELOPMENT) return {};
   const { copy } = await getContent();
   const { SITE, DESCRIPTION } = copy;
   const images = { url: "/share-image", ...SHARE_IMAGE, alt: fill(SHARE_IMAGE.alt, { name: SITE.name, artist: SITE.artist }) };
@@ -38,6 +39,13 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  if (IN_DEVELOPMENT) {
+    return (
+      <html lang="en">
+        <body className={`${cormorant.variable} ${spaceGrotesk.variable} antialiased`}>{children}</body>
+      </html>
+    );
+  }
   const { copy } = await getContent();
   return (
     <html lang="en">

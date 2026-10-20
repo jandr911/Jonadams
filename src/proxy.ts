@@ -1,10 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { IN_DEVELOPMENT } from "@/content/site";
 import { SUPABASE_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 
 const LOGIN = "/admin/login";
 
 export async function proxy(request: NextRequest) {
+  if (IN_DEVELOPMENT) return NextResponse.rewrite(new URL("/in-development", request.url));
+  if (!request.nextUrl.pathname.startsWith("/admin")) return NextResponse.next();
   let response = NextResponse.next({ request });
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_KEY, {
     cookies: {
@@ -24,4 +27,4 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ["/admin/:path*"] };
+export const config = { matcher: ["/((?!_next/static|_next/image|keep-awake|icon.svg).*)"] };
