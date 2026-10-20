@@ -22,7 +22,7 @@ export const MUSIC = {
 
 export const TAGLINE: string = "Music · Art · The Creatives";
 
-export const IN_DEVELOPMENT = true;
+export const IN_DEVELOPMENT = false;
 
 export const GEO = { lat: 42.33, lon: -83.05 };
 
