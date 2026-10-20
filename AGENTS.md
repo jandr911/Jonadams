@@ -165,8 +165,20 @@ change that drops the home view under 50 does not ship until it is back.
 
 The budget is held by deliberate choices. Do not undo them without a measured reason:
 
-- Default pixel ratio is 1. Do not raise it. The low quality tier renders windows over
-  1.6 Mpx at a reduced ratio and scales up (`CityStage.tsx`); the high tier never does.
+- Default pixel ratio is 1. Do not raise it. Windows over 1.6 Mpx render at a reduced
+  ratio and scale up (`CityStage.tsx`), in both tiers; the high tier never goes below
+  0.75, the low tier has no floor. Until 2026-10-21 only the low tier did, and a
+  1920×1080 window ran 29 fps against 33–37 at 1440×900 without the governor ever
+  stepping in; the client chose the softer, smoother big screen.
+- Facades are the costliest pixels in the city. `InstancedLots` draws a depth-only twin of
+  the buildings first so the window shader shades each visible pixel once. Street level,
+  1920×1080, Intel: 38–42 fps with 6–14 frames over 80 ms per 5 s without it, 45–50 fps
+  with 2–5 with it. Keep it, and give
+  any other screen-filling custom shader the same treatment before adding detail to it.
+- The HUD panels over the live canvas (header, district bar, city pills) are a dense tint,
+  not `backdrop-filter`: a live blur re-blurs the city under them every frame. The client
+  chose the tint on 2026-10-21. Do not put a backdrop blur on anything that stays over the
+  canvas; the hover labels keep theirs because they show only while hovered.
 - Anti-aliasing is SMAA in the post chain. **Never enable multisampling on the canvas**;
   4× MSAA took the scene from 55 to 9 fps.
 - The river is a custom planar mirror (`RiverMirror.tsx`, `mirrorRender.ts`) that
@@ -199,9 +211,10 @@ The budget is held by deliberate choices. Do not undo them without a measured re
   the camera ceiling and the camera floor keeps the eye above the streets. Do not move
   one without the others.
 - Repeated geometry is instanced. A loop that mounts one mesh per building, car, window,
-  or house is wrong here. An instance buffer rewritten every frame is marked dynamic
-  (`useDynamicInstances` / `dynamicInstances` in `instancing.ts`); Windows' Direct3D path
-  stalls on per-frame uploads to a static buffer.
+  or house is wrong here. An instance buffer rewritten while the city runs, matrices or
+  colours, is marked dynamic (`useDynamicInstances` / `dynamicInstances` /
+  `dynamicColors` in `instancing.ts`); Windows' Direct3D path stalls on repeated uploads
+  to a static buffer.
 - Procedural canvas textures live in `textures.ts`, and text and sign textures in
   `labels.ts`. Do not add image textures without asking; there is no asset pipeline and
   the memory ceiling is real.
