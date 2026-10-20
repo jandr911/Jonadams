@@ -170,6 +170,11 @@ The budget is held by deliberate choices. Do not undo them without a measured re
   0.75, the low tier has no floor. Until 2026-10-21 only the low tier did, and a
   1920×1080 window ran 29 fps against 33–37 at 1440×900 without the governor ever
   stepping in; the client chose the softer, smoother big screen.
+- Facades are the costliest pixels in the city. `InstancedLots` draws a depth-only twin of
+  the buildings first so the window shader shades each visible pixel once. Street level,
+  1920×1080, Intel: 38–42 fps with 6–14 frames over 80 ms per 5 s without it, 45–50 fps
+  with 2–5 with it. Keep it, and give
+  any other screen-filling custom shader the same treatment before adding detail to it.
 - Anti-aliasing is SMAA in the post chain. **Never enable multisampling on the canvas**;
   4× MSAA took the scene from 55 to 9 fps.
 - The river is a custom planar mirror (`RiverMirror.tsx`, `mirrorRender.ts`) that
