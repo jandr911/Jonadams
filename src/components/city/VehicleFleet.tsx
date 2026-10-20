@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, CanvasTexture, Color, Euler, InstancedMesh, Matrix4, MeshBasicMaterial, MeshStandardMaterial, Quaternion, Vector3 } from "three";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
-import { HIDDEN_MATRIX, cachedByKey, dynamicInstances } from "./instancing";
+import { HIDDEN_MATRIX, cachedByKey, dynamicColors, dynamicInstances } from "./instancing";
 import { labelTexture } from "./labels";
 import { makeHeadlightPoolTexture } from "./textures";
 import {
@@ -314,6 +314,7 @@ export default function VehicleFleet({
     const tail = meshes.get("tail");
     if (tail) {
       for (let i = 0; i < items.length * 2; i++) tail.setColorAt(i, TAIL_IDLE);
+      dynamicColors(tail);
       if (tail.instanceColor) tail.instanceColor.needsUpdate = true;
     }
     scratch.current.brakes = new Uint8Array(items.length).fill(255);

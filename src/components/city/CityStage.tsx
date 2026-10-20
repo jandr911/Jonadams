@@ -8,8 +8,10 @@ import type { Quality } from "./CityContext";
 import QualityGovernor from "./QualityGovernor";
 import Scene from "./Scene";
 
-// Low tier only: windows over 1600x1000 (the 1440x900 Intel budget with headroom) render smaller and scale up.
+// Windows over 1600x1000 (the 1440x900 Intel budget with headroom) render smaller and scale up.
+// A 1920x1080 viewport at full size measured 29 fps against 33-37 at 1440x900 on the Intel iGPU.
 const MAX_RENDER_PIXELS = 1_600_000;
+const HIGH_TIER_MIN_DPR = 0.75;
 const RESTORE_WAIT_MS = 3000;
 const MAX_REBUILDS = 3;
 
@@ -81,7 +83,7 @@ function CityStage({ live, active, quality, onSlow, onReady }: { live: boolean; 
     <Canvas
       key={generation}
       frameloop={active && warm ? "always" : "never"}
-      dpr={quality === "low" ? capped : 1}
+      dpr={quality === "low" ? capped : Math.max(capped, HIGH_TIER_MIN_DPR)}
       camera={{ fov: 40, near: 1, far: 2600, position: [0, 80, 260] }}
       gl={{ antialias: false, powerPreference: "high-performance", toneMapping: NoToneMapping }}
       style={{ position: "absolute", inset: 0 }}

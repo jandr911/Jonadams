@@ -57,6 +57,10 @@ export function dynamicInstances(mesh: InstancedMesh | null) {
   mesh?.instanceMatrix.setUsage(DynamicDrawUsage);
 }
 
+export function dynamicColors(mesh: InstancedMesh | null) {
+  mesh?.instanceColor?.setUsage(DynamicDrawUsage);
+}
+
 export function useDynamicInstances(ref: RefObject<InstancedMesh | null>) {
   useLayoutEffect(() => dynamicInstances(ref.current), [ref]);
 }
