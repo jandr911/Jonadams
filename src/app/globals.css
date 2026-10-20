@@ -4,6 +4,7 @@
   --ink: #07060f;
   --ink-2: #0e0c1a;
   --panel: rgba(12, 10, 24, 0.68);
+  --panel-dense: rgba(12, 10, 24, 0.86);
   --line: rgba(244, 241, 234, 0.12);
   --line-strong: rgba(244, 241, 234, 0.28);
   --gold: #d6b56e;
@@ -176,7 +177,6 @@ body {
   padding: 0 clamp(16px, 3vw, 40px);
   border-bottom: 1px solid var(--line);
   background: linear-gradient(to bottom, color-mix(in srgb, var(--ink) 98%, transparent), color-mix(in srgb, var(--ink) 86%, transparent));
-  backdrop-filter: blur(14px);
 }
 .site-header::after {
   content: "";
@@ -568,8 +568,7 @@ a.site-nav__link:hover .site-nav__sub,
   max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 18px;
-  background: var(--panel);
-  backdrop-filter: blur(18px) saturate(140%);
+  background: var(--panel-dense);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45), inset 0 1px 0 color-mix(in srgb, var(--paper) 5%, transparent);
   overflow: hidden;
   opacity: 0;
@@ -726,8 +725,7 @@ a.site-nav__link:hover .site-nav__sub,
   padding: 8px 14px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--panel);
-  backdrop-filter: blur(16px);
+  background: var(--panel-dense);
   color: var(--paper);
   cursor: pointer;
   font-size: 10px;
@@ -3373,7 +3371,6 @@ a.site-nav__link:hover .site-nav__sub,
   .stage__controls .city-pill {
     gap: 8px;
     padding: 6px 10px;
-    backdrop-filter: none;
   }
   .stage__phase-mode {
     display: none;

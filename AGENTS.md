@@ -175,6 +175,10 @@ The budget is held by deliberate choices. Do not undo them without a measured re
   1920×1080, Intel: 38–42 fps with 6–14 frames over 80 ms per 5 s without it, 45–50 fps
   with 2–5 with it. Keep it, and give
   any other screen-filling custom shader the same treatment before adding detail to it.
+- The HUD panels over the live canvas (header, district bar, city pills) are a dense tint,
+  not `backdrop-filter`: a live blur re-blurs the city under them every frame. The client
+  chose the tint on 2026-10-21. Do not put a backdrop blur on anything that stays over the
+  canvas; the hover labels keep theirs because they show only while hovered.
 - Anti-aliasing is SMAA in the post chain. **Never enable multisampling on the canvas**;
   4× MSAA took the scene from 55 to 9 fps.
 - The river is a custom planar mirror (`RiverMirror.tsx`, `mirrorRender.ts`) that
