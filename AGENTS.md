@@ -211,9 +211,10 @@ The budget is held by deliberate choices. Do not undo them without a measured re
   the camera ceiling and the camera floor keeps the eye above the streets. Do not move
   one without the others.
 - Repeated geometry is instanced. A loop that mounts one mesh per building, car, window,
-  or house is wrong here. An instance buffer rewritten every frame is marked dynamic
-  (`useDynamicInstances` / `dynamicInstances` in `instancing.ts`); Windows' Direct3D path
-  stalls on per-frame uploads to a static buffer.
+  or house is wrong here. An instance buffer rewritten while the city runs, matrices or
+  colours, is marked dynamic (`useDynamicInstances` / `dynamicInstances` /
+  `dynamicColors` in `instancing.ts`); Windows' Direct3D path stalls on repeated uploads
+  to a static buffer.
 - Procedural canvas textures live in `textures.ts`, and text and sign textures in
   `labels.ts`. Do not add image textures without asking; there is no asset pipeline and
   the memory ceiling is real.

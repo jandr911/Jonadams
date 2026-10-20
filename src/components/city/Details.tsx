@@ -4,7 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BoxGeometry, CapsuleGeometry, Color, DoubleSide, InstancedMesh, MeshStandardMaterial, Object3D } from "three";
 import { useDayNight } from "./DayNightContext";
-import { fillColors, fillInstances, useDynamicInstances } from "./instancing";
+import { dynamicColors, fillColors, fillInstances, useDynamicInstances } from "./instancing";
 import MacArthurBridge from "./MacArthurBridge";
 import {
   BLOCK,
@@ -81,6 +81,7 @@ function TrafficLights() {
       l.setMatrixAt(i, dummy.matrix);
     }
     l.instanceMatrix.needsUpdate = true;
+    dynamicColors(l);
     if (l.instanceColor) l.instanceColor.needsUpdate = true;
   });
   return (

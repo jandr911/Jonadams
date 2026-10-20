@@ -25,7 +25,7 @@ import PaintedSign from "./PaintedSign";
 import { mulberry32 } from "./rng";
 import TreeStand, { plantTrees } from "./TreeStand";
 import { useWindowMaterial } from "./useWindowMaterial";
-import { baseBoxGeometry, fillInstances, mergeParts, setEmissiveIntensity } from "./instancing";
+import { baseBoxGeometry, dynamicColors, fillInstances, mergeParts, setEmissiveIntensity } from "./instancing";
 import type { WindowMaterialOptions } from "./windowMaterial";
 import { markSolid } from "./cameraCollision";
 
@@ -375,7 +375,9 @@ function ChasingBulbs({ points, position = [0, 0, 0] }: { points: Point[]; posit
   useEffect(() => {
     const m = ref.current;
     fillInstances(m, points.length, (i, o) => o.position.set(...points[i]));
-    if (m) paintChase(m, points.length, 0);
+    if (!m) return;
+    paintChase(m, points.length, 0);
+    dynamicColors(m);
   }, [points]);
   useFrame(({ clock }) => {
     const m = ref.current;
