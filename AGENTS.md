@@ -165,8 +165,11 @@ change that drops the home view under 50 does not ship until it is back.
 
 The budget is held by deliberate choices. Do not undo them without a measured reason:
 
-- Default pixel ratio is 1. Do not raise it. The low quality tier renders windows over
-  1.6 Mpx at a reduced ratio and scales up (`CityStage.tsx`); the high tier never does.
+- Default pixel ratio is 1. Do not raise it. Windows over 1.6 Mpx render at a reduced
+  ratio and scale up (`CityStage.tsx`), in both tiers; the high tier never goes below
+  0.75, the low tier has no floor. Until 2026-10-21 only the low tier did, and a
+  1920×1080 window ran 29 fps against 33–37 at 1440×900 without the governor ever
+  stepping in; the client chose the softer, smoother big screen.
 - Anti-aliasing is SMAA in the post chain. **Never enable multisampling on the canvas**;
   4× MSAA took the scene from 55 to 9 fps.
 - The river is a custom planar mirror (`RiverMirror.tsx`, `mirrorRender.ts`) that
