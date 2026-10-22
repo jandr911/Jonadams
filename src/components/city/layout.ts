@@ -211,7 +211,7 @@ export function indexLabel(index: number) {
   return String(index + 1).padStart(2, "0");
 }
 
-export const MENU_ROOMS: RoomPlace[] = [
+export const ROOMS_WITHOUT_DISTRICT: RoomPlace[] = [
   {
     id: "merch",
     href: "/merch",
@@ -222,7 +222,7 @@ export const MENU_ROOMS: RoomPlace[] = [
   },
 ];
 
-export const PLACES: RoomPlace[] = [...DESTINATIONS, ...MENU_ROOMS];
+export const PLACES: RoomPlace[] = [...DESTINATIONS, ...ROOMS_WITHOUT_DISTRICT];
 
 export function placeById(id: string): RoomPlace {
   const p = PLACES.find((x) => x.id === id);
@@ -234,4 +234,8 @@ export function destinationById(id: string): Destination {
   const d = DESTINATIONS.find((x) => x.id === id);
   if (!d) throw new Error(`unknown destination ${id}`);
   return d;
+}
+
+export function isDestination(p: RoomPlace): p is Destination {
+  return (DESTINATIONS as RoomPlace[]).includes(p);
 }
