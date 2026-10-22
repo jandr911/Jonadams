@@ -14,7 +14,7 @@ import { fill } from "@/content/copy";
 import { COORDINATES } from "@/content/site";
 import { useCopy } from "@/content/CopyProvider";
 import { MusicToggle } from "../SiteMusic";
-import { DESTINATIONS, LABEL_FADE_MS, indexLabel, type Destination } from "./layout";
+import { LABEL_FADE_MS, PLACES, indexLabel, isDestination, type Destination, type RoomPlace } from "./layout";
 import Loader, { markVisited, useReturningVisitor } from "./Loader";
 
 const CityStage = dynamic(() => import("./CityStage"), { ssr: false });
@@ -114,11 +114,11 @@ export default function CityCanvas({ active }: { active: boolean }) {
   const preset = override ?? urlPreset;
   const hour = preset === "auto" ? autoHour : presetHour(preset);
 
-  const [hovered, setHoveredState] = useState<Destination | null>(null);
+  const [hovered, setHoveredState] = useState<RoomPlace | null>(null);
   const [leaving, setLeaving] = useState<readonly string[]>([]);
-  const hoveredRef = useRef<Destination | null>(null);
+  const hoveredRef = useRef<RoomPlace | null>(null);
   const [leaveTimers] = useState(() => new Map<string, ReturnType<typeof setTimeout>>());
-  const setHovered = useCallback((d: Destination | null) => {
+  const setHovered = useCallback((d: RoomPlace | null) => {
     const previous = hoveredRef.current;
     hoveredRef.current = d;
     setHoveredState(d);
@@ -207,14 +207,16 @@ export default function CityCanvas({ active }: { active: boolean }) {
   const dn = useMemo(() => computeDayNight(hour, cloud), [hour, cloud]);
 
   const flyTo = useCallback(
-    async (d: Destination) => {
+    async (d: RoomPlace) => {
       if (navigating || SITE.navLocked) return;
       setNavigating(true);
       setHovered(null);
-      router.prefetch(d.href);
-      const flight = flyRef.current?.(d) ?? Promise.resolve();
-      const settle = new Promise<void>((r) => setTimeout(r, reducedMotion ? 0 : FADE_AFTER_MS));
-      await Promise.race([flight, settle]);
+      if (isDestination(d)) {
+        router.prefetch(d.href);
+        const flight = flyRef.current?.(d) ?? Promise.resolve();
+        const settle = new Promise<void>((r) => setTimeout(r, reducedMotion ? 0 : FADE_AFTER_MS));
+        await Promise.race([flight, settle]);
+      }
       setCovered(false);
       setFade(true);
       router.push(d.href);
@@ -263,10 +265,10 @@ export default function CityCanvas({ active }: { active: boolean }) {
             </div>
 
             <nav aria-label={CITY_HUD.districtsNav} className="city-hud city-hud--districts">
-              <span className="districts__hint">{hovered ? hovered.blurb : fill(SITE.navLocked ? CITY_HUD.lockedHint : CITY_HUD.districtsHint, { count: DESTINATIONS.length })}</span>
+              <span className="districts__hint">{hovered ? hovered.blurb : fill(SITE.navLocked ? CITY_HUD.lockedHint : CITY_HUD.districtsHint, { count: PLACES.length })}</span>
               <div className="districts">
                 <div ref={trackRef} className="districts__track" role={SITE.navLocked ? "list" : undefined}>
-                {DESTINATIONS.map((d, i) => {
+                {PLACES.map((d, i) => {
                   const style = { ["--c" as string]: d.accent, ["--i" as string]: i };
                   const className = `district ${hovered?.id === d.id ? "is-hot" : ""}`;
                   const preview = {
