@@ -1,17 +1,17 @@
 "use client";
 
 import { createContext, useContext, type RefObject } from "react";
-import type { Destination } from "./layout";
+import type { Destination, RoomPlace } from "./layout";
 
 export type Quality = "high" | "low";
 
 export type Move = "left" | "right" | "forward" | "back" | "up" | "down" | "in" | "out";
 
 export interface CityApi {
-  setHovered: (d: Destination | null) => void;
-  hoveredRef: RefObject<Destination | null>;
+  setHovered: (d: RoomPlace | null) => void;
+  hoveredRef: RefObject<RoomPlace | null>;
   navigating: boolean;
-  flyTo: (d: Destination) => void;
+  flyTo: (d: RoomPlace) => void;
   flyRef: RefObject<((d: Destination) => Promise<void>) | null>;
   homeRef: RefObject<(() => void) | null>;
   held: RefObject<Set<Move>>;
@@ -23,7 +23,7 @@ export interface CityApi {
 export const CityContext = createContext<CityApi | null>(null);
 
 interface HoverState {
-  hovered: Destination | null;
+  hovered: RoomPlace | null;
   leaving: readonly string[];
 }
 
