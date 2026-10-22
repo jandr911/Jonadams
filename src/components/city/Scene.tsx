@@ -2,7 +2,7 @@
 
 import { useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useRef } from "react";
-import { InstancedMesh, Mesh, PMREMGenerator, Scene as ThreeScene, Texture, WebGLRenderTarget, type Material, type Object3D } from "three";
+import { InstancedMesh, Light, Mesh, PMREMGenerator, Scene as ThreeScene, Texture, WebGLRenderTarget, type Material, type Object3D } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import Aircraft from "./Aircraft";
 import AlterEgo from "./AlterEgo";
@@ -18,6 +18,7 @@ import Ground from "./Ground";
 import HoloBillboards from "./HoloBillboards";
 import HologramClock from "./HologramClock";
 import Landmarks from "./Landmarks";
+import { WARM_LAYER } from "./layers";
 import PeopleMover from "./PeopleMover";
 import Roads from "./Roads";
 import Sky from "./Sky";
@@ -100,10 +101,20 @@ function WarmShaders({ onWarm }: { onWarm: () => void }) {
     const seen = new Set<Object3D>();
     let queue: Object3D[] = [];
     let probes: Object3D | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let autoUpdate = scene.matrixWorldAutoUpdate;
+    const lights: Object3D[] = [];
     const target = new WebGLRenderTarget(1, 1);
+    const endDrawing = () => {
+      scene.matrixWorldAutoUpdate = autoUpdate;
+      for (const o of lights) o.layers.disable(WARM_LAYER);
+      lights.length = 0;
+      if (probes) scene.remove(probes);
+    };
     const finish = () => {
       if (cancelled) return;
       cancelled = true;
+      endDrawing();
       target.dispose();
       onWarm();
     };
@@ -124,6 +135,59 @@ function WarmShaders({ onWarm }: { onWarm: () => void }) {
         console.error("Shader warm-up failed for part of the city", error);
       }
     };
+    // ANGLE's Direct3D backend compiles shader variants at the first draw, not at link, so each part is drawn once offscreen.
+    const drawPart = (part: Object3D) => {
+      const drawn: Object3D[] = [];
+      const culled: Object3D[] = [];
+      part.traverse((o) => {
+        if (!("material" in o)) return;
+        o.layers.enable(WARM_LAYER);
+        drawn.push(o);
+        if (o.frustumCulled) {
+          o.frustumCulled = false;
+          culled.push(o);
+        }
+      });
+      if (drawn.length === 0) return;
+      const mask = camera.layers.mask;
+      camera.layers.set(WARM_LAYER);
+      try {
+        gl.render(scene, camera);
+      } catch (error) {
+        console.error("Shader warm-up draw failed for part of the city", error);
+      } finally {
+        camera.layers.mask = mask;
+        for (const o of drawn) o.layers.disable(WARM_LAYER);
+        for (const o of culled) o.frustumCulled = true;
+      }
+    };
+    const drawStep = () => {
+      if (cancelled) return;
+      if (queue.length === 0) {
+        queue = unwarmedParts(scene, seen);
+        if (queue.length === 0) return finish();
+        offscreen(() => queue.forEach(compilePart));
+      }
+      const start = performance.now();
+      offscreen(() => {
+        while (queue.length > 0 && performance.now() - start < WARM_SLICE_MS) drawPart(queue.shift() as Object3D);
+      });
+      timer = setTimeout(drawStep, 0);
+    };
+    const startDrawing = () => {
+      if (cancelled) return;
+      scene.updateMatrixWorld();
+      autoUpdate = scene.matrixWorldAutoUpdate;
+      scene.matrixWorldAutoUpdate = false;
+      scene.traverse((o) => {
+        if (!(o instanceof Light)) return;
+        o.layers.enable(WARM_LAYER);
+        lights.push(o);
+      });
+      queue = [...(probes?.children ?? []), ...seen];
+      if (probes) scene.add(probes);
+      timer = setTimeout(drawStep, 0);
+    };
     const step = () => {
       if (cancelled) return;
       if (queue.length === 0) queue = unwarmedParts(scene, seen);
@@ -132,12 +196,12 @@ function WarmShaders({ onWarm }: { onWarm: () => void }) {
         queue = [...probes.children];
       }
       if (queue.length === 0) {
-        if (!gl.extensions.has("KHR_parallel_shader_compile")) return finish();
+        if (!gl.extensions.has("KHR_parallel_shader_compile")) return startDrawing();
         const variants = probes;
         offscreen(() => {
           const ready = [gl.compileAsync(scene, camera)];
           if (variants) ready.push(gl.compileAsync(variants, camera, scene));
-          Promise.all(ready).then(finish, finish);
+          Promise.all(ready).then(startDrawing, startDrawing);
         });
         return;
       }
@@ -151,7 +215,9 @@ function WarmShaders({ onWarm }: { onWarm: () => void }) {
     return () => {
       cancelled = true;
       clearTimeout(giveUp);
+      clearTimeout(timer);
       cancelAnimationFrame(raf);
+      endDrawing();
       target.dispose();
       probes?.traverse((o) => {
         if (o instanceof Mesh) (o.material as Material).dispose();

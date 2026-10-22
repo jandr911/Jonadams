@@ -288,10 +288,11 @@ const active = new Set<Batcher>();
 
 function probeGeometry(source: BufferGeometry) {
   const color = source.attributes.color;
-  if (!color || color.itemSize === 3) return source;
+  if (color && color.itemSize === 3) return source;
   const probe = new BufferGeometry();
   for (const [name, attribute] of Object.entries(source.attributes)) probe.setAttribute(name, attribute);
-  probe.setAttribute("color", new BufferAttribute(new Float32Array(3), 3));
+  probe.setAttribute("color", new BufferAttribute(new Float32Array(source.attributes.position.count * 3), 3));
+  if (source.index) probe.setIndex(source.index);
   return probe;
 }
 
