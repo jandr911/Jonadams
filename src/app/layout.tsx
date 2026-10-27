@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Space_Grotesk } from "next/font/google";
+import Analytics from "@/components/Analytics";
 import CityHost from "@/components/city/CityHost";
 import SiteMusicGate from "@/components/SiteMusicGate";
 import { CopyProvider } from "@/content/CopyProvider";
@@ -55,6 +56,7 @@ export default async function RootLayout({
           {copy.MUSIC.src && <SiteMusicGate />}
           <CityHost />
         </CopyProvider>
+        <Analytics />
       </body>
     </html>
   );
