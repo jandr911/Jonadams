@@ -6,4 +6,5 @@ export const SECTIONS = [
   { href: "/admin/links", label: "Social links", note: "Instagram, YouTube, Spotify and the rest." },
   { href: "/admin/song", label: "Site song", note: "The track that plays while people explore the city." },
   { href: "/admin/wording", label: "Wording", note: "Change any sentence on the site." },
+  { href: "/admin/visitors", label: "Visitors", note: "Who comes to the site, from where, and what they play." },
 ];

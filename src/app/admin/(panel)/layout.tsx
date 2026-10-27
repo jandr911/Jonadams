@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import AdminNav from "@/components/admin/AdminNav";
+import OwnDevice from "@/components/admin/OwnDevice";
 import { requireAdmin } from "@/lib/admin/session";
 import { signOut } from "../actions";
 import { SECTIONS } from "./sections";
@@ -13,6 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const { email } = await requireAdmin();
   return (
     <div className="admin">
+      <OwnDevice />
       <aside className="admin__side">
         <Link href="/admin" className="admin__brand">
           <span className="admin-kicker">Adams UniverseCity</span>

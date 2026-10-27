@@ -5,6 +5,7 @@ import type { VideoSlot } from "@/content/site";
 import { fill } from "@/content/copy";
 import { pauseMusic } from "./SiteMusic";
 import { useCopy } from "@/content/CopyProvider";
+import { track } from "@/lib/analytics/track";
 import { youtubeHref } from "./youtube";
 
 export default function YouTubeFrame({ slot }: { slot: VideoSlot }) {
@@ -13,6 +14,7 @@ export default function YouTubeFrame({ slot }: { slot: VideoSlot }) {
   const play = () => {
     pauseMusic();
     setPlaying(true);
+    track("video_play", { video_title: slot.title });
   };
   if (!playing) {
     return (

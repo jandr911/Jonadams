@@ -1,9 +1,22 @@
 import Link from "next/link";
+import { connection } from "next/server";
+import { DEFAULT_RANGE, analyticsConfigured, totals } from "@/lib/analytics/ga";
 import { getContent } from "@/lib/content";
 import { SECTIONS } from "./sections";
 
+async function visitorCount(): Promise<string> {
+  await connection();
+  if (!analyticsConfigured()) return "not connected";
+  try {
+    const visitors = (await totals(DEFAULT_RANGE))[0]?.values[0] ?? 0;
+    return `${visitors.toLocaleString("en-US")} in ${DEFAULT_RANGE} days`;
+  } catch {
+    return "not reachable";
+  }
+}
+
 export default async function AdminHome() {
-  const { listen, watch, creatives, merch, links } = await getContent();
+  const [{ listen, watch, creatives, merch, links }, visitors] = await Promise.all([getContent(), visitorCount()]);
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   const counts: Record<string, string> = {
     "/admin/videos/listen": plural(listen.length, "video", "videos"),
@@ -11,6 +24,7 @@ export default async function AdminHome() {
     "/admin/creatives": plural(creatives.length, "person", "people"),
     "/admin/merch": plural(merch.length, "piece", "pieces"),
     "/admin/links": `${links.filter((l) => l.href).length} showing`,
+    "/admin/visitors": visitors,
   };
   return (
     <>

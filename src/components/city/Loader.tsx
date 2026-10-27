@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { fill } from "@/content/copy";
 import { COORDINATES, EQ_BARS } from "@/content/site";
 import { useCopy } from "@/content/CopyProvider";
+import { track } from "@/lib/analytics/track";
 import { cueMusic, startMusic, useMusicStatus } from "../SiteMusic";
 
 const VISITED_KEY = "city-visited";
@@ -119,7 +120,13 @@ export default function Loader({ ready, released, onRelease, onGone, returning }
   const awaitingEnter = ready && !released && Boolean(MUSIC.src) && music === "blocked";
   const musicSettling = Boolean(MUSIC.src) && music === "pending";
   const start = useRef(0);
+  const opened = useRef(0);
+  const entered = useRef(false);
   const assetsRef = useRef(0);
+
+  useEffect(() => {
+    opened.current = performance.now();
+  }, []);
   const shownRef = useRef(0);
 
   useEffect(() => {
@@ -161,6 +168,10 @@ export default function Loader({ ready, released, onRelease, onGone, returning }
 
   useEffect(() => {
     if (!released) return;
+    if (!returning && !entered.current) {
+      entered.current = true;
+      track("city_enter", { wait_seconds: Math.round((performance.now() - opened.current) / 1000) });
+    }
     const a = setTimeout(() => setDone(true), 80);
     const b = setTimeout(() => {
       setGone(true);
@@ -170,7 +181,7 @@ export default function Loader({ ready, released, onRelease, onGone, returning }
       clearTimeout(a);
       clearTimeout(b);
     };
-  }, [released, onGone]);
+  }, [released, returning, onGone]);
 
   if (gone) return null;
   const pct = Math.round(shown);

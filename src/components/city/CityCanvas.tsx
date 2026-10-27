@@ -13,6 +13,7 @@ import StageBoundary from "./StageBoundary";
 import { fill } from "@/content/copy";
 import { COORDINATES } from "@/content/site";
 import { useCopy } from "@/content/CopyProvider";
+import { track } from "@/lib/analytics/track";
 import { MusicToggle } from "../SiteMusic";
 import { LABEL_FADE_MS, PLACES, indexLabel, isDestination, type Destination, type RoomPlace } from "./layout";
 import Loader, { markVisited, useReturningVisitor } from "./Loader";
@@ -212,6 +213,7 @@ export default function CityCanvas({ active }: { active: boolean }) {
       setNavigating(true);
       setHovered(null);
       if (isDestination(d)) {
+        track("district_fly", { district: d.id });
         router.prefetch(d.href);
         const flight = flyRef.current?.(d) ?? Promise.resolve();
         const settle = new Promise<void>((r) => setTimeout(r, reducedMotion ? 0 : FADE_AFTER_MS));
