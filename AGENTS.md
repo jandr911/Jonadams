@@ -335,15 +335,26 @@ Content lives in Supabase (project `zetlwmrzjjxymffetmkm`): Postgres tables for 
 creatives and links, a public `media` bucket for uploads, and Supabase Auth for the single
 admin account. The schema is `supabase/migrations/*.sql`, run by hand in the SQL editor.
 
-The app holds **no secret**. It uses only the project URL and the publishable key, both
-public by design; every write goes through the signed-in admin's session and is checked by
-row level security (`public.is_admin()`, allow-listed emails in `public.admins`).
+Supabase needs **no secret** in the app. It uses only the project URL and the publishable
+key, both public by design; every write goes through the signed-in admin's session and is
+checked by row level security (`public.is_admin()`, allow-listed emails in `public.admins`).
 
 ```sh
-# .env.local (git-ignored), and the same two values in Vercel for staging and production
+# .env.local (git-ignored), and the same values in Vercel for staging and production
 NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+NEXT_PUBLIC_GA_MEASUREMENT_ID=G-...        # switches the Google tag on for visitors
+GA_PROPERTY_ID=123456789                   # read by the admin Visitors page only
+GA_CLIENT_EMAIL=...@....iam.gserviceaccount.com
+GA_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 ```
+
+The one secret the app holds is the Google Analytics service-account key, server-only and
+read-only on the Analytics property. `src/lib/analytics/ga.ts` signs the JWT itself and calls
+the Data API; `src/components/Analytics.tsx` loads the tag at browser idle, never under
+`/admin`, and not on a browser that has signed in to the admin. Events go through `track()` in
+`src/lib/analytics/track.ts`. When the three `GA_` values are unset the Visitors page shows
+the setup steps instead of an error. All four stay out of git.
 
 - Public pages read through `getContent()` in `src/lib/content.ts`: one `use cache` call
   tagged `content`, invalidated by `updateTag` from the admin actions. Never read the
