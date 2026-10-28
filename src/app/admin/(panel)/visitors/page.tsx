@@ -20,20 +20,12 @@ import {
   visitorsBy,
   type Range,
   type Row,
+  type Settled,
 } from "@/lib/analytics/ga";
 
 export const metadata: Metadata = { title: "Visitors" };
 
 type SearchParams = Promise<{ range?: string }>;
-type Settled<T> = { value: T; error?: undefined } | { value?: undefined; error: string };
-
-async function settle<T>(work: Promise<T>): Promise<Settled<T>> {
-  try {
-    return { value: await work };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : String(error) };
-  }
-}
 
 const count = (n: number) => n.toLocaleString("en-US");
 
@@ -242,21 +234,21 @@ export default function VisitorsAdmin({ searchParams }: { searchParams: SearchPa
 async function Report({ searchParams }: { searchParams: SearchParams }) {
   const range = parseRange((await searchParams).range);
   const [live, sums, byDay, byPage, countries, cities, ages, genders, devices, sources, song, positions, videos, districts, entries] = await Promise.all([
-    settle(liveVisitors()),
-    settle(totals(range)),
-    settle(daily(range)),
-    settle(pages(range)),
-    settle(visitorsBy(range, "country")),
-    settle(visitorsBy(range, "city")),
-    settle(visitorsBy(range, "userAgeBracket", 10)),
-    settle(visitorsBy(range, "userGender", 5)),
-    settle(visitorsBy(range, "deviceCategory", 5)),
-    settle(sessionsBy(range, "sessionSourceMedium")),
-    settle(songEvents(range)),
-    settle(songPositions(range)),
-    settle(videoPlays(range)),
-    settle(districtFlights(range)),
-    settle(cityEntries(range)),
+    liveVisitors(),
+    totals(range),
+    daily(range),
+    pages(range),
+    visitorsBy(range, "country"),
+    visitorsBy(range, "city"),
+    visitorsBy(range, "userAgeBracket", 10),
+    visitorsBy(range, "userGender", 5),
+    visitorsBy(range, "deviceCategory", 5),
+    sessionsBy(range, "sessionSourceMedium"),
+    songEvents(range),
+    songPositions(range),
+    videoPlays(range),
+    districtFlights(range),
+    cityEntries(range),
   ]);
 
   const t = sums.value?.[0]?.values ?? [0, 0, 0, 0, 0, 0];
@@ -270,6 +262,7 @@ async function Report({ searchParams }: { searchParams: SearchParams }) {
       <div className="admin-stack">
         <RangeSwitch range={range} />
         {sums.error && <Problem error={sums.error} />}
+        {live.error && <Problem error={live.error} />}
         <div className="admin-stats">
           <Stat label="Right now" value={live.value === undefined ? "–" : count(live.value)} hint="people on the site this minute" />
           <Stat label="Visitors" value={count(visitors)} hint={`${count(newVisitors)} for the first time`} />

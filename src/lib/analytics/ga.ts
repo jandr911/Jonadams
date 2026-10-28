@@ -1,6 +1,7 @@
 import "server-only";
 import { createSign } from "node:crypto";
 import { cacheLife } from "next/cache";
+import { unstable_rethrow } from "next/navigation";
 
 export const RANGES = [7, 28, 90] as const;
 export type Range = (typeof RANGES)[number];
@@ -118,27 +119,40 @@ async function call(method: string, body: object): Promise<Row[]> {
   }));
 }
 
-export async function report(req: ReportRequest): Promise<Row[]> {
+export type Settled<T> = { value: T; error?: undefined } | { value?: undefined; error: string };
+
+async function settleCached<T>(work: Promise<T>): Promise<Settled<T>> {
+  try {
+    return { value: await work };
+  } catch (error) {
+    unstable_rethrow(error);
+    cacheLife("seconds");
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+export async function report(req: ReportRequest): Promise<Settled<Row[]>> {
   "use cache";
   cacheLife("hours");
   const orderBys = req.orderBy
     ? [req.orderBy.metric ? { metric: { metricName: req.orderBy.metric }, desc: req.orderBy.desc ?? false } : { dimension: { dimensionName: req.orderBy.dimension }, desc: req.orderBy.desc ?? false }]
     : undefined;
-  return call("runReport", {
-    dateRanges: [{ startDate: `${req.range - 1}daysAgo`, endDate: "today" }],
-    dimensions: req.dimensions?.map((name) => ({ name })),
-    metrics: req.metrics.map((name) => ({ name })),
-    dimensionFilter: req.eventNames ? { filter: { fieldName: "eventName", inListFilter: { values: [...req.eventNames] } } } : undefined,
-    orderBys,
-    limit: req.limit ?? 50,
-  });
+  return settleCached(
+    call("runReport", {
+      dateRanges: [{ startDate: `${req.range - 1}daysAgo`, endDate: "today" }],
+      dimensions: req.dimensions?.map((name) => ({ name })),
+      metrics: req.metrics.map((name) => ({ name })),
+      dimensionFilter: req.eventNames ? { filter: { fieldName: "eventName", inListFilter: { values: [...req.eventNames] } } } : undefined,
+      orderBys,
+      limit: req.limit ?? 50,
+    }),
+  );
 }
 
-export async function liveVisitors(): Promise<number> {
+export async function liveVisitors(): Promise<Settled<number>> {
   "use cache";
   cacheLife("minutes");
-  const rows = await call("runRealtimeReport", { metrics: [{ name: "activeUsers" }] });
-  return rows[0]?.values[0] ?? 0;
+  return settleCached(call("runRealtimeReport", { metrics: [{ name: "activeUsers" }] }).then((rows) => rows[0]?.values[0] ?? 0));
 }
 
 export const totals = (range: Range) =>
