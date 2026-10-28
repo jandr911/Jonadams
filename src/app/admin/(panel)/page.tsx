@@ -7,12 +7,9 @@ import { SECTIONS } from "./sections";
 async function visitorCount(): Promise<string> {
   await connection();
   if (!analyticsConfigured()) return "not connected";
-  try {
-    const visitors = (await totals(DEFAULT_RANGE))[0]?.values[0] ?? 0;
-    return `${visitors.toLocaleString("en-US")} in ${DEFAULT_RANGE} days`;
-  } catch {
-    return "not reachable";
-  }
+  const { value } = await totals(DEFAULT_RANGE);
+  if (!value) return "not reachable";
+  return `${(value[0]?.values[0] ?? 0).toLocaleString("en-US")} in ${DEFAULT_RANGE} days`;
 }
 
 export default async function AdminHome() {
