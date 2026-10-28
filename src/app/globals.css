@@ -3553,6 +3553,134 @@ a.site-nav__link:hover .site-nav__sub,
   display: grid;
   gap: 16px;
 }
+.admin-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px;
+}
+.admin-stat {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 18px 20px;
+  border: 1px solid var(--mono-line);
+  border-radius: var(--mono-radius);
+  background: var(--mono-surface);
+}
+.admin-stat__value {
+  font-size: 1.9rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.admin-stat__label {
+  color: var(--mono-muted);
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.admin-stat__hint {
+  color: var(--mono-muted);
+  font-size: 0.84rem;
+}
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.admin-rank {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-rank li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 16px;
+  font-size: 0.92rem;
+}
+.admin-rank__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-rank__count {
+  color: var(--mono-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.admin-rank__sub {
+  grid-column: 1 / -1;
+  color: var(--mono-muted);
+  font-size: 0.8rem;
+}
+.admin-rank__bar {
+  grid-column: 1 / -1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--mono-raised);
+  overflow: hidden;
+}
+.admin-rank__bar i {
+  display: block;
+  height: 100%;
+  background: var(--mono-text);
+  opacity: 0.55;
+}
+.admin-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 140px;
+}
+.admin-chart i {
+  flex: 1;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--mono-text);
+  opacity: 0.5;
+}
+.admin-chart__axis {
+  display: flex;
+  justify-content: space-between;
+  color: var(--mono-muted);
+  font-size: 0.76rem;
+}
+.admin-empty {
+  color: var(--mono-muted);
+  font-size: 0.9rem;
+}
+.admin-steps {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding-left: 1.3em;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  list-style: decimal;
+}
+ul.admin-steps {
+  list-style: disc;
+}
+.admin-steps code,
+.admin-rank code {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--mono-raised);
+  font-family: ui-monospace, monospace;
+  font-size: 0.85em;
+}
+.admin-card summary {
+  cursor: pointer;
+}
 .admin-form--wide {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }

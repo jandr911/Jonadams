@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useCopy } from "@/content/CopyProvider";
+import { track } from "@/lib/analytics/track";
 
 const STOPPED_KEY = "adams:music-stopped";
 const VOLUME = 0.6;
@@ -199,9 +200,13 @@ export default function SiteMusic() {
       src={MUSIC.src}
       loop
       preload={current === "stopped" ? "none" : "metadata"}
-      onPlay={() => setStatus("playing")}
-      onPause={() => {
+      onPlay={(e) => {
+        setStatus("playing");
+        track("song_play", { position_seconds: Math.round(e.currentTarget.currentTime) });
+      }}
+      onPause={(e) => {
         if (status !== "stopped") setStatus("paused");
+        track(status === "stopped" ? "song_stop" : "song_pause", { position_seconds: Math.round(e.currentTarget.currentTime) });
       }}
       onError={() => {
         disarmGestures();
