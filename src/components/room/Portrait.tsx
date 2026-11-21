@@ -1,8 +1,8 @@
 import Image from "next/image";
+import { isRemote } from "@/lib/supabase/media";
 import { useId } from "react";
 import type { Creative } from "@/content/site";
 
-const REMOTE = /^https?:/;
 
 const BUST = "M50 60c-4 0-7 3-7 8v5C25 76 11 88 7 108v12h86v-12c-4-20-18-32-36-35v-5c0-5-3-8-7-8z";
 
@@ -42,7 +42,7 @@ export default function Portrait({ creative, alt, sizes, className }: PortraitPr
   return (
     <div className={`portrait ${className}`}>
       {creative.photo ? (
-        <Image src={creative.photo} alt={alt} fill sizes={sizes} unoptimized={REMOTE.test(creative.photo)} className="portrait__photo" />
+        <Image src={creative.photo} alt={alt} fill sizes={sizes} unoptimized={isRemote(creative.photo)} className="portrait__photo" />
       ) : (
         <Silhouette />
       )}

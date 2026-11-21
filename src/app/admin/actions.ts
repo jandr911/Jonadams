@@ -4,8 +4,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { updateTag } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import type { FormState } from "@/components/admin/ActionForm";
+import { youtubeIdFrom } from "@/components/youtube";
 import { DEFAULT_COPY, isCopyKey, type CopySection } from "@/content/copy";
-import { MERCH_KINDS, MERCH_SIZES, VIDEO_KINDS, type MerchKind, type MerchSize, type VideoKind } from "@/content/site";
+import { MERCH_KINDS, MERCH_SIZES, VIDEO_KINDS, type MerchKind, type MerchSize, type PostBlock, type VideoKind } from "@/content/site";
 import { requireAdmin } from "@/lib/admin/session";
 import { CONTENT_TAG } from "@/lib/content";
 import { MEDIA_BUCKET } from "@/lib/supabase/env";
@@ -45,11 +46,9 @@ function check(error: { message: string } | null) {
 }
 
 function youtubeId(input: string): string {
-  const value = input.trim();
-  if (!value) return "";
-  const match = value.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/);
-  if (match) return match[1];
-  if (/^[\w-]{11}$/.test(value)) return value;
+  if (!input.trim()) return "";
+  const id = youtubeIdFrom(input);
+  if (id) return id;
   throw new FormError("That does not look like a YouTube link. Paste the link from the YouTube share button.");
 }
 
@@ -69,19 +68,19 @@ async function dropStored(db: SupabaseClient, previous: string, next: string) {
   if (error) throw new FormError(`Could not remove the old file: ${error.message}`);
 }
 
-function slugify(name: string): string {
+function slugify(name: string, fallback: string): string {
   return name
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "creative";
+    .slice(0, 60) || fallback;
 }
 
-async function uniqueSlug(db: SupabaseClient, name: string): Promise<string> {
-  const base = slugify(name);
-  const { data, error } = await db.from("creatives").select("slug").like("slug", `${base}%`);
+async function uniqueSlug(db: SupabaseClient, table: "creatives" | "posts", name: string): Promise<string> {
+  const base = slugify(name, table === "posts" ? "post" : "creative");
+  const { data, error } = await db.from(table).select("slug").like("slug", `${base}%`);
   check(error);
   const taken = new Set((data ?? []).map((r) => r.slug as string));
   if (!taken.has(base)) return base;
@@ -186,7 +185,7 @@ export async function saveCreative(_prev: FormState, formData: FormData): Promis
     }
     else {
       const position = await nextPosition(db, "creatives");
-      const slug = await uniqueSlug(db, name);
+      const slug = await uniqueSlug(db, "creatives", name);
       const { data, error } = await db.from("creatives").insert({ ...values, slug, position }).select("id").single();
       check(error);
       created = data?.id ?? "";
@@ -293,6 +292,103 @@ export async function removeLink(_prev: FormState, formData: FormData): Promise<
   return run(async (db) => {
     check((await db.from("links").delete().eq("id", must(formData, "id", "the link"))).error);
   }, { ok: true, message: "Removed." });
+}
+
+const POST_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function postBlocks(formData: FormData): PostBlock[] {
+  let order: unknown;
+  try {
+    order = JSON.parse(text(formData, "blocks") || "[]");
+  } catch {
+    throw new FormError("The post body could not be read. Reload the page and try again.");
+  }
+  if (!Array.isArray(order)) throw new FormError("The post body could not be read. Reload the page and try again.");
+  return order.flatMap((item, index): PostBlock[] => {
+    if (typeof item !== "object" || item === null) return [];
+    const { key, kind } = item as Record<string, unknown>;
+    if (typeof key !== "string") return [];
+    const part = (name: string) => text(formData, `${key}.${name}`);
+    switch (kind) {
+      case "heading":
+      case "text":
+        return part("text") ? [{ kind, text: part("text") }] : [];
+      case "photo":
+        return part("src") ? [{ kind: "photo", src: imageLink(part("src"), `the photo in block ${index + 1}`), caption: part("caption") }] : [];
+      case "video":
+        return part("youtube") ? [{ kind: "video", youtube: blockYoutubeId(part("youtube"), index), caption: part("caption") }] : [];
+      default:
+        return [];
+    }
+  });
+}
+
+function imageLink(value: string, label: string): string {
+  if (/^(https?:\/\/|\/)/.test(value)) return value;
+  throw new FormError(`The link for ${label} should start with https://. Upload the file, or paste its full web address.`);
+}
+
+function blockYoutubeId(value: string, index: number): string {
+  try {
+    return youtubeId(value);
+  } catch (error) {
+    if (error instanceof FormError) throw new FormError(`Block ${index + 1}: ${error.message}`);
+    throw error;
+  }
+}
+
+function postFiles(cover: string, blocks: unknown): string[] {
+  const photos = Array.isArray(blocks) ? blocks.flatMap((b) => (typeof b === "object" && b !== null && typeof (b as Record<string, unknown>).src === "string" ? [(b as Record<string, string>).src] : [])) : [];
+  return [cover, ...photos].filter(Boolean);
+}
+
+async function dropUnused(db: SupabaseClient, before: string[], after: string[]) {
+  for (const file of before) if (!after.includes(file)) await dropStored(db, file, "");
+}
+
+export async function savePost(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = text(formData, "id");
+  let created = "";
+  const result = await run(async (db) => {
+    const title = must(formData, "title", "the title");
+    if (!id) {
+      const slug = await uniqueSlug(db, "posts", title);
+      const { data, error } = await db.from("posts").insert({ title, slug }).select("id").single();
+      check(error);
+      created = data?.id ?? "";
+      return;
+    }
+    const date = text(formData, "date");
+    if (!POST_DATE.test(date)) throw new FormError("Please pick the date for the post.");
+    const values = {
+      title,
+      published_on: date,
+      published: text(formData, "status") === "published",
+      summary: text(formData, "summary"),
+      cover: text(formData, "cover") && imageLink(text(formData, "cover"), "the cover photo"),
+      blocks: postBlocks(formData),
+    };
+    const { data: before, error } = await db.from("posts").select("cover, blocks").eq("id", id).single();
+    check(error);
+    check((await db.from("posts").update(values).eq("id", id)).error);
+    updateTag(CONTENT_TAG);
+    await dropUnused(db, postFiles(before?.cover ?? "", before?.blocks), postFiles(values.cover, values.blocks));
+  });
+  if (created) redirect(`/admin/blog/${created}`);
+  return result;
+}
+
+export async function removePost(_prev: FormState, formData: FormData): Promise<FormState> {
+  const result = await run(async (db) => {
+    const id = must(formData, "id", "the post");
+    const { data: before, error } = await db.from("posts").select("cover, blocks").eq("id", id).single();
+    check(error);
+    check((await db.from("posts").delete().eq("id", id)).error);
+    updateTag(CONTENT_TAG);
+    await dropUnused(db, postFiles(before?.cover ?? "", before?.blocks), []);
+  });
+  if (result?.ok) redirect("/admin/blog");
+  return result;
 }
 
 async function writeCopy(db: SupabaseClient, rows: { key: string; value: string }[]) {

@@ -1,5 +1,7 @@
 import {
   ALTER_EGO,
+  BLOG,
+  BLOG_DESK,
   CITY_FALLBACK,
   CITY_HUD,
   CLUB_DESK,
@@ -48,6 +50,8 @@ export const DEFAULT_COPY = {
   GET_LISTED,
   PROFILE,
   MERCH,
+  BLOG,
+  BLOG_DESK,
 };
 
 export type SiteCopy = typeof DEFAULT_COPY;
@@ -77,6 +81,8 @@ export const COPY_SECTIONS: Record<CopySection, string> = {
   PROFILE: "Creative profile",
   MERCH: "Merch",
   MERCH_DESK: "Merch front desk",
+  BLOG: "Blog",
+  BLOG_DESK: "Blog front desk",
 };
 
 export const COPY_SECTION_KEYS = Object.keys(COPY_SECTIONS) as CopySection[];

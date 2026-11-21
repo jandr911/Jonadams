@@ -3,6 +3,7 @@ export const SECTIONS = [
   { href: "/admin/videos/watch", label: "Watch room", note: "The videos screened in the Watch room." },
   { href: "/admin/creatives", label: "The Creatives", note: "The people on the wall, with their photo and story." },
   { href: "/admin/merch", label: "Merch", note: "The tees, hoodies and joggers for sale, with sizes and prices." },
+  { href: "/admin/blog", label: "Blog", note: "Posts with words, photos and YouTube videos. Drafts stay hidden until published." },
   { href: "/admin/links", label: "Social links", note: "Instagram, YouTube, Spotify and the rest." },
   { href: "/admin/song", label: "Site song", note: "The track that plays while people explore the city." },
   { href: "/admin/wording", label: "Wording", note: "Change any sentence on the site." },

@@ -220,6 +220,14 @@ export const ROOMS_WITHOUT_DISTRICT: RoomPlace[] = [
     blurb: "Tees, hoodies and joggers",
     accent: "var(--gold)",
   },
+  {
+    id: "blog",
+    href: "/blog",
+    label: "Blog",
+    sub: "Free Press Building",
+    blurb: "Notes, photos and videos from Jonathan",
+    accent: "var(--amber)",
+  },
 ];
 
 export const PLACES: RoomPlace[] = [...DESTINATIONS, ...ROOMS_WITHOUT_DISTRICT];
