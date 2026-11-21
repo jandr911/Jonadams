@@ -230,7 +230,14 @@ export const ROOMS_WITHOUT_DISTRICT: RoomPlace[] = [
   },
 ];
 
-export const PLACES: RoomPlace[] = [...DESTINATIONS, ...ROOMS_WITHOUT_DISTRICT];
+const NAV_ORDER = ["blog", "club", "merch", "listen", "watch", "creatives"];
+
+function navRank(place: RoomPlace) {
+  const rank = NAV_ORDER.indexOf(place.id);
+  return rank === -1 ? NAV_ORDER.length : rank;
+}
+
+export const PLACES: RoomPlace[] = [...DESTINATIONS, ...ROOMS_WITHOUT_DISTRICT].sort((a, b) => navRank(a) - navRank(b));
 
 export function placeById(id: string): RoomPlace {
   const p = PLACES.find((x) => x.id === id);

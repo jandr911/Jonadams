@@ -4475,6 +4475,25 @@ ul.admin-steps {
   bottom: 1cqw;
   font-size: max(10px, 0.6cqw);
 }
+.video-teaser__note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2.4cqw 1.2cqw 1.2cqw;
+  background: linear-gradient(transparent, color-mix(in srgb, var(--ink) 85%, transparent));
+  font-size: max(10px, 0.75cqw);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--gold-2);
+}
+#post-video {
+  scroll-margin-top: 96px;
+}
+.video-teaser__note::after {
+  content: " \2193";
+}
 .post-card--screen .post-card__glyph {
   filter: drop-shadow(0 0 1.2cqw color-mix(in srgb, var(--accent) 40%, transparent));
 }
