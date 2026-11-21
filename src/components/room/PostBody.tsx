@@ -46,7 +46,7 @@ function Block({ block, post, index }: { block: PostBlock; post: Post; index: nu
   }
 }
 
-export default async function PostBody({ post }: { post: Post }) {
+export default async function PostBody({ post, backLink = true }: { post: Post; backLink?: boolean }) {
   const { copy } = await getContent();
   return (
     <article id="post" className="post">
@@ -60,11 +60,13 @@ export default async function PostBody({ post }: { post: Post }) {
       {post.blocks.map((block, i) => (
         <Block key={i} block={block} post={post} index={i} />
       ))}
-      <footer className="post__foot">
-        <RoomLink href={copy.BLOG.back.href} className="post-card__read">
-          {copy.BLOG.back.label} · {copy.BLOG.back.note}
-        </RoomLink>
-      </footer>
+      {backLink && (
+        <footer className="post__foot">
+          <RoomLink href={copy.BLOG.back.href} className="post-card__read">
+            {copy.BLOG.back.label} · {copy.BLOG.back.note}
+          </RoomLink>
+        </footer>
+      )}
     </article>
   );
 }

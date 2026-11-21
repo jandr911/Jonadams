@@ -130,7 +130,7 @@ export default async function BlogScene({ posts }: { posts: Post[] }) {
     return {
       keys: items.map((post, j) => ({ id: post.id, index: indexLabel(p * PAGE + j), label: post.title, href: postHref(post) })),
       screens: items.map((post, j) => (
-        <PostCard key={post.id} post={post} index={indexLabel(p * PAGE + j)} copy={copy} sizes="(max-width: 720px) 0px, 22vw" className="post-card--screen" video />
+        <PostCard key={post.id} post={post} index={indexLabel(p * PAGE + j)} copy={copy} sizes="(max-width: 720px) 0px, 22vw" className="post-card--screen" teaser />
       )),
     };
   });
@@ -138,7 +138,7 @@ export default async function BlogScene({ posts }: { posts: Post[] }) {
     <>
       <BlogBackdrop />
       {pages.length > 0 ? (
-        <PagedConsole pages={pages} label={ROOMS.blog.console} more={ROOMS.blog.more} moreLabel={ROOMS.blog.moreLabel} />
+        <PagedConsole pages={pages} channel="blog" label={ROOMS.blog.console} more={ROOMS.blog.more} moreLabel={ROOMS.blog.moreLabel} />
       ) : (
         <div className="stage__screen">
           <BlogSoon copy={copy} className="merch-soon--screen" />

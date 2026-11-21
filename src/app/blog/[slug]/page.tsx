@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Room, { roomLinks, roomMetadata } from "@/components/Room";
 import { BlogBackdrop } from "@/components/room/BlogScene";
 import PostBody from "@/components/room/PostBody";
-import PostCard, { POST_VIDEO, firstVideo, postDate } from "@/components/room/PostCard";
+import PostCard, { postDate } from "@/components/room/PostCard";
 import JsonLd from "@/components/JsonLd";
 import { getContent } from "@/lib/content";
 import { postGraph } from "@/lib/structuredData";
@@ -38,7 +38,6 @@ export default async function PostPage({ params }: { params: Params }) {
   const post = await postBySlug((await params).slug);
   if (!post) notFound();
   const { copy } = await getContent();
-  const hasVideo = firstVideo(post) !== null;
   return (
     <>
       <JsonLd data={postGraph(copy, post)} />
@@ -50,7 +49,7 @@ export default async function PostPage({ params }: { params: Params }) {
             <>
               <BlogBackdrop />
               <div className="stage__screen">
-                <PostCard post={post} index="" copy={copy} sizes="(max-width: 720px) 0px, 22vw" className="post-card--screen" href={hasVideo ? `#${POST_VIDEO}` : "#post"} cta={hasVideo ? copy.BLOG.watchBelow : copy.BLOG.readBelow} teaser />
+                <PostCard post={post} index="" copy={copy} sizes="(max-width: 720px) 0px, 22vw" className="post-card--screen" teaser />
               </div>
             </>
           ),
