@@ -21,13 +21,13 @@ export async function GET() {
   const lines = [
     `# ${SITE.name}`,
     "",
-    `> ${DESCRIPTION}`,
+    `> ${oneLine(DESCRIPTION)}`,
     "",
     fill(SEARCH.llms.about, { artist: SITE.artist, nickname: SITE.nickname, city: SITE.city }),
     "",
     `## ${SEARCH.llms.rooms}`,
     "",
-    ...PLACES.flatMap((place) => (isRoom(place.id, ROOMS) ? [`- [${place.label}](${SITE_URL}${place.href}): ${ROOMS[place.id].description}`] : [])),
+    ...PLACES.flatMap((place) => (isRoom(place.id, ROOMS) ? [`- [${place.label}](${SITE_URL}${place.href}): ${oneLine(ROOMS[place.id].description)}`] : [])),
   ];
   if (posts.length) {
     lines.push("", `## ${placeById("blog").label}`, "", ...posts.map((post) => `- [${linkText(post.title)}](${SITE_URL}/blog/${post.slug})${post.summary ? `: ${oneLine(post.summary)}` : ""}`));
