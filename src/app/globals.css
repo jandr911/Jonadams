@@ -747,7 +747,7 @@ a.site-nav__link:hover .site-nav__sub,
   padding: 6px 12px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--ink) 55%, transparent);
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.26em;
   text-transform: uppercase;
   text-align: right;
@@ -917,7 +917,7 @@ a.site-nav__link:hover .site-nav__sub,
   padding: 5px 12px;
   border-radius: 999px;
   background: var(--panel);
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.26em;
   text-transform: uppercase;
   color: var(--muted);
@@ -944,7 +944,7 @@ a.site-nav__link:hover .site-nav__sub,
   color: var(--paper);
 }
 .hotspot-label span {
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--c);
@@ -1659,7 +1659,7 @@ a.site-nav__link:hover .site-nav__sub,
   position: absolute;
   left: 4.375%;
   top: 3.6%;
-  z-index: 2;
+  z-index: 3;
   display: flex;
   min-width: 30.625cqw;
   flex-direction: column;
@@ -1689,7 +1689,7 @@ a.site-nav__link:hover .site-nav__sub,
   right: 16%;
 }
 .stage__sign .eyebrow {
-  font-size: max(8px, 0.65cqw);
+  font-size: max(10px, 0.65cqw);
 }
 .stage__title {
   font-family: var(--font-serif), serif;
@@ -1764,7 +1764,7 @@ a.site-nav__link:hover .site-nav__sub,
   line-height: 1;
 }
 .stage__screen-note {
-  font-size: max(9px, 0.8cqw);
+  font-size: max(10px, 0.8cqw);
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--accent) 70%, var(--paper));
@@ -1831,7 +1831,7 @@ a.site-nav__link:hover .site-nav__sub,
   transition: background 0.25s, box-shadow 0.25s;
 }
 .stage__key-index {
-  font-size: max(8px, 0.7cqw);
+  font-size: max(10px, 0.7cqw);
   letter-spacing: 0.2em;
   color: var(--muted);
 }
@@ -1898,7 +1898,7 @@ a.site-nav__link:hover .site-nav__sub,
   border-radius: 0.25cqw;
   background: linear-gradient(180deg, var(--gold-2), var(--gold) 55%, color-mix(in srgb, var(--gold) 70%, var(--ink)));
   color: var(--ink);
-  font-size: max(9px, 0.75cqw);
+  font-size: max(10px, 0.75cqw);
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -1966,7 +1966,7 @@ a.site-nav__link:hover .site-nav__sub,
   position: absolute;
   right: 1.3cqw;
   top: 1.1cqw;
-  font-size: max(8px, 0.7cqw);
+  font-size: max(10px, 0.7cqw);
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--muted);
@@ -1999,7 +1999,7 @@ a.site-nav__link:hover .site-nav__sub,
   line-height: 1;
 }
 .stage__player-note {
-  font-size: max(8px, 0.7cqw);
+  font-size: max(10px, 0.7cqw);
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--accent) 70%, var(--paper));
@@ -2040,7 +2040,7 @@ a.site-nav__link:hover .site-nav__sub,
   color: var(--accent);
 }
 .stage__bill-craft {
-  font-size: max(9px, 0.85cqw);
+  font-size: max(10px, 0.85cqw);
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--accent) 70%, var(--paper));
@@ -2088,7 +2088,7 @@ a.site-nav__link:hover .site-nav__sub,
   color: var(--gold-2);
 }
 .get-listed__text {
-  font-size: max(9px, 0.8cqw);
+  font-size: max(10px, 0.8cqw);
   line-height: 1.4;
   color: var(--muted);
 }
@@ -2101,7 +2101,7 @@ a.site-nav__link:hover .site-nav__sub,
 .get-listed__soon,
 .stage__bill-link {
   align-self: flex-start;
-  font-size: max(8px, 0.7cqw);
+  font-size: max(10px, 0.7cqw);
   letter-spacing: 0.24em;
   text-transform: uppercase;
 }
@@ -2275,7 +2275,7 @@ a.site-nav__link:hover .site-nav__sub,
   color: var(--gold-2);
 }
 .stage__plaque-note {
-  font-size: max(8px, 0.7cqw);
+  font-size: max(10px, 0.7cqw);
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--muted);
@@ -2681,7 +2681,7 @@ a.site-nav__link:hover .site-nav__sub,
 .stage__player--live .yt-facade__out {
   right: 1cqw;
   bottom: 0.8cqw;
-  font-size: max(8px, 0.6cqw);
+  font-size: max(10px, 0.6cqw);
 }
 .media-card__link {
   text-decoration: none;
@@ -2779,7 +2779,7 @@ a.site-nav__link:hover .site-nav__sub,
   color: var(--paper);
 }
 .landmark-label span {
-  font-size: 8px;
+  font-size: 10px;
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--gold);
@@ -2796,7 +2796,7 @@ a.site-nav__link:hover .site-nav__sub,
   max-width: 400px;
   text-wrap: balance;
   padding: 5px 10px;
-  font-size: 8px;
+  font-size: 10px;
   letter-spacing: 0.2em;
   line-height: 1.8;
   opacity: 0.8;
@@ -2864,7 +2864,7 @@ a.site-nav__link:hover .site-nav__sub,
   padding: 3px 9px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--ink) 55%, transparent);
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--amber);
@@ -2973,7 +2973,7 @@ a.site-nav__link:hover .site-nav__sub,
   }
   .city-pill {
     padding: 6px 10px;
-    font-size: 9px;
+    font-size: 10px;
   }
   .city-geo {
     font-size: 13px;
@@ -3098,7 +3098,7 @@ a.site-nav__link:hover .site-nav__sub,
 .profile__plaque-name {
   font-family: var(--font-serif), serif;
   font-weight: 600;
-  font-size: max(9px, 0.95cqw);
+  font-size: max(10px, 0.95cqw);
   line-height: 1;
   color: var(--gold-2);
   white-space: nowrap;
@@ -3144,7 +3144,7 @@ a.site-nav__link:hover .site-nav__sub,
   border-radius: 999px;
   background: var(--gold);
   color: var(--ink);
-  font-size: max(9px, 0.75cqw);
+  font-size: max(10px, 0.75cqw);
   letter-spacing: 0.24em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -3172,7 +3172,7 @@ a.site-nav__link:hover .site-nav__sub,
   padding: 0.5cqw 1cqw;
   border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
   border-radius: 999px;
-  font-size: max(8px, 0.7cqw);
+  font-size: max(10px, 0.7cqw);
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--gold-2);
@@ -4231,7 +4231,7 @@ ul.admin-steps {
   color: var(--accent);
 }
 .merch-card--screen .merch-card__kind {
-  font-size: max(9px, 0.85cqw);
+  font-size: max(10px, 0.85cqw);
   letter-spacing: 0.3em;
 }
 .merch-card--screen .merch-card__name {
@@ -4252,7 +4252,7 @@ ul.admin-steps {
 }
 .merch-card--screen .merch-order__legend {
   margin-bottom: 0.2cqw;
-  font-size: max(8px, 0.7cqw);
+  font-size: max(10px, 0.7cqw);
 }
 .merch-card--screen .merch-size span {
   min-width: max(32px, 3.2cqw);
@@ -4263,7 +4263,7 @@ ul.admin-steps {
 }
 .merch-card--screen .merch-order__link,
 .merch-card--screen .merch-order__status {
-  font-size: max(9px, 0.78cqw);
+  font-size: max(10px, 0.78cqw);
 }
 .merch-soon {
   display: flex;
@@ -4320,7 +4320,7 @@ ul.admin-steps {
   font-size: max(11px, 1.1cqw);
 }
 .merch-soon--screen .merch-order__link {
-  font-size: max(9px, 0.8cqw);
+  font-size: max(10px, 0.8cqw);
 }
 @media (max-width: 380px) {
   .merch-card {
@@ -4473,7 +4473,7 @@ ul.admin-steps {
   right: auto;
   left: 1.2cqw;
   bottom: 1cqw;
-  font-size: max(8px, 0.6cqw);
+  font-size: max(10px, 0.6cqw);
 }
 .post-card--screen .post-card__glyph {
   filter: drop-shadow(0 0 1.2cqw color-mix(in srgb, var(--accent) 40%, transparent));
@@ -4495,7 +4495,7 @@ ul.admin-steps {
   color: var(--accent);
 }
 .post-card--screen .post-card__date {
-  font-size: max(9px, 0.85cqw);
+  font-size: max(10px, 0.85cqw);
   letter-spacing: 0.26em;
 }
 .post-card--screen .post-card__title {
@@ -4509,7 +4509,7 @@ ul.admin-steps {
   -webkit-line-clamp: 4;
 }
 .post-card--screen .post-card__read {
-  font-size: max(9px, 0.8cqw);
+  font-size: max(10px, 0.8cqw);
 }
 @media (max-width: 380px) {
   .post-card {
@@ -4635,5 +4635,73 @@ ul.admin-steps {
 @media (prefers-reduced-motion: reduce) {
   .yt-facade__poster {
     transition: none;
+  }
+}
+
+@media (pointer: coarse) {
+  :is(.wordmark, .site-header .btn-outline, .city-pill, .stage__pitch .get-listed__link, .merch-order__link, .post-card__read) {
+    position: relative;
+  }
+  :is(.wordmark, .site-header .btn-outline, .city-pill, .stage__pitch .get-listed__link, .merch-order__link, .post-card__read, .yt-facade__out)::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    translate: -50% -50%;
+  }
+  .stage__controls {
+    gap: 16px;
+  }
+  .merch-order__actions {
+    row-gap: 26px;
+  }
+  .city-pad__grid {
+    grid-template-columns: repeat(3, 32px);
+    grid-template-rows: repeat(3, 32px);
+    gap: 4px;
+  }
+  .city-pad__col {
+    grid-template-columns: 32px 32px;
+    grid-template-rows: repeat(2, 32px);
+    gap: 4px;
+    margin-top: 18px;
+  }
+  .city-pad__btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+@media (pointer: coarse) and (max-width: 640px) and (min-height: 521px) {
+  .city-hud--pad {
+    transform: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .stage__sign {
+    max-width: 91.25%;
+  }
+  .stage__title {
+    font-size: 22px;
+    line-height: 1.05;
+    text-wrap: balance;
+  }
+  .eyebrow,
+  .stage__plaque-note,
+  .media-card__kind,
+  .yt-facade__out,
+  .get-listed__link,
+  .stage__pitch .get-listed__link,
+  .stage__pitch .get-listed__soon,
+  .stage__item-status,
+  .join-card__meta,
+  .join-contact__label,
+  .join-contact__copy,
+  .join-contact__status,
+  .city-pill,
+  .city-pill small {
+    font-size: 11px;
   }
 }
