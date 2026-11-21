@@ -2,7 +2,6 @@ import Image from "next/image";
 import { isRemote } from "@/lib/supabase/media";
 import { fill, type SiteCopy } from "@/content/copy";
 import type { Post } from "@/content/site";
-import YouTubeFrame from "../YouTubeFrame";
 import RoomLink from "./RoomLink";
 import VideoTeaser from "./VideoTeaser";
 
@@ -31,19 +30,12 @@ export function firstVideo(post: Post) {
   return null;
 }
 
-export function PostCover({ post, copy, sizes, video = false, teaser = false }: { post: Post; copy: SiteCopy; sizes: string; video?: boolean; teaser?: boolean }) {
-  const clip = video || teaser ? firstVideo(post) : null;
-  if (clip && teaser) {
-    return (
-      <div className="post-card__cover post-card__cover--video">
-        <VideoTeaser youtube={clip.youtube} target={POST_VIDEO} label={copy.BLOG.watchBelow} note={copy.BLOG.fullVideo} sizes={sizes} />
-      </div>
-    );
-  }
+export function PostCover({ post, copy, sizes, teaser = false }: { post: Post; copy: SiteCopy; sizes: string; teaser?: boolean }) {
+  const clip = teaser ? firstVideo(post) : null;
   if (clip) {
     return (
       <div className="post-card__cover post-card__cover--video">
-        <YouTubeFrame slot={{ uid: `${post.id}-cover`, id: clip.youtube, title: clip.caption || post.title, kind: "video" }} poster />
+        <VideoTeaser youtube={clip.youtube} target={POST_VIDEO} label={copy.BLOG.watchBelow} note={copy.BLOG.fullVideo} sizes={sizes} />
       </div>
     );
   }
@@ -64,16 +56,19 @@ interface PostCardProps {
   copy: SiteCopy;
   sizes: string;
   className: string;
-  href?: string;
-  cta?: string;
-  video?: boolean;
   teaser?: boolean;
 }
 
-export default function PostCard({ post, index, copy, sizes, className, href = postHref(post), cta = copy.BLOG.read, video = false, teaser = false }: PostCardProps) {
+function cardLink(post: Post, copy: SiteCopy, teaser: boolean) {
+  if (!teaser) return { href: postHref(post), cta: copy.BLOG.read };
+  return firstVideo(post) ? { href: `#${POST_VIDEO}`, cta: copy.BLOG.watchBelow } : { href: "#post", cta: copy.BLOG.readBelow };
+}
+
+export default function PostCard({ post, index, copy, sizes, className, teaser = false }: PostCardProps) {
+  const { href, cta } = cardLink(post, copy, teaser);
   return (
     <article className={`post-card ${className}`}>
-      <PostCover post={post} copy={copy} sizes={sizes} video={video} teaser={teaser} />
+      <PostCover post={post} copy={copy} sizes={sizes} teaser={teaser} />
       <div className="post-card__meta">
         <span className="post-card__index">{index}</span>
         <time className="post-card__date" dateTime={post.date}>
