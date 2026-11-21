@@ -138,7 +138,7 @@ export default async function BlogScene({ posts }: { posts: Post[] }) {
     <>
       <BlogBackdrop />
       {pages.length > 0 ? (
-        <PagedConsole pages={pages} label={ROOMS.blog.console} more={ROOMS.blog.more} moreLabel={ROOMS.blog.moreLabel} />
+        <PagedConsole pages={pages} channel="blog" label={ROOMS.blog.console} more={ROOMS.blog.more} moreLabel={ROOMS.blog.moreLabel} />
       ) : (
         <div className="stage__screen">
           <BlogSoon copy={copy} className="merch-soon--screen" />

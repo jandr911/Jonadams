@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { clearActive, publishActive } from "./activeScreen";
 import RoomLink from "./RoomLink";
 
 export interface ConsoleKey {
@@ -17,11 +18,20 @@ interface RoomConsoleProps {
   label: string;
   crt?: boolean;
   preview?: boolean;
+  channel?: string;
 }
 
-export default function RoomConsole({ keys, screens, label, crt = false, preview = true }: RoomConsoleProps) {
+export default function RoomConsole({ keys, screens, label, crt = false, preview = true, channel }: RoomConsoleProps) {
   const [active, setActive] = useState(0);
   const current = keys[active];
+  const currentId = current?.id;
+  useEffect(() => {
+    if (channel && currentId) publishActive(channel, currentId);
+  }, [channel, currentId]);
+  useEffect(() => {
+    if (!channel) return;
+    return () => clearActive(channel);
+  }, [channel]);
   if (!current) return null;
   const accent = current.accent ? { ["--accent" as string]: current.accent } : undefined;
   return (

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Room, { roomLinks, roomMetadata } from "@/components/Room";
 import { indexLabel, placeById } from "@/components/city/layout";
+import BlogReader from "@/components/room/BlogReader";
 import BlogScene from "@/components/room/BlogScene";
+import PostBody from "@/components/room/PostBody";
 import PostCard, { BlogSoon } from "@/components/room/PostCard";
 import { getContent } from "@/lib/content";
 
@@ -33,6 +35,7 @@ export default async function BlogPage() {
         plaques: copy.BLOG_DESK,
         links: roomLinks(["club", "listen", "watch", "creatives", "merch"]),
         sign: { eyebrow: copy.BLOG.eyebrow, title: placeById("blog").label },
+        article: <BlogReader channel="blog" articles={posts.map((p) => ({ id: p.id, body: <PostBody post={p} backLink={false} /> }))} />,
       }}
     />
   );
