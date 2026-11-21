@@ -18,6 +18,7 @@ import {
   MERCH,
   MERCH_DESK,
   MUSIC,
+  NOT_FOUND,
   PROFILE,
   ROOMS,
   ROOM_NAV,
@@ -52,6 +53,7 @@ export const DEFAULT_COPY = {
   MERCH,
   BLOG,
   BLOG_DESK,
+  NOT_FOUND,
 };
 
 export type SiteCopy = typeof DEFAULT_COPY;
@@ -83,6 +85,7 @@ export const COPY_SECTIONS: Record<CopySection, string> = {
   MERCH_DESK: "Merch front desk",
   BLOG: "Blog",
   BLOG_DESK: "Blog front desk",
+  NOT_FOUND: "Page not found",
 };
 
 export const COPY_SECTION_KEYS = Object.keys(COPY_SECTIONS) as CopySection[];

@@ -24,6 +24,8 @@ export const TAGLINE: string = "Music · Art · The Creatives";
 
 export const IN_DEVELOPMENT = false;
 
+export const SITE_URL = "https://jonnadams.com";
+
 export const GEO = { lat: 42.33, lon: -83.05 };
 
 export const COORDINATES = `${GEO.lat}° N, ${-GEO.lon}° W`;
@@ -235,6 +237,14 @@ export const PROFILE = {
   portrait: "Portrait of {name}",
   back: { label: "The Creatives", note: "Back to the wall", href: "/creatives" },
   description: "{name}, {craft} from {city}, on The Creatives wall at {site}.",
+};
+
+export const NOT_FOUND = {
+  title: "Page not found",
+  eyebrow: "404",
+  heading: "Dead end",
+  body: "Nothing stands at this address. Head back downtown and pick a room.",
+  back: "Back to the city",
 };
 
 export const CLUB_WALLS = [
