@@ -49,11 +49,11 @@ export default async function RoomStage({ destination, index, scene }: { destina
     <StageShell room={destination.id}>
       <div className="stage__view">
         <div className="stage__canvas">
-          {scene.art}
           <div className="stage__sign">
             <span className="eyebrow">{sign.eyebrow}</span>
             <h1 className="stage__title">{sign.title}</h1>
           </div>
+          {scene.art}
           <PlaqueList items={plaques} label={ROOM_NAV.desk} className="stage__plaques" />
         </div>
         <div className="stage__grain" aria-hidden />

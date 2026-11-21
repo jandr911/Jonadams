@@ -18,9 +18,11 @@ import {
   MERCH,
   MERCH_DESK,
   MUSIC,
+  NOT_FOUND,
   PROFILE,
   ROOMS,
   ROOM_NAV,
+  SEARCH,
   SITE,
   TAGLINE,
   WATCH_DESK,
@@ -31,6 +33,7 @@ export const DEFAULT_COPY = {
   MUSIC,
   TAGLINE,
   DESCRIPTION,
+  SEARCH,
   HEADER,
   LOADER,
   CITY_HUD,
@@ -52,6 +55,7 @@ export const DEFAULT_COPY = {
   MERCH,
   BLOG,
   BLOG_DESK,
+  NOT_FOUND,
 };
 
 export type SiteCopy = typeof DEFAULT_COPY;
@@ -62,6 +66,7 @@ export const COPY_SECTIONS: Record<CopySection, string> = {
   MUSIC: "Site music",
   TAGLINE: "Tagline",
   DESCRIPTION: "Search and share description",
+  SEARCH: "Search titles",
   HEADER: "Header and menu",
   LOADER: "Loading screen",
   CITY_HUD: "City controls and hints",
@@ -83,6 +88,7 @@ export const COPY_SECTIONS: Record<CopySection, string> = {
   MERCH_DESK: "Merch front desk",
   BLOG: "Blog",
   BLOG_DESK: "Blog front desk",
+  NOT_FOUND: "Page not found",
 };
 
 export const COPY_SECTION_KEYS = Object.keys(COPY_SECTIONS) as CopySection[];

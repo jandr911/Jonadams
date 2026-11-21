@@ -24,6 +24,8 @@ export const TAGLINE: string = "Music · Art · The Creatives";
 
 export const IN_DEVELOPMENT = false;
 
+export const SITE_URL = "https://jonnadams.com";
+
 export const GEO = { lat: 42.33, lon: -83.05 };
 
 export const COORDINATES = `${GEO.lat}° N, ${-GEO.lon}° W`;
@@ -120,6 +122,23 @@ export const ALTER_EGO = {
 export const ALTER_EGO_ART = { standing: "/alter-ego/standing.png", smoke: "/alter-ego/smoke.png", walking: "/alter-ego/walking.png" };
 
 export const DESCRIPTION: string = "Step into the world of Jonathan Adams. Music, art, and the creatives of Detroit.";
+
+export const SEARCH = {
+  home: "{artist}, Detroit musician and artist",
+  role: "Musician and visual artist",
+  rooms: {
+    club: "Club Adams, the world of {artist}",
+    listen: "Listen to {artist}",
+    watch: "Watch {artist}: official videos",
+    creatives: "The Creatives, picked by {artist}",
+    merch: "{artist} merch from Detroit",
+    blog: "{artist} blog",
+  },
+  llms: {
+    about: "The official site of {artist}, known as {nickname}, a musician and visual artist from {city}.",
+    rooms: "Rooms",
+  },
+};
 
 export const SHARE_IMAGE = {
   alt: "{name}, the world of {artist} in downtown Detroit",
@@ -235,6 +254,14 @@ export const PROFILE = {
   portrait: "Portrait of {name}",
   back: { label: "The Creatives", note: "Back to the wall", href: "/creatives" },
   description: "{name}, {craft} from {city}, on The Creatives wall at {site}.",
+};
+
+export const NOT_FOUND = {
+  title: "Page not found",
+  eyebrow: "404",
+  heading: "Dead end",
+  body: "Nothing stands at this address. Head back downtown and pick a room.",
+  back: "Back to the city",
 };
 
 export const CLUB_WALLS = [

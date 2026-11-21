@@ -351,7 +351,7 @@ GA_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 
 The one secret the app holds is the Google Analytics service-account key, server-only and
 read-only on the Analytics property. `src/lib/analytics/ga.ts` signs the JWT itself and calls
-the Data API; `src/components/Analytics.tsx` loads the tag at browser idle, never under
+the Data API; `src/components/Analytics.tsx` loads the tag 4 s after the page loads or on the visitor's first tap, key, wheel or scroll, whichever comes first (its start-up blocked first taps on phones; the client accepted that visits shorter than that go uncounted), never under
 `/admin`, and not on a browser that has signed in to the admin. Events go through `track()` in
 `src/lib/analytics/track.ts`. When the three `GA_` values are unset the Visitors page shows
 the setup steps instead of an error. All four stay out of git.

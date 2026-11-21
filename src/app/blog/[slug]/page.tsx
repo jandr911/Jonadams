@@ -4,7 +4,9 @@ import Room, { roomLinks, roomMetadata } from "@/components/Room";
 import { BlogBackdrop } from "@/components/room/BlogScene";
 import PostBody from "@/components/room/PostBody";
 import PostCard, { postDate } from "@/components/room/PostCard";
+import JsonLd from "@/components/JsonLd";
 import { getContent } from "@/lib/content";
+import { postGraph } from "@/lib/structuredData";
 
 export const instant = false;
 
@@ -26,7 +28,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const post = await postBySlug((await params).slug);
   if (!post) return {};
   const { copy } = await getContent();
-  const meta = roomMetadata(copy, "blog", post.summary || copy.ROOMS.blog.description, post.title);
+  const meta = roomMetadata(copy, "blog", post.summary || copy.ROOMS.blog.description, { title: post.title, path: `/blog/${post.slug}` });
   if (!post.cover) return meta;
   const images = { url: post.cover, alt: post.title };
   return { ...meta, openGraph: { ...meta.openGraph, type: "article", images }, twitter: { ...meta.twitter, images } };
@@ -37,23 +39,26 @@ export default async function PostPage({ params }: { params: Params }) {
   if (!post) notFound();
   const { copy } = await getContent();
   return (
-    <Room
-      district="blog"
-      scene={{
-        sign: { eyebrow: postDate(post.date), title: post.title },
-        art: (
-          <>
-            <BlogBackdrop />
-            <div className="stage__screen">
-              <PostCard post={post} index="" copy={copy} sizes="(max-width: 720px) 0px, 22vw" className="post-card--screen" href="#post" cta={copy.BLOG.readBelow} video />
-            </div>
-          </>
-        ),
-        phone: null,
-        article: <PostBody post={post} />,
-        plaques: [copy.BLOG.back],
-        links: roomLinks(["club", "listen", "watch", "creatives", "merch"]),
-      }}
-    />
+    <>
+      <JsonLd data={postGraph(copy, post)} />
+      <Room
+        district="blog"
+        scene={{
+          sign: { eyebrow: postDate(post.date), title: post.title },
+          art: (
+            <>
+              <BlogBackdrop />
+              <div className="stage__screen">
+                <PostCard post={post} index="" copy={copy} sizes="(max-width: 720px) 0px, 22vw" className="post-card--screen" href="#post" cta={copy.BLOG.readBelow} video />
+              </div>
+            </>
+          ),
+          phone: null,
+          article: <PostBody post={post} />,
+          plaques: [copy.BLOG.back],
+          links: roomLinks(["club", "listen", "watch", "creatives", "merch"]),
+        }}
+      />
+    </>
   );
 }

@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   if (!creative) return {};
   const { copy } = await getContent();
   const description = creative.bio || fill(copy.PROFILE.description, { name: creative.name, craft: creative.craft.toLowerCase(), city: creative.city, site: copy.SITE.name });
-  return roomMetadata(copy, "creatives", description, creative.name);
+  return roomMetadata(copy, "creatives", description, { title: creative.name, path: `/creatives/${creative.slug}` });
 }
 
 export default async function CreativePage({ params }: { params: Params }) {
