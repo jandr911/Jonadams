@@ -312,6 +312,12 @@ export function buildWheelGeometry() {
   return { tire, rim };
 }
 
+export function buildFarWheelGeometry() {
+  const wheel = new CylinderGeometry(0.93, 0.93, 0.32, 6);
+  wheel.rotateZ(Math.PI / 2);
+  return wheel;
+}
+
 export function buildLampGeometry() {
   return new BoxGeometry(1, 1, 0.12);
 }
