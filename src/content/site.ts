@@ -123,6 +123,23 @@ export const ALTER_EGO_ART = { standing: "/alter-ego/standing.png", smoke: "/alt
 
 export const DESCRIPTION: string = "Step into the world of Jonathan Adams. Music, art, and the creatives of Detroit.";
 
+export const SEARCH = {
+  home: "{artist}, Detroit musician and artist",
+  role: "Musician and visual artist",
+  rooms: {
+    club: "Club Adams, the world of {artist}",
+    listen: "Listen to {artist}",
+    watch: "Watch {artist}: official videos",
+    creatives: "The Creatives, picked by {artist}",
+    merch: "{artist} merch from Detroit",
+    blog: "{artist} blog",
+  },
+  llms: {
+    about: "The official site of {artist}, known as {nickname}, a musician and visual artist from {city}.",
+    rooms: "Rooms",
+  },
+};
+
 export const SHARE_IMAGE = {
   alt: "{name}, the world of {artist} in downtown Detroit",
   type: "image/png",
