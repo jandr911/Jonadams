@@ -2,13 +2,37 @@
 
 import { usePathname } from "next/navigation";
 import Script from "next/script";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { GA_ID, isOwnDevice } from "@/lib/analytics/track";
 
 const noSubscribe = () => () => {};
 const enabledSnapshot = () => Boolean(GA_ID) && !isOwnDevice();
 const serverSnapshot = () => false;
 const TITLE_SETTLE_MS = 200;
+const LOAD_DELAY_MS = 4000;
+const WAKE_EVENTS = ["pointerdown", "keydown", "touchstart", "wheel", "scroll"] as const;
+const WAKE_OPTIONS = { once: true, passive: true, capture: true };
+
+function useDeferredLoad(enabled: boolean) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!enabled || ready) return;
+    const wake = () => setReady(true);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const startTimer = () => {
+      timer = setTimeout(wake, LOAD_DELAY_MS);
+    };
+    if (document.readyState === "complete") startTimer();
+    else window.addEventListener("load", startTimer, { once: true });
+    for (const name of WAKE_EVENTS) document.addEventListener(name, wake, WAKE_OPTIONS);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("load", startTimer);
+      for (const name of WAKE_EVENTS) document.removeEventListener(name, wake, WAKE_OPTIONS);
+    };
+  }, [enabled, ready]);
+  return ready;
+}
 
 function ensureGtag() {
   if (window.gtag) return;
@@ -24,6 +48,7 @@ function ensureGtag() {
 export default function Analytics() {
   const pathname = usePathname();
   const enabled = useSyncExternalStore(noSubscribe, enabledSnapshot, serverSnapshot) && !pathname.startsWith("/admin");
+  const ready = useDeferredLoad(enabled);
 
   useEffect(() => {
     if (!enabled) {
@@ -36,6 +61,6 @@ export default function Analytics() {
     return () => clearTimeout(t);
   }, [enabled, pathname]);
 
-  if (!enabled) return null;
-  return <Script src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_ID)}`} strategy="lazyOnload" />;
+  if (!enabled || !ready) return null;
+  return <Script src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_ID)}`} strategy="afterInteractive" />;
 }
