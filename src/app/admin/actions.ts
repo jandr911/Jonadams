@@ -8,7 +8,7 @@ import { youtubeIdFrom } from "@/components/youtube";
 import { DEFAULT_COPY, isCopyKey, type CopySection } from "@/content/copy";
 import { MERCH_KINDS, MERCH_SIZES, VIDEO_KINDS, type MerchKind, type MerchSize, type PostBlock, type VideoKind } from "@/content/site";
 import { requireAdmin } from "@/lib/admin/session";
-import { CONTENT_TAG } from "@/lib/content";
+import { COMMENTS_TAG, CONTENT_TAG } from "@/lib/content";
 import { MEDIA_BUCKET } from "@/lib/supabase/env";
 import { storedPath } from "@/lib/supabase/media";
 import { sessionSupabase } from "@/lib/supabase/server";
@@ -17,11 +17,11 @@ const SAVED: FormState = { ok: true, message: "Saved. The site is updated." };
 
 class FormError extends Error {}
 
-async function run(work: (db: SupabaseClient) => Promise<void>, done: FormState = SAVED): Promise<FormState> {
+async function run(work: (db: SupabaseClient) => Promise<void>, done: FormState = SAVED, tag = CONTENT_TAG): Promise<FormState> {
   try {
     const { supabase } = await requireAdmin();
     await work(supabase);
-    updateTag(CONTENT_TAG);
+    updateTag(tag);
     return done;
   } catch (error) {
     unstable_rethrow(error);
@@ -408,6 +408,13 @@ function defaultFor(key: string): string | undefined {
   let node: unknown = DEFAULT_COPY;
   for (const part of key.split(".")) node = typeof node === "object" && node !== null ? (node as Record<string, unknown>)[part] : undefined;
   return typeof node === "string" ? node : undefined;
+}
+
+export async function removeComment(_prev: FormState, formData: FormData): Promise<FormState> {
+  return run(async (db) => {
+    const id = must(formData, "id", "the comment");
+    check((await db.from("comments").delete().eq("id", id)).error);
+  }, { ok: true, message: "Deleted." }, COMMENTS_TAG);
 }
 
 export async function saveSong(_prev: FormState, formData: FormData): Promise<FormState> {
