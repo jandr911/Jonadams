@@ -5,7 +5,7 @@ Contract for every AI agent in this repository. Read before your first edit.
 Adams UniverseCity is a public site for the Detroit artist Jonathan Adams. The homepage
 is a free-roam 3D downtown Detroit built with React Three Fiber; the inner pages are
 styled rooms. Content and the admin panel live in Supabase (see [Secrets and Supabase](#secrets-and-supabase));
-there is no visitor data. The thing that breaks here is
+the only visitor data is blog comments (a name and the text, no email or account). The thing that breaks here is
 not security, it is the frame rate: the client judges the city on a mid-range laptop,
 and a change that looks fine on a strong GPU can halve the frame rate on his. Bias
 toward the smallest correct change and measure before you call it done.
@@ -291,6 +291,11 @@ Two layers, and the split matters:
 - Server components call `await getContent()`; client components call `useCopy()`. Neither
   imports copy constants from `site.ts` directly any more, except types and the
   non-editable values (`EQ_BARS`, `GEO`, `ALTER_EGO_ART`).
+- Blog comments are the one thing visitors write. `postComment` in `src/app/blog/actions.ts`
+  inserts through the public client (row level security allows inserts on published posts,
+  no links, at most 5 a minute per post by trigger) and expires only that post's
+  `commentsTag(postId)`, never `content`; `getComments(postId)` reads them. They show at once,
+  by the client's choice; the admin deletes unwanted ones.
 - An empty YouTube id on a video means the client has not sent it yet, and the room shows
   an "arriving soon" screen for it. Lists may be empty; every room must render with none.
 

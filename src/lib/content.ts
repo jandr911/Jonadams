@@ -1,10 +1,15 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { applyCopy, type SiteCopy } from "@/content/copy";
-import { MERCH_KINDS, type Creative, type MerchItem, type MerchKind, type MerchSize, type Post, type PostBlock, type SiteLink, type VideoKind, type VideoSlot } from "@/content/site";
+import { MERCH_KINDS, type Creative, type MerchItem, type MerchKind, type MerchSize, type Post, type PostBlock, type PostComment, type SiteLink, type VideoKind, type VideoSlot } from "@/content/site";
 import { publicSupabase } from "./supabase/public";
 
 export const CONTENT_TAG = "content";
+export const COMMENTS_TAG = "comments";
+
+export function commentsTag(postId: string) {
+  return `comments:${postId}`;
+}
 
 export interface LinkRow extends SiteLink {
   id: string;
@@ -164,4 +169,27 @@ export async function getContent(): Promise<SiteContent> {
     posts: ((posts.data ?? []) as PostRow[]).map(toPost),
     links: (links.data ?? []) as LinkRow[],
   };
+}
+
+export interface CommentRow {
+  id: string;
+  post_id: string;
+  name: string;
+  body: string;
+  created_at: string;
+}
+
+export const COMMENT_COLUMNS = "id, post_id, name, body, created_at";
+
+export function toComment(row: CommentRow): PostComment {
+  return { id: row.id, postId: row.post_id, name: row.name, body: row.body, createdAt: row.created_at };
+}
+
+export async function getComments(postId: string): Promise<PostComment[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag(COMMENTS_TAG, commentsTag(postId));
+  const { data, error } = await publicSupabase().from("comments").select(COMMENT_COLUMNS).eq("post_id", postId).order("created_at");
+  if (error) fail("comments", error.message);
+  return ((data ?? []) as CommentRow[]).map(toComment);
 }

@@ -4,6 +4,7 @@ import type { Post, PostBlock } from "@/content/site";
 import { getContent } from "@/lib/content";
 import YouTubeFrame from "../YouTubeFrame";
 import RoomLink from "./RoomLink";
+import PostComments from "./PostComments";
 import { POST_VIDEO, firstVideo, postDate } from "./PostCard";
 
 
@@ -60,6 +61,7 @@ export default async function PostBody({ post, backLink = true }: { post: Post; 
       {post.blocks.map((block, i) => (
         <Block key={i} block={block} post={post} index={i} />
       ))}
+      <PostComments postId={post.id} />
       {backLink && (
         <footer className="post__foot">
           <RoomLink href={copy.BLOG.back.href} className="post-card__read">

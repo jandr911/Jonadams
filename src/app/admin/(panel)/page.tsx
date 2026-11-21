@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { DEFAULT_RANGE, analyticsConfigured, totals } from "@/lib/analytics/ga";
+import { commentsThisWeek } from "@/lib/admin/comments";
 import { adminPosts } from "@/lib/admin/posts";
 import { getContent } from "@/lib/content";
 import { SECTIONS } from "./sections";
@@ -14,7 +15,7 @@ async function visitorCount(): Promise<string> {
 }
 
 export default async function AdminHome() {
-  const [{ listen, watch, creatives, merch, links }, posts, visitors] = await Promise.all([getContent(), adminPosts(), visitorCount()]);
+  const [{ listen, watch, creatives, merch, links }, posts, newComments, visitors] = await Promise.all([getContent(), adminPosts(), commentsThisWeek(), visitorCount()]);
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   const counts: Record<string, string> = {
     "/admin/videos/listen": plural(listen.length, "video", "videos"),
@@ -22,6 +23,7 @@ export default async function AdminHome() {
     "/admin/creatives": plural(creatives.length, "person", "people"),
     "/admin/merch": plural(merch.length, "piece", "pieces"),
     "/admin/blog": `${plural(posts.filter((p) => p.published).length, "post", "posts")} live`,
+    "/admin/comments": `${newComments} new this week`,
     "/admin/links": `${links.filter((l) => l.href).length} showing`,
     "/admin/visitors": visitors,
   };
