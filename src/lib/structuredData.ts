@@ -40,7 +40,7 @@ export function postGraph(copy: SiteCopy, post: Post) {
   const blog = placeById("blog");
   const description = post.summary || copy.ROOMS.blog.description;
   const videos = post.blocks.flatMap((block) => (block.kind === "video" && block.youtube ? [block] : []));
-  const image = post.cover ? absolute(post.cover) : videos.length ? youtubeThumbnail(videos[0].youtube) : `${SITE_URL}/share-image`;
+  const image = post.cover ? absolute(post.cover) : videos.length ? youtubeThumbnail(videos[0].youtube) : `${SITE_URL}/share-image/${blog.id}`;
   const videoId = (index: number) => `${url}#video-${index + 1}`;
   return {
     "@context": "https://schema.org",
