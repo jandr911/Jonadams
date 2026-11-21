@@ -449,6 +449,7 @@ function placeHouseParts(houses: House[]) {
 const FRONT_SETBACK = 7.5;
 const YARD_DEPTH = 20.5;
 const YARD_GEOMETRY = new PlaneGeometry(LOT, YARD_DEPTH).rotateX(-Math.PI / 2);
+const WINDOW_PANE = new PlaneGeometry(1.5, 1.1).translate(0, 0, 0.075);
 const HIDE_CHECK_FRAMES = 8;
 
 function HideAbove({ y, children }: { y: number; children: React.ReactNode }) {
@@ -532,8 +533,7 @@ function Houses({ houses, pads, textures }: { houses: House[]; pads: { x: number
         <coneGeometry args={[4.9, 2.8, 4]} />
         <meshStandardMaterial color="#ffffff" map={shingles} roughness={0.95} flatShading />
       </Parts>
-      <Parts items={parts.lit}>
-        <boxGeometry args={[1.5, 1.1, 0.15]} />
+      <Parts items={parts.lit} geometry={WINDOW_PANE}>
         <meshStandardMaterial ref={winMat} color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={2} toneMapped={false} />
       </Parts>
       <HideAbove y={170}>

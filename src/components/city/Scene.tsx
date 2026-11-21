@@ -269,7 +269,7 @@ export default function Scene({ live, onWarm, onReady }: { live: boolean; onWarm
           <PeopleMover />
         </StaticBatch>
         <Traffic />
-        <StaticBatch label="aircraft">
+        <StaticBatch label="aircraft" finishes>
           <Aircraft />
         </StaticBatch>
         {live && (
@@ -281,7 +281,7 @@ export default function Scene({ live, onWarm, onReady }: { live: boolean; onWarm
         )}
         <SkyTraffic />
         <HoloBillboards />
-        <StaticBatch label="watercraft">
+        <StaticBatch label="watercraft" finishes>
           <Watercraft />
         </StaticBatch>
         <StaticBatch label="details">
