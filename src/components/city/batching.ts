@@ -1,4 +1,4 @@
-import { BufferAttribute, BufferGeometry, Color, Euler, Matrix4, Mesh, Object3D, Texture, Vector2, Vector3, Vector4, type Material, type InstancedMesh } from "three";
+import { BufferAttribute, BufferGeometry, Color, Euler, Matrix4, Mesh, MeshStandardMaterial, Object3D, Texture, Vector2, Vector3, Vector4, type Material, type InstancedMesh } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { DETAIL_CULLED } from "./DetailCull";
 
@@ -41,6 +41,7 @@ interface Group {
 export interface Batcher {
   root: Object3D;
   label: string;
+  snapFinishes: boolean;
   frame: number;
   offset: number;
   watching: boolean;
@@ -163,10 +164,25 @@ function valueKey(v: unknown): string | null {
   return null;
 }
 
-function materialKey(m: Material) {
+const FINISHES = {
+  metal: { roughness: 0.35, metalness: 0.8 },
+  matte: { roughness: 0.95, metalness: 0 },
+  satin: { roughness: 0.55, metalness: 0.05 },
+};
+
+function finishOf(m: Material): keyof typeof FINISHES | null {
+  if (!(m instanceof MeshStandardMaterial)) return null;
+  if (m.metalness >= 0.4) return "metal";
+  return m.roughness >= 0.75 ? "matte" : "satin";
+}
+
+function materialKey(m: Material, snapFinishes = false) {
+  const finish = snapFinishes ? finishOf(m) : null;
   const parts: string[] = [m.type, `alphaTest=${m.alphaTest}`, `defines=${JSON.stringify(m.defines ?? {})}`];
+  if (finish) parts.push(`finish=${finish}`);
   for (const [k, v] of Object.entries(m)) {
     if (IGNORED_KEYS.has(k) || k.startsWith("_") || k === "defines") continue;
+    if (finish && (k === "roughness" || k === "metalness")) continue;
     const value = valueKey(v);
     if (value !== null) parts.push(`${k}=${value}`);
   }
@@ -259,7 +275,7 @@ function merge(b: Batcher, owner: Object3D, sources: Source[]): Group | null {
   merged.translate(-centre.x, -centre.y, -centre.z);
   merged.computeBoundingSphere();
   const source = sources[0].mesh;
-  const batch = new Mesh(merged, batchMaterial(source.material as Material));
+  const batch = new Mesh(merged, batchMaterial(source.material as Material, b.snapFinishes));
   batch.name = `${b.label}-batch`;
   batch.position.copy(centre);
   batch.layers.mask = source.layers.mask;
@@ -277,10 +293,12 @@ function merge(b: Batcher, owner: Object3D, sources: Source[]): Group | null {
   return { owner, sources, batch };
 }
 
-export function batchMaterial(source: Material) {
+export function batchMaterial(source: Material, snapFinishes = false) {
   const material = source.clone() as Tintable;
   material.color.setRGB(1, 1, 1);
   material.vertexColors = true;
+  const finish = snapFinishes ? finishOf(source) : null;
+  if (finish && material instanceof MeshStandardMaterial) Object.assign(material, FINISHES[finish]);
   return material;
 }
 
@@ -324,7 +342,7 @@ function build(b: Batcher, sources: Source[]) {
     const g = m.geometry;
     const attrs = Object.keys(g.attributes).sort().join(",");
     const place = s.owner === b.root ? cellOf(m) : "";
-    const key = [s.owner.uuid, place, materialKey(m.material as Material), attrs, g.index ? "i" : "n", m.layers.mask, m.renderOrder].join("#");
+    const key = [s.owner.uuid, place, materialKey(m.material as Material, b.snapFinishes), attrs, g.index ? "i" : "n", m.layers.mask, m.renderOrder].join("#");
     const bin = bins.get(key) ?? { owner: s.owner, sources: [] };
     bin.sources.push(s);
     bins.set(key, bin);
@@ -467,10 +485,11 @@ function labelOffset(label: string) {
   return h;
 }
 
-export function createBatcher(root: Object3D, label: string): Batcher {
+export function createBatcher(root: Object3D, label: string, snapFinishes = false): Batcher {
   const b: Batcher = {
     root,
     label,
+    snapFinishes,
     frame: 0,
     offset: labelOffset(label),
     watching: true,
