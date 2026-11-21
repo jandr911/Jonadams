@@ -1,6 +1,6 @@
 "use client";
 
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, CanvasTexture, Color, Euler, InstancedMesh, Matrix4, MeshBasicMaterial, MeshStandardMaterial, Quaternion, Vector3 } from "three";
 import { useCity } from "./CityContext";
@@ -11,6 +11,7 @@ import { makeHeadlightPoolTexture } from "./textures";
 import {
   VEHICLE_SPECS,
   buildDriverGeometry,
+  buildFarWheelGeometry,
   buildKindGeometry,
   buildLampGeometry,
   buildMirrorGeometry,
@@ -53,6 +54,7 @@ function kindGeometry(kind: VehicleKind) {
 type Shared = {
   tire: ReturnType<typeof buildWheelGeometry>["tire"];
   rim: ReturnType<typeof buildWheelGeometry>["rim"];
+  farWheel: ReturnType<typeof buildFarWheelGeometry>;
   lamp: ReturnType<typeof buildLampGeometry>;
   mirror: ReturnType<typeof buildMirrorGeometry>;
   driver: ReturnType<typeof buildDriverGeometry>;
@@ -63,7 +65,7 @@ let shared: Shared | null = null;
 function sharedGeometry() {
   if (!shared) {
     const w = buildWheelGeometry();
-    shared = { tire: w.tire, rim: w.rim, lamp: buildLampGeometry(), mirror: buildMirrorGeometry(), driver: buildDriverGeometry(), pool: buildPoolGeometry(), poolTex: makeHeadlightPoolTexture() };
+    shared = { tire: w.tire, rim: w.rim, farWheel: buildFarWheelGeometry(), lamp: buildLampGeometry(), mirror: buildMirrorGeometry(), driver: buildDriverGeometry(), pool: buildPoolGeometry(), poolTex: makeHeadlightPoolTexture() };
   }
   return shared;
 }
@@ -134,6 +136,8 @@ interface Scratch {
 }
 
 const SPIN_STEP_MAX = 0.4;
+const WHEEL_DETAIL_DISTANCE_SQ = 90 * 90;
+const STATIC_REFRESH_DISTANCE_SQ = 8 * 8;
 const TURN = Math.PI * 2;
 
 function markMatrixDirty(im: InstancedMesh) {
@@ -148,9 +152,11 @@ function runUpdate(
   pose: PoseFn,
   time: number,
   s: Scratch,
+  eye: Vector3,
 ) {
   const tire = meshes.get("tire");
   const rim = meshes.get("rim");
+  const farWheel = meshes.get("farWheel");
   const head = meshes.get("head");
   const tail = meshes.get("tail");
   const mirror = meshes.get("mirror");
@@ -163,6 +169,9 @@ function runUpdate(
     s.spinShown = new Float32Array(items.length);
   }
   let tailColorDirty = false;
+  let near = 0;
+  let far = 0;
+  let mirrors = 0;
   for (let i = 0; i < items.length; i++) {
     p.brake = false;
     p.pitch = 0;
@@ -179,18 +188,30 @@ function runUpdate(
     s.spinRaw[i] = p.spin;
     s.spinShown[i] = (s.spinShown[i] + Math.max(-SPIN_STEP_MAX, Math.min(SPIN_STEP_MAX, turned))) % TURN;
     spin.makeRotationX(s.spinShown[i]);
+    const dx = p.x - eye.x;
+    const dy = p.y - eye.y;
+    const dz = p.z - eye.z;
+    const close = dx * dx + dy * dy + dz * dz < WHEEL_DETAIL_DISTANCE_SQ;
     for (let w = 0; w < 4; w++) {
       out.multiplyMatrices(M, loc.wheels[w]).multiply(spin);
-      tire?.setMatrixAt(i * 4 + w, out);
-      rim?.setMatrixAt(i * 4 + w, out);
+      if (close) {
+        tire?.setMatrixAt(near * 4 + w, out);
+        rim?.setMatrixAt(near * 4 + w, out);
+      } else {
+        farWheel?.setMatrixAt(far * 4 + w, out);
+      }
     }
     for (let k = 0; k < 2; k++) {
       head?.setMatrixAt(i * 2 + k, out.multiplyMatrices(M, loc.head[k]));
       tail?.setMatrixAt(i * 2 + k, out.multiplyMatrices(M, loc.tail[k]));
-      if (loc.mirrors.length) mirror?.setMatrixAt(i * 2 + k, out.multiplyMatrices(M, loc.mirrors[k]));
-      else mirror?.setMatrixAt(i * 2 + k, HIDDEN_MATRIX);
+      if (close && loc.mirrors.length) mirror?.setMatrixAt(mirrors++, out.multiplyMatrices(M, loc.mirrors[k]));
     }
-    driver?.setMatrixAt(i, out.multiplyMatrices(M, loc.driver));
+    if (close) {
+      driver?.setMatrixAt(near, out.multiplyMatrices(M, loc.driver));
+      near++;
+    } else {
+      far++;
+    }
     if (pool) pool.setMatrixAt(i, lightsOn ? out.multiplyMatrices(M, loc.pool) : HIDDEN_MATRIX);
     const b = p.brake ? 1 : 0;
     if (tail && s.brakes[i] !== b) {
@@ -200,6 +221,11 @@ function runUpdate(
       tailColorDirty = true;
     }
   }
+  if (tire) tire.count = near * 4;
+  if (rim) rim.count = near * 4;
+  if (farWheel) farWheel.count = far * 4;
+  if (mirror) mirror.count = mirrors;
+  if (driver) driver.count = near;
   meshes.forEach(markMatrixDirty);
   if (tailColorDirty && tail?.instanceColor) tail.instanceColor.needsUpdate = true;
 }
@@ -320,15 +346,24 @@ export default function VehicleFleet({
     scratch.current.brakes = new Uint8Array(items.length).fill(255);
   }, [meshes, groups, items]);
 
+  const camera = useThree((s) => s.camera);
+  const refreshedAt = useRef(new Vector3(Infinity, Infinity, Infinity));
+
   useEffect(() => {
     scratch.current.night = dn.night;
     applyNight(mats, dn.night);
-    if (!dynamic) runUpdate(meshes, bodies, items, groups, pose, 0, scratch.current);
-  }, [dn.night, dynamic, items, groups, pose, meshes, bodies, mats]);
+    if (dynamic) return;
+    runUpdate(meshes, bodies, items, groups, pose, 0, scratch.current, camera.position);
+    refreshedAt.current.copy(camera.position);
+  }, [dn.night, dynamic, items, groups, pose, meshes, bodies, mats, camera]);
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    if (dynamic) runUpdate(meshes, bodies, items, groups, pose, t, scratch.current);
+    if (dynamic) runUpdate(meshes, bodies, items, groups, pose, t, scratch.current, camera.position);
+    else if (refreshedAt.current.distanceToSquared(camera.position) > STATIC_REFRESH_DISTANCE_SQ) {
+      runUpdate(meshes, bodies, items, groups, pose, 0, scratch.current, camera.position);
+      refreshedAt.current.copy(camera.position);
+    }
     const c = reducedMotion || Math.floor(t * 5) % 2 === 0 ? RED : BLUE;
     const list = strobes.current;
     for (let k = 0; k < list.length; k++) {
@@ -397,6 +432,9 @@ export default function VehicleFleet({
       </instancedMesh>
       <instancedMesh ref={bind("rim")} args={[geo.rim, undefined, n * 4]} frustumCulled={false}>
         <meshStandardMaterial color="#c3c7d2" roughness={0.3} metalness={0.95} />
+      </instancedMesh>
+      <instancedMesh ref={bind("farWheel")} args={[geo.farWheel, undefined, n * 4]} frustumCulled={false}>
+        <meshStandardMaterial color="#15151a" roughness={1} />
       </instancedMesh>
       <instancedMesh ref={bind("head")} args={[geo.lamp, undefined, n * 2]} frustumCulled={false}>
         <meshStandardMaterial ref={bindMat("head")} color="#fff6d8" emissive="#fff2c0" emissiveIntensity={3} toneMapped={false} />
