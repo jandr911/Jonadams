@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { startTransition, useActionState } from "react";
 
 export type FormState = { ok: boolean; message: string } | null;
 export type FormAction = (prev: FormState, formData: FormData) => Promise<FormState>;
@@ -13,16 +13,25 @@ interface ActionFormProps {
   confirm?: string;
   danger?: boolean;
   compact?: boolean;
+  keepValues?: boolean;
 }
 
-export default function ActionForm({ action, submit, children, className, confirm, danger = false, compact = false }: ActionFormProps) {
+export default function ActionForm({ action, submit, children, className, confirm, danger = false, compact = false, keepValues = false }: ActionFormProps) {
   const [state, formAction, pending] = useActionState(action, null);
   return (
     <form
       action={formAction}
       className={className}
       onSubmit={(e) => {
-        if (confirm && !window.confirm(confirm)) e.preventDefault();
+        if (confirm && !window.confirm(confirm)) {
+          e.preventDefault();
+          return;
+        }
+        if (keepValues) {
+          e.preventDefault();
+          const data = new FormData(e.currentTarget);
+          startTransition(() => formAction(data));
+        }
       }}
     >
       {children}

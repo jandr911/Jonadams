@@ -1,9 +1,9 @@
 import Image from "next/image";
+import { isRemote } from "@/lib/supabase/media";
 import { fill, type SiteCopy } from "@/content/copy";
 import type { MerchItem, MerchKind } from "@/content/site";
 import MerchOrder from "./MerchOrder";
 
-const REMOTE = /^https?:/;
 
 const STROKE = { fill: "none", stroke: "currentColor", strokeWidth: 1.2, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
@@ -37,7 +37,7 @@ export default function MerchCard({ item, index, copy, sizes, className }: Merch
     <article className={`merch-card ${className}`}>
       <div className="merch-card__photo">
         {item.photo ? (
-          <Image src={item.photo} alt={fill(MERCH.photo, { item: item.name, kind })} fill sizes={sizes} unoptimized={REMOTE.test(item.photo)} />
+          <Image src={item.photo} alt={fill(MERCH.photo, { item: item.name, kind })} fill sizes={sizes} unoptimized={isRemote(item.photo)} />
         ) : (
           <MerchGlyph kind={item.kind} className="merch-card__glyph" />
         )}
