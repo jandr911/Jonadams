@@ -20,7 +20,9 @@ type RoomId = keyof SiteCopy["SEARCH"]["rooms"];
 
 export function roomMetadata(copy: SiteCopy, district: RoomId, description: string, page: { title?: string; path?: string } = {}): Metadata {
   const { title = fill(copy.SEARCH.rooms[district], { artist: copy.SITE.artist }).trim() || placeById(district).label, path = placeById(district).href } = page;
-  const shared = { title: `${title} · ${copy.SITE.name}`, description, images: { url: "/share-image", ...SHARE_IMAGE, alt: fill(SHARE_IMAGE.alt, { name: copy.SITE.name, artist: copy.SITE.artist }) } };
+  const room = placeById(district);
+  const images = { url: `/share-image/${room.id}`, ...SHARE_IMAGE, alt: fill(SHARE_IMAGE.alt, { name: `${room.label} · ${copy.SITE.name}`, artist: copy.SITE.artist }) };
+  const shared = { title: `${title} · ${copy.SITE.name}`, description, images };
   return {
     title,
     description,
