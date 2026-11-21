@@ -232,6 +232,26 @@ export const BLOG = {
   back: { label: "Blog", note: "All posts", href: "/blog" },
 };
 
+export const COMMENT_LIMITS = { name: 60, body: 1500 };
+
+export const COMMENTS = {
+  title: "Comments",
+  count: "{count} comments",
+  one: "1 comment",
+  empty: "No comments yet. Start the conversation.",
+  name: "Your name",
+  body: "Your comment",
+  submit: "Post comment",
+  sending: "Posting…",
+  posted: "Thanks, your comment is up.",
+  missing: "Please add your name and a comment.",
+  tooLong: "Please keep it under {max} characters.",
+  nameTooLong: "Please keep your name under {max} characters.",
+  tooQuick: "Take a moment, then post it again.",
+  noLinks: "Links can't be posted in comments.",
+  failed: "That didn't go through. Please try again.",
+};
+
 export const BLOG_DESK = [
   { label: "Listen", note: "Back to the booth", href: "/listen" },
   { label: "Club Adams", note: "Back to the front door", href: "/club" },
@@ -356,6 +376,14 @@ export type PostBlock =
 export type PostBlockKind = PostBlock["kind"];
 
 export const POST_BLOCK_KINDS: PostBlockKind[] = ["text", "heading", "photo", "video"];
+
+export interface PostComment {
+  id: string;
+  postId: string;
+  name: string;
+  body: string;
+  createdAt: string;
+}
 
 export interface Post {
   id: string;
