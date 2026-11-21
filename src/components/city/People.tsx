@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BoxGeometry, BufferGeometry, Color, DoubleSide, InstancedMesh, Matrix4, MeshStandardMaterial, Quaternion, SphereGeometry, TorusGeometry, Vector3 } from "three";
 import { useCity } from "./CityContext";
 import { useDayNight } from "./DayNightContext";
-import { HIDDEN_MATRIX, cachedByKey, dynamicInstances, mergeParts } from "./instancing";
+import { HIDDEN_MATRIX, cachedByKey, dynamicColors, dynamicInstances, mergeParts } from "./instancing";
 import { labelTexture } from "./labels";
 import { BLOCK, CITY_HALF_X, CITY_HALF_Z, DESTINATIONS, allBlocks, blockCenter, destinationPosition } from "./layout";
 import { loopLength, loopPose, newLoopPose } from "./loopPath";
@@ -263,6 +263,7 @@ function applyColors(m: Map<PartKey, InstancedMesh>, people: Person[]) {
   color("handR", (p) => p.skinC);
   color("bag", (p) => p.jacketC);
   color("phone", (p) => (p.camera ? CAMERA_C : PHONE_C));
+  dynamicColors(m.get("phone") ?? null);
 }
 
 interface Limb {
@@ -302,6 +303,9 @@ function limb(s: Scratch, spec: LimbSpec, dest: Limb, i: number, px: number, py:
 }
 
 const walkFrame = { x: 0, z: 0, yaw: 0 };
+const EYES_DISTANCE_SQ = 35 * 35;
+const HEADPHONES_DISTANCE_SQ = 50 * 50;
+const PHONE_DISTANCE_SQ = 80 * 80;
 const walkLoop = newLoopPose();
 
 function swingKnee(w: number) {
@@ -347,6 +351,9 @@ function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: numbe
   const { armL, armR, legL, legR } = s.limbs;
   const { pos, q, sc, M, out } = s;
   s.frame++;
+  let eyeCount = 0;
+  let headphoneCount = 0;
+  let phoneCount = 0;
   for (let i = 0; i < people.length; i++) {
     const p = people[i];
     let x = p.x;
@@ -369,7 +376,8 @@ function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: numbe
     }
     const dx = x - camX;
     const dz = z - camZ;
-    if (dx * dx + dz * dz > 22500 && (s.frame + i) % 4 !== 0) continue;
+    const distSq = dx * dx + dz * dz;
+    if (distSq > 22500 && (s.frame + i) % 4 !== 0) continue;
     if (p.mode === "walk") {
       const w = (walked / (STRIDE * p.scale)) * Math.PI * 2 + p.phase;
       const sw = Math.sin(w);
@@ -407,7 +415,7 @@ function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: numbe
     sc.set(p.scale * p.wide, p.scale, p.scale);
     M.compose(pos, q, sc);
     head.setMatrixAt(i, out.multiplyMatrices(M, PART.head));
-    eyes.setMatrixAt(i, out.multiplyMatrices(M, PART.eyes));
+    if (distSq < EYES_DISTANCE_SQ) eyes.setMatrixAt(eyeCount++, out.multiplyMatrices(M, PART.eyes));
     const h = p.hair;
     hair.setMatrixAt(i, h === 4 ? HIDDEN_MATRIX : out.multiplyMatrices(M, h === 1 ? PART.hairLong : h === 3 ? PART.afro : h === 5 ? PART.cap : PART.hairShort));
     hairBack.setMatrixAt(i, h === 1 ? out.multiplyMatrices(M, PART.hairBack) : HIDDEN_MATRIX);
@@ -418,16 +426,21 @@ function updatePeople(m: Map<PartKey, InstancedMesh>, people: Person[], t: numbe
     hips.setMatrixAt(i, out.multiplyMatrices(M, PART.hips));
     skirt.setMatrixAt(i, p.skirt ? out.multiplyMatrices(M, PART.skirt) : HIDDEN_MATRIX);
     bag.setMatrixAt(i, p.bag ? out.multiplyMatrices(M, PART.bag) : HIDDEN_MATRIX);
-    headphones.setMatrixAt(i, p.headphones ? out.multiplyMatrices(M, PART.headphones) : HIDDEN_MATRIX);
+    if (p.headphones && distSq < HEADPHONES_DISTANCE_SQ) headphones.setMatrixAt(headphoneCount++, out.multiplyMatrices(M, PART.headphones));
     limb(s, ARM, armL, i, -0.27, 1.34, shL, elL);
     limb(s, ARM, armR, i, 0.27, 1.34, shR, elR);
-    if (p.phone || p.camera) {
+    if ((p.phone || p.camera) && distSq < PHONE_DISTANCE_SQ) {
       out.multiplyMatrices(s.J, p.camera ? PART.camera : PART.phone);
-      phone.setMatrixAt(i, out);
-    } else phone.setMatrixAt(i, HIDDEN_MATRIX);
+      phone.setMatrixAt(phoneCount, out);
+      phone.setColorAt(phoneCount++, p.camera ? CAMERA_C : PHONE_C);
+    }
     limb(s, LEG, legL, i, -0.1, 0.78, hipL, kneeL);
     limb(s, LEG, legR, i, 0.1, 0.78, -hipL, kneeR);
   }
+  eyes.count = eyeCount;
+  headphones.count = headphoneCount;
+  phone.count = phoneCount;
+  if (phoneCount > 0 && phone.instanceColor) phone.instanceColor.needsUpdate = true;
   m.forEach(markMatrixDirty);
 }
 
