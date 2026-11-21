@@ -130,7 +130,7 @@ export default async function BlogScene({ posts }: { posts: Post[] }) {
     return {
       keys: items.map((post, j) => ({ id: post.id, index: indexLabel(p * PAGE + j), label: post.title, href: postHref(post) })),
       screens: items.map((post, j) => (
-        <PostCard key={post.id} post={post} index={indexLabel(p * PAGE + j)} copy={copy} sizes="(max-width: 720px) 0px, 22vw" className="post-card--screen" video />
+        <PostCard key={post.id} post={post} index={indexLabel(p * PAGE + j)} copy={copy} sizes="(max-width: 720px) 0px, 22vw" className="post-card--screen" teaser />
       )),
     };
   });

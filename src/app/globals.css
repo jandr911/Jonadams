@@ -4454,26 +4454,10 @@ ul.admin-steps {
   border-right: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
   border-radius: 0;
 }
-.post-card__cover--video iframe {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-}
 .post-card__cover--video .yt-facade__poster,
 .post-card__cover--video .yt-facade--poster:hover .yt-facade__poster,
 .post-card__cover--video .yt-facade--poster:focus-visible .yt-facade__poster {
   scale: 1.34;
-}
-.post-card__cover--video .yt-facade__title {
-  display: none;
-}
-.post-card__cover--video .yt-facade__out {
-  right: auto;
-  left: 1.2cqw;
-  bottom: 1cqw;
-  font-size: max(10px, 0.6cqw);
 }
 .video-teaser__note {
   position: absolute;
