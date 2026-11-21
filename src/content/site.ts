@@ -165,6 +165,13 @@ export const ROOMS = {
     more: "More · {page}/{pages}",
     moreLabel: "Show more pieces, page {next} of {pages}",
   },
+  blog: {
+    description: "Jonathan Adams' blog: notes, photos and videos from the studio and the streets of Detroit.",
+    console: "Posts on the board",
+    frames: 6,
+    more: "More · {page}/{pages}",
+    moreLabel: "Show more posts, page {next} of {pages}",
+  },
 };
 
 export const MERCH = {
@@ -189,6 +196,22 @@ export const MERCH = {
 };
 
 export const MERCH_DESK = [
+  { label: "Listen", note: "Back to the booth", href: "/listen" },
+  { label: "Club Adams", note: "Back to the front door", href: "/club" },
+];
+
+export const BLOG = {
+  eyebrow: "Free Press Building",
+  soon: "First post soon",
+  soonNote: "Notes, photos and videos from Jonathan land here. Join the list and hear about the first one.",
+  join: "Join the list",
+  read: "Read the post",
+  readBelow: "Read below",
+  cover: "Cover photo for {title}",
+  back: { label: "Blog", note: "All posts", href: "/blog" },
+};
+
+export const BLOG_DESK = [
   { label: "Listen", note: "Back to the booth", href: "/listen" },
   { label: "Club Adams", note: "Back to the front door", href: "/club" },
 ];
@@ -293,4 +316,25 @@ export interface MerchItem {
   note: string;
   photo: string;
   sizes: MerchSize[];
+}
+
+export type PostBlock =
+  | { kind: "heading"; text: string }
+  | { kind: "text"; text: string }
+  | { kind: "photo"; src: string; caption: string }
+  | { kind: "video"; youtube: string; caption: string };
+
+export type PostBlockKind = PostBlock["kind"];
+
+export const POST_BLOCK_KINDS: PostBlockKind[] = ["text", "heading", "photo", "video"];
+
+export interface Post {
+  id: string;
+  slug: string;
+  title: string;
+  date: string;
+  published: boolean;
+  summary: string;
+  cover: string;
+  blocks: PostBlock[];
 }

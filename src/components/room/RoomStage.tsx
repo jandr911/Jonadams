@@ -22,6 +22,7 @@ export interface RoomScene {
   plaques: Plaque[];
   links: Plaque[];
   sign?: RoomSign;
+  article?: React.ReactNode;
 }
 
 function PlaqueList({ items, label, className }: { items: Plaque[]; label: string; className: string }) {
@@ -58,6 +59,7 @@ export default async function RoomStage({ destination, index, scene }: { destina
         <div className="stage__grain" aria-hidden />
       </div>
       {scene.phone && <div className="stage__phone">{scene.phone}</div>}
+      {scene.article}
       <PlaqueList items={list} label={ROOM_NAV.rooms} className="stage__links" />
       <JoinCard />
     </StageShell>

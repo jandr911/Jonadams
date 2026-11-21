@@ -22,6 +22,10 @@ export function mediaPath(folder: string, file: { name: string; type: string }):
   return `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
 }
 
+export function isRemote(src: string): boolean {
+  return /^https?:/.test(src);
+}
+
 export function storedPath(url: string): string | null {
   return url.startsWith(PUBLIC_PREFIX) ? url.slice(PUBLIC_PREFIX.length) : null;
 }
