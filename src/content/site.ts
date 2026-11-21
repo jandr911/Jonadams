@@ -226,6 +226,8 @@ export const BLOG = {
   join: "Join the list",
   read: "Read the post",
   readBelow: "Read below",
+  watchBelow: "Watch the full video below",
+  fullVideo: "Full video below",
   cover: "Cover photo for {title}",
   back: { label: "Blog", note: "All posts", href: "/blog" },
 };

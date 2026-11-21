@@ -4,6 +4,9 @@ import { fill, type SiteCopy } from "@/content/copy";
 import type { Post } from "@/content/site";
 import YouTubeFrame from "../YouTubeFrame";
 import RoomLink from "./RoomLink";
+import VideoTeaser from "./VideoTeaser";
+
+export const POST_VIDEO = "post-video";
 
 const DATE = new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeZone: "UTC" });
 
@@ -23,13 +26,20 @@ export function PaperGlyph({ className }: { className?: string }) {
   );
 }
 
-function firstVideo(post: Post) {
+export function firstVideo(post: Post) {
   for (const block of post.blocks) if (block.kind === "video" && block.youtube) return block;
   return null;
 }
 
-export function PostCover({ post, copy, sizes, video = false }: { post: Post; copy: SiteCopy; sizes: string; video?: boolean }) {
-  const clip = video ? firstVideo(post) : null;
+export function PostCover({ post, copy, sizes, video = false, teaser = false }: { post: Post; copy: SiteCopy; sizes: string; video?: boolean; teaser?: boolean }) {
+  const clip = video || teaser ? firstVideo(post) : null;
+  if (clip && teaser) {
+    return (
+      <div className="post-card__cover post-card__cover--video">
+        <VideoTeaser youtube={clip.youtube} target={POST_VIDEO} label={copy.BLOG.watchBelow} note={copy.BLOG.fullVideo} sizes={sizes} />
+      </div>
+    );
+  }
   if (clip) {
     return (
       <div className="post-card__cover post-card__cover--video">
@@ -57,12 +67,13 @@ interface PostCardProps {
   href?: string;
   cta?: string;
   video?: boolean;
+  teaser?: boolean;
 }
 
-export default function PostCard({ post, index, copy, sizes, className, href = postHref(post), cta = copy.BLOG.read, video = false }: PostCardProps) {
+export default function PostCard({ post, index, copy, sizes, className, href = postHref(post), cta = copy.BLOG.read, video = false, teaser = false }: PostCardProps) {
   return (
     <article className={`post-card ${className}`}>
-      <PostCover post={post} copy={copy} sizes={sizes} video={video} />
+      <PostCover post={post} copy={copy} sizes={sizes} video={video} teaser={teaser} />
       <div className="post-card__meta">
         <span className="post-card__index">{index}</span>
         <time className="post-card__date" dateTime={post.date}>

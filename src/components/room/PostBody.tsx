@@ -4,7 +4,7 @@ import type { Post, PostBlock } from "@/content/site";
 import { getContent } from "@/lib/content";
 import YouTubeFrame from "../YouTubeFrame";
 import RoomLink from "./RoomLink";
-import { postDate } from "./PostCard";
+import { POST_VIDEO, firstVideo, postDate } from "./PostCard";
 
 
 function paragraphs(text: string) {
@@ -37,7 +37,7 @@ function Block({ block, post, index }: { block: PostBlock; post: Post; index: nu
       ) : null;
     case "video":
       return block.youtube ? (
-        <figure className="post__figure">
+        <figure className="post__figure" id={block === firstVideo(post) ? POST_VIDEO : undefined}>
           <div className="media-card__frame">
             <YouTubeFrame slot={{ uid: `${post.id}-${index}`, id: block.youtube, title: block.caption || post.title, kind: "video" }} poster />
           </div>
