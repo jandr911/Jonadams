@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import SiteHeader from "@/components/SiteHeader";
 import { getContent } from "@/lib/content";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function Home() {
   const { copy } = await getContent();

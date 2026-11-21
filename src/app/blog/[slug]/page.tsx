@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const post = await postBySlug((await params).slug);
   if (!post) return {};
   const { copy } = await getContent();
-  const meta = roomMetadata(copy, "blog", post.summary || copy.ROOMS.blog.description, post.title);
+  const meta = roomMetadata(copy, "blog", post.summary || copy.ROOMS.blog.description, { title: post.title, path: `/blog/${post.slug}` });
   if (!post.cover) return meta;
   const images = { url: post.cover, alt: post.title };
   return { ...meta, openGraph: { ...meta.openGraph, type: "article", images }, twitter: { ...meta.twitter, images } };

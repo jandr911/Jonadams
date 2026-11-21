@@ -16,11 +16,13 @@ export function roomLinks(ids: string[]): Plaque[] {
   });
 }
 
-export function roomMetadata(copy: SiteCopy, district: string, description: string, title = placeById(district).label): Metadata {
+export function roomMetadata(copy: SiteCopy, district: string, description: string, page: { title?: string; path?: string } = {}): Metadata {
+  const { title = placeById(district).label, path = placeById(district).href } = page;
   const shared = { title: `${title} · ${copy.SITE.name}`, description, images: { url: "/share-image", ...SHARE_IMAGE, alt: fill(SHARE_IMAGE.alt, { name: copy.SITE.name, artist: copy.SITE.artist }) } };
   return {
     title,
     description,
+    alternates: { canonical: path },
     openGraph: { type: "website", siteName: copy.SITE.name, ...shared },
     twitter: { card: "summary_large_image", ...shared },
   };
