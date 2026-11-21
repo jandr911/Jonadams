@@ -56,7 +56,7 @@ export default async function PostAdmin({ params }: { params: Params }) {
               <input className="field__input" type="date" name="date" defaultValue={post.date} required />
               <span className="field__hint">Shown on the post. Newest dates come first.</span>
             </label>
-            <Field className="field--full" label="Short summary" name="summary" defaultValue={post.summary} multiline hint="One or two sentences on the post's card and when it is shared. Optional." />
+            <Field className="field--full" label="Short summary" name="summary" defaultValue={post.summary} multiline hint="One or two sentences on the post's card, in Google and when it is shared. Needed to publish; drafts can leave it empty." />
             <MediaField label="Cover photo" name="cover" current={post.cover} accept="image" folder="blog" />
             <PostBlocks key={JSON.stringify(post.blocks)} initial={post.blocks} />
           </ActionForm>

@@ -16,8 +16,10 @@ export function roomLinks(ids: string[]): Plaque[] {
   });
 }
 
-export function roomMetadata(copy: SiteCopy, district: string, description: string, page: { title?: string; path?: string } = {}): Metadata {
-  const { title = placeById(district).label, path = placeById(district).href } = page;
+type RoomId = keyof SiteCopy["SEARCH"]["rooms"];
+
+export function roomMetadata(copy: SiteCopy, district: RoomId, description: string, page: { title?: string; path?: string } = {}): Metadata {
+  const { title = fill(copy.SEARCH.rooms[district], { artist: copy.SITE.artist }).trim() || placeById(district).label, path = placeById(district).href } = page;
   const shared = { title: `${title} · ${copy.SITE.name}`, description, images: { url: "/share-image", ...SHARE_IMAGE, alt: fill(SHARE_IMAGE.alt, { name: copy.SITE.name, artist: copy.SITE.artist }) } };
   return {
     title,

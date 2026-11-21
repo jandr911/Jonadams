@@ -360,11 +360,14 @@ export async function savePost(_prev: FormState, formData: FormData): Promise<Fo
     }
     const date = text(formData, "date");
     if (!POST_DATE.test(date)) throw new FormError("Please pick the date for the post.");
+    const published = text(formData, "status") === "published";
+    const summary = text(formData, "summary");
+    if (published && !summary) throw new FormError("Please write a short summary before publishing. Google and share previews show it under the title.");
     const values = {
       title,
       published_on: date,
-      published: text(formData, "status") === "published",
-      summary: text(formData, "summary"),
+      published,
+      summary,
       cover: text(formData, "cover") && imageLink(text(formData, "cover"), "the cover photo"),
       blocks: postBlocks(formData),
     };
