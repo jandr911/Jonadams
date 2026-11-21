@@ -3655,6 +3655,11 @@ a.site-nav__link:hover .site-nav__sub,
   color: var(--mono-muted);
   font-size: 0.76rem;
 }
+.admin-comment {
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
 .admin-empty {
   color: var(--mono-muted);
   font-size: 0.9rem;
@@ -4605,6 +4610,112 @@ ul.admin-steps {
   margin-top: 40px;
   padding-top: 28px;
   border-top: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+}
+.comments {
+  margin-top: 48px;
+  padding-top: 28px;
+  border-top: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+}
+.comments__title {
+  margin-bottom: 20px;
+  font-family: var(--font-serif), serif;
+  font-size: 1.75rem;
+  font-weight: 500;
+  color: var(--paper);
+}
+.comments__empty {
+  margin-bottom: 24px;
+  color: var(--muted);
+}
+.comments__list {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 32px;
+  padding: 0;
+  list-style: none;
+}
+.comment {
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.comment__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-bottom: 8px;
+}
+.comment__name {
+  font-family: var(--font-serif), serif;
+  font-size: 1.2rem;
+  color: var(--gold-2);
+}
+.comment__date {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.comment__body {
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--paper) 90%, var(--muted));
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.comment-form {
+  display: grid;
+  gap: 14px;
+}
+.comment-form__trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.comment-form__field {
+  display: grid;
+  gap: 6px;
+}
+.comment-form__label {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.comment-form__input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--ink-2);
+  color: var(--paper);
+  font: inherit;
+  font-size: 16px;
+  transition: border-color 0.2s;
+}
+.comment-form__input:focus-visible {
+  outline: none;
+  border-color: var(--gold);
+}
+.comment-form__input--body {
+  min-height: 112px;
+  resize: vertical;
+}
+.comment-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+}
+.comment-form__status {
+  font-size: 14px;
+  color: var(--gold-2);
+}
+.comment-form__status--error {
+  color: var(--pink);
 }
 .yt-facade--poster {
   overflow: hidden;

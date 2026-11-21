@@ -3,6 +3,7 @@ import {
   BLOG,
   BLOG_DESK,
   CITY_FALLBACK,
+  COMMENTS,
   CITY_HUD,
   CLUB_DESK,
   CLUB_WALLS,
@@ -55,6 +56,7 @@ export const DEFAULT_COPY = {
   MERCH,
   BLOG,
   BLOG_DESK,
+  COMMENTS,
   NOT_FOUND,
 };
 
@@ -88,6 +90,7 @@ export const COPY_SECTIONS: Record<CopySection, string> = {
   MERCH_DESK: "Merch front desk",
   BLOG: "Blog",
   BLOG_DESK: "Blog front desk",
+  COMMENTS: "Blog comments",
   NOT_FOUND: "Page not found",
 };
 
