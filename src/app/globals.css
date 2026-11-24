@@ -4477,9 +4477,6 @@ ul.admin-steps {
   text-align: center;
   color: var(--gold-2);
 }
-#post-video {
-  scroll-margin-top: 96px;
-}
 .video-teaser__note::after {
   content: " \2193";
 }
@@ -4532,6 +4529,15 @@ ul.admin-steps {
   flex-direction: column;
   margin: 72px auto 24px;
   color: var(--paper);
+  scroll-margin-top: 96px;
+}
+.post + .post {
+  margin-top: 64px;
+  padding-top: 72px;
+  border-top: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+}
+.post__figure--video {
+  scroll-margin-top: 96px;
 }
 .post__head {
   display: flex;
