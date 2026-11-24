@@ -5,8 +5,7 @@ import { getContent } from "@/lib/content";
 import YouTubeFrame from "../YouTubeFrame";
 import RoomLink from "./RoomLink";
 import PostComments from "./PostComments";
-import { POST_VIDEO, firstVideo, postDate } from "./PostCard";
-
+import { firstVideo, postAnchor, postDate, postVideoAnchor } from "./PostCard";
 
 function paragraphs(text: string) {
   return text
@@ -38,7 +37,7 @@ function Block({ block, post, index }: { block: PostBlock; post: Post; index: nu
       ) : null;
     case "video":
       return block.youtube ? (
-        <figure className="post__figure" id={block === firstVideo(post) ? POST_VIDEO : undefined}>
+        <figure className="post__figure post__figure--video" id={block === firstVideo(post) ? postVideoAnchor(post) : undefined}>
           <div className="media-card__frame">
             <YouTubeFrame slot={{ uid: `${post.id}-${index}`, id: block.youtube, title: block.caption || post.title, kind: "video" }} poster />
           </div>
@@ -50,7 +49,7 @@ function Block({ block, post, index }: { block: PostBlock; post: Post; index: nu
 export default async function PostBody({ post, backLink = true }: { post: Post; backLink?: boolean }) {
   const { copy } = await getContent();
   return (
-    <article id="post" className="post">
+    <article id={postAnchor(post)} className="post">
       <header className="post__head">
         <time className="eyebrow" dateTime={post.date}>
           {postDate(post.date)}

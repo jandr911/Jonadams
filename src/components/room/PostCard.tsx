@@ -5,8 +5,6 @@ import type { Post } from "@/content/site";
 import RoomLink from "./RoomLink";
 import VideoTeaser from "./VideoTeaser";
 
-export const POST_VIDEO = "post-video";
-
 const DATE = new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeZone: "UTC" });
 
 export function postDate(date: string) {
@@ -15,6 +13,14 @@ export function postDate(date: string) {
 
 export function postHref(post: Post) {
   return `/blog/${post.slug}`;
+}
+
+export function postAnchor(post: Post) {
+  return `post-${post.slug}`;
+}
+
+export function postVideoAnchor(post: Post) {
+  return `${postAnchor(post)}-video`;
 }
 
 export function PaperGlyph({ className }: { className?: string }) {
@@ -35,7 +41,7 @@ export function PostCover({ post, copy, sizes, teaser = false }: { post: Post; c
   if (clip) {
     return (
       <div className="post-card__cover post-card__cover--video">
-        <VideoTeaser youtube={clip.youtube} target={POST_VIDEO} label={copy.BLOG.watchBelow} note={copy.BLOG.fullVideo} sizes={sizes} />
+        <VideoTeaser youtube={clip.youtube} target={postVideoAnchor(post)} label={copy.BLOG.watchBelow} note={copy.BLOG.fullVideo} sizes={sizes} />
       </div>
     );
   }
@@ -61,7 +67,7 @@ interface PostCardProps {
 
 function cardLink(post: Post, copy: SiteCopy, teaser: boolean) {
   if (!teaser) return { href: postHref(post), cta: copy.BLOG.read };
-  return firstVideo(post) ? { href: `#${POST_VIDEO}`, cta: copy.BLOG.watchBelow } : { href: "#post", cta: copy.BLOG.readBelow };
+  return firstVideo(post) ? { href: `#${postVideoAnchor(post)}`, cta: copy.BLOG.watchBelow } : { href: `#${postAnchor(post)}`, cta: copy.BLOG.readBelow };
 }
 
 export default function PostCard({ post, index, copy, sizes, className, teaser = false }: PostCardProps) {
