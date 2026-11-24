@@ -16,10 +16,9 @@ interface PagedConsoleProps {
   moreLabel: string;
   preview?: boolean;
   crt?: boolean;
-  channel?: string;
 }
 
-export default function PagedConsole({ pages, label, more, moreLabel, preview, crt, channel }: PagedConsoleProps) {
+export default function PagedConsole({ pages, label, more, moreLabel, preview, crt }: PagedConsoleProps) {
   const [page, setPage] = useState(0);
   const current = pages[page];
   if (!current) return null;
@@ -27,7 +26,7 @@ export default function PagedConsole({ pages, label, more, moreLabel, preview, c
   const next = (page + 1) % count;
   return (
     <>
-      <RoomConsole key={page} keys={current.keys} screens={current.screens} label={label} preview={preview} crt={crt} channel={channel} />
+      <RoomConsole key={page} keys={current.keys} screens={current.screens} label={label} preview={preview} crt={crt} />
       {count > 1 && (
         <button type="button" className="stage__flip" aria-label={fill(moreLabel, { next: next + 1, pages: count })} onClick={() => setPage(next)}>
           {fill(more, { page: page + 1, pages: count })}
